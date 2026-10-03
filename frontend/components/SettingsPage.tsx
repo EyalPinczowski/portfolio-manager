@@ -2,12 +2,111 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { api, toPresets, type RiskFilter } from "@/lib/api";
+import { api, ApiError, toPresets, type RiskFilter } from "@/lib/api";
+import { formatDate, formatTime } from "@/lib/format";
 import { usePortfolios } from "@/lib/hooks";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { AppShell } from "./AppShell";
 import { Modal } from "./Modal";
 import { PortfolioSwitcher } from "./PortfolioSwitcher";
+
+type PasswordAction = "export" | "delete";
+
+/** Asks for the account password (export/delete need it; a wrong one gives 403). */
+function PasswordPrompt({ action, onDone, onCancel }: { action: PasswordAction; onDone: () => void; onCancel: () => void }) {
+  const t = useTranslations("settings");
+  const c = useTranslations("common");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true); setErr(null);
+    try {
+      if (action === "export") {
+        const data = await api.exportData(password);
+        const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+        try {
+          const a = document.createElement("a");
+          a.href = url; a.download = "portfolio-manager-export.json"; a.click();
+        } finally { URL.revokeObjectURL(url); }
+      } else {
+        await api.deleteAccount(password);
+      }
+      onDone();
+    } catch (error) {
+      const s = error instanceof ApiError ? error.status : 0;
+      setErr(s === 403 ? t("wrongPassword") : s === 429 ? t("tooMany") : c("errorLoad"));
+    } finally { setBusy(false); setPassword(""); }
+  };
+  const isDelete = action === "delete";
+  return (
+    <Modal title={isDelete ? t("deleteTitle") : t("exportTitle")} onClose={onCancel}>
+      <form onSubmit={submit} className="space-y-3">
+        <p className="text-sm">{isDelete ? t("deleteBody") : t("exportBody")}</p>
+        <div>
+          <label htmlFor="confirm-password" className="label">{t("confirmPassword")}</label>
+          <input id="confirm-password" className="input" type="password" required autoComplete="current-password" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} />
+        </div>
+        {err && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{err}</p>}
+        <div className="flex gap-2">
+          <button type="submit" className={isDelete ? "btn-danger" : "btn-primary"} disabled={busy || password === ""}>{isDelete ? t("deleteYes") : t("exportYes")}</button>
+          <button type="button" className="btn-secondary" onClick={onCancel}>{c("cancel")}</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function Sessions() {
+  const t = useTranslations("settings");
+  const locale = useLocale();
+  const { data, error, mutate: refresh } = useSWR("sessions", () => api.sessions());
+  const [fail, setFail] = useState(false);
+  const run = async (fn: () => Promise<unknown>) => {
+    setFail(false);
+    try { await fn(); await refresh(); } catch { setFail(true); }
+  };
+  const when = (iso: string) => `${formatDate(iso)} ${formatTime(iso, locale)}`;
+  const others = (data ?? []).filter((x) => !x.current);
+  return (
+    <section className="card space-y-3" aria-label={t("sessions")}>
+      <div>
+        <h2 className="text-lg font-bold">{t("sessions")}</h2>
+        <p className="text-sm text-slate-600 dark:text-slate-400">{t("sessionsDesc")}</p>
+      </div>
+      {error && <p role="alert" className="text-sm">{t("sessionsError")}</p>}
+      {data && (
+        <ul className="space-y-2">
+          {data.map((x) => (
+            <li key={x.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">
+              <div>
+                <p className="font-semibold">{x.current ? t("sessionCurrent") : t("sessionOther")}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">{t("sessionSignedIn", { time: when(x.created_at) })} · {t("sessionLastSeen", { time: when(x.last_seen_at) })}</p>
+              </div>
+              {!x.current && <button type="button" className="btn-secondary" onClick={() => run(() => api.revokeSession(x.id))}>{t("sessionRevoke")}</button>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {others.length > 0 && <button type="button" className="btn-secondary" onClick={() => run(() => api.revokeOtherSessions())}>{t("sessionRevokeAll")}</button>}
+      {fail && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{t("sessionsError")}</p>}
+    </section>
+  );
+}
+
+function LaunchGateNote() {
+  const t = useTranslations("settings");
+  const { data } = useSWR("launch-gate", () => api.launchGate(), { shouldRetryOnError: false });
+  if (!data) return null;
+  return (
+    <section className="card space-y-2" aria-label={t("gate")}>
+      <h2 className="text-lg font-bold">{t("gate")}</h2>
+      <p className="text-sm">{data.open ? t("gateOpen") : t("gateClosed")}</p>
+      {!data.open && data.reasons.length > 0 && <ul className="list-disc ps-5 text-sm text-slate-700 dark:text-slate-300">{data.reasons.map((r) => <li key={r}>{r}</li>)}</ul>}
+    </section>
+  );
+}
 
 const NUM_FIELDS = [
   "max_position_pct", "max_sector_pct", "max_country_pct", "max_loss_per_position_pct",
@@ -35,8 +134,7 @@ function Body() {
   const form = edits ?? current?.risk_filter ?? FALLBACK;
   const setForm = (f: RiskFilter | ((p: RiskFilter) => RiskFilter)) => setEdits(typeof f === "function" ? f(form) : f);
   const [saved, setSaved] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState<PasswordAction | null>(null);
 
   const pickPreset = (name: string) => {
     const p = presets.find((x) => x.name === name);
@@ -57,20 +155,6 @@ function Body() {
     setEdits(null);
     setSaved(true);
   };
-  const exportData = async () => {
-    try {
-      const data = await api.exportData();
-      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-      const a = document.createElement("a");
-      a.href = url; a.download = "portfolio-manager-export.json"; a.click();
-      URL.revokeObjectURL(url);
-    } catch { setMsg(c("errorLoad")); }
-  };
-  const del = async () => {
-    try { await api.deleteAccount(); router.replace("/login"); }
-    catch { setMsg(c("errorLoad")); setConfirmDelete(false); }
-  };
-
   return (
     <>
       <h1 className="text-2xl font-bold">{t("title")}</h1>
@@ -102,6 +186,7 @@ function Body() {
             </select>
           </div>
         </div>
+        <p className="text-sm text-slate-600 dark:text-slate-400">{t("trackingSince", { date: formatDate(current?.tracking_started_at) })}</p>
         <div className="flex items-center gap-3">
           <button type="submit" className="btn-primary">{c("save")}</button>
           {saved && <span role="status" className="text-sm text-emerald-700 dark:text-emerald-400">✓ {c("saved")}</span>}
@@ -119,27 +204,27 @@ function Body() {
         </div>
       </section>
 
+      <Sessions />
+      <LaunchGateNote />
+
       <section className="card space-y-2" aria-label={t("data")}>
         <h2 className="text-lg font-bold">{t("data")}</h2>
         <p className="text-sm text-slate-600 dark:text-slate-400">{t("exportDesc")}</p>
-        <button type="button" className="btn-secondary" onClick={exportData}>{t("export")}</button>
+        <button type="button" className="btn-secondary" onClick={() => setPrompt("export")}>{t("export")}</button>
       </section>
 
       <section className="card space-y-2 border-red-300 dark:border-red-900" aria-label={t("danger")}>
         <h2 className="text-lg font-bold text-red-800 dark:text-red-400">{t("danger")}</h2>
         <p className="text-sm">{t("deleteWarn")}</p>
-        <button type="button" className="btn-danger" onClick={() => setConfirmDelete(true)}>{t("deleteAccount")}</button>
-        {msg && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{msg}</p>}
+        <button type="button" className="btn-danger" onClick={() => setPrompt("delete")}>{t("deleteAccount")}</button>
       </section>
 
-      {confirmDelete && (
-        <Modal title={t("deleteTitle")} onClose={() => setConfirmDelete(false)}>
-          <p className="text-sm">{t("deleteBody")}</p>
-          <div className="flex gap-2">
-            <button type="button" className="btn-danger" onClick={del}>{t("deleteYes")}</button>
-            <button type="button" className="btn-secondary" onClick={() => setConfirmDelete(false)}>{c("cancel")}</button>
-          </div>
-        </Modal>
+      {prompt && (
+        <PasswordPrompt
+          action={prompt}
+          onCancel={() => setPrompt(null)}
+          onDone={() => { const was = prompt; setPrompt(null); if (was === "delete") router.replace("/login"); }}
+        />
       )}
     </>
   );

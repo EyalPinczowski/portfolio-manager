@@ -1,193 +1,96 @@
+import type { components } from "./api-schema";
+import type { ImportDraftPending, LaunchGate, SessionInfo } from "./api-pending";
+import { RASTER_TYPES } from "./api-pending";
+import { apiBase } from "./config";
+import { ApiError } from "./errors";
 import { mockRequest } from "./mock";
+import { clearClientState } from "./session";
 
-// ---------- Types (from docs/phase-1-spec.md API contract) ----------
-export interface Me {
-  id: number;
-  email: string;
-  locale: "he" | "en";
-  disclaimer_accepted: boolean;
-  ocr_consent: boolean;
-  csrf_token: string;
-}
-export interface Money { ils: number; usd: number }
-export interface Pnl { ils: number; usd: number; pct: number }
+export { ApiError };
+export type { LaunchGate, SessionInfo };
+
+/*
+ * Types are DERIVED from the generated lib/api-schema.d.ts (npm run gen:api, from backend/openapi.json).
+ * `Narrow` replaces fields that the OpenAPI schema types loosely (plain `string`, free-form objects) with the
+ * precise union the backend actually returns. Contract items the backend has not published yet come from
+ * lib/api-pending.ts (hand-written) and are intersected in.
+ */
+type S = components["schemas"];
+type Narrow<T, N> = Omit<T, keyof N> & N;
+
 export type MarketKey = "US" | "TASE" | "CRYPTO";
-export type Horizon = "1w" | "1m" | "3m" | "6m" | "1y";
+export type Horizon = NonNullable<S["HoldingOut"]["horizon"]>;
 export type AssetType = "stock" | "etf" | "crypto" | "fund" | "bond" | "cash";
+export type Money = S["Money"];
+export type Pnl = S["Pnl"];
+export type StopTpStatus = S["HoldingOut"]["stop_tp_status"];
 
-export interface Summary {
-  value: Money;
-  day_pnl: Pnl;
-  week_pnl: Pnl;
-  month_pnl: Pnl;
-  since_start_pnl: Pnl;
-  /** ISO date the user first started using the app */
-  since_start_date: string;
-  weekly_bars: { week_start: string; pnl_ils: number; pct: number }[];
-  monthly_bars: { month: string; pnl_ils: number; pct: number }[];
-  since_start_series: { date: string; pct: number; sp500_pct: number; ta125_pct: number }[];
-  as_of: string;
-  markets: Record<MarketKey, { open: boolean }>;
-}
-
-export interface RiskFilter {
-  preset?: string;
-  max_position_pct: number;
-  max_sector_pct: number;
-  max_country_pct: number;
-  max_loss_per_position_pct: number;
-  max_portfolio_risk_per_trade_pct: number;
-  max_total_portfolio_risk_pct: number;
-  min_rr: number;
-  stop_type: "fixed" | "trailing" | "both";
-  drawdown_defensive_pct: number;
-}
+export type Me = Narrow<S["MeOut"], { locale: "he" | "en" }>;
+export type Summary = S["SummaryOut"];
+export type RiskFilter = Narrow<S["RiskFilterOut"], { stop_type: "fixed" | "trailing" | "both" }>;
 export type RiskPreset = { name: string } & RiskFilter;
-
-export interface Portfolio {
-  id: number;
-  name: string;
-  base_currency: "ILS" | "USD";
-  risk_filter: RiskFilter | null;
-  created_at: string;
-}
-
-export type StopTpStatus = "missing" | "needs_horizon";
-export interface ScoreCardMini { total: number; technical: number; patterns: number; confidence: number }
-export interface Holding {
-  id: number;
-  symbol: string;
-  name_en: string;
-  name_he: string;
-  asset_type: AssetType;
-  market: MarketKey;
-  quantity: number;
-  price: number;
-  currency: string;
-  day_change_pct: number;
-  value_ils: number;
-  pnl: Pnl;
-  weight_pct: number;
-  horizon: Horizon | null;
-  stop_tp_status: StopTpStatus;
-  score_card: ScoreCardMini;
-}
+export type Portfolio = Narrow<S["PortfolioOut"], { base_currency: "ILS" | "USD"; risk_filter: RiskFilter | null }>;
+export type ScoreCardMini = S["ScoreCardMini"];
+export type Holding = Narrow<S["HoldingOut"], { asset_type: AssetType; market: MarketKey }>;
 
 export interface Explanation {
   summary: string;
   inputs: Record<string, string | number>;
   rules_applied: string[];
 }
-export interface SignalBreakdown {
-  name: string;
-  score: number;
-  confidence: number;
-  weight: number;
-  reasons: string[];
-  data_as_of: string;
-  explanation: Explanation;
-}
-/** Assumption: the contract only says "score card with signal breakdown + explanation (no verdict)". */
-export interface ScoreCardDetail {
-  holding_id: number;
-  portfolio_id: number;
-  symbol: string;
-  name_en: string;
-  name_he: string;
-  horizon: Horizon | null;
-  total: number;
-  confidence: number;
-  validated: boolean;
-  signals: SignalBreakdown[];
-  explanation: Explanation;
-}
+export type SignalBreakdown = Narrow<S["SignalBreakdownOut"], { explanation: Explanation }>;
+export type ScoreCardDetail = Narrow<S["ScoreCardDetail"], { explanation: Explanation; signals: SignalBreakdown[] }>;
 
-export interface ExposureItem { name: string; weight_pct: number }
-export interface Breach { rule: string; value: number; limit: number; why: string }
-export interface XrayRaw {
-  concentration: { symbol: string; weight_pct: number }[];
-  currency_exposure: ExposureItem[] | Record<string, number>;
-  country_exposure: ExposureItem[] | Record<string, number>;
-  sector_exposure: ExposureItem[] | Record<string, number>;
-  home_bias: number | { israel_pct?: number; [k: string]: unknown };
-  breaches: Breach[];
-}
-export interface HeatmapItem { symbol: string; sector: string; weight_pct: number; day_change_pct: number }
+export type ExposureItem = S["ExposureItem"];
+export type Breach = S["Breach"];
+export type XrayRaw = Narrow<
+  S["XrayOut"],
+  { concentration: { symbol: string; weight_pct: number }[]; home_bias: { israel_pct?: number } }
+>;
+export type HeatmapItem = S["HeatmapItem"];
 
 export type ChangeType = "buy" | "sell" | "deposit" | "withdrawal";
-export interface ImportRow {
-  index: number;
-  name: string;
-  symbol: string | null;
-  quantity: number | null;
-  price: number | null;
-  value: number | null;
-  cost: number | null;
-  currency: string;
-  unit: "ILS" | "agorot" | "USD";
-  matched_name?: string | null;
-  flags: string[];
-}
-export interface ProposedChange {
-  row_index: number;
-  symbol: string | null;
-  type: ChangeType;
-  quantity: number | null;
-  amount: number | null;
-  currency: string;
-}
-export interface ImportDraft {
-  id: number;
-  portfolio_id: number;
-  status: "draft" | "confirmed" | "discarded";
-  rows: ImportRow[];
-  proposed_changes: ProposedChange[];
-}
-export interface SecurityHit { symbol: string; name_en: string; name_he: string; market: MarketKey }
-
-export interface PriceAlert {
-  id: number;
-  symbol: string;
-  op: "above" | "below";
-  price: number;
-  active: boolean;
-  triggered_at: string | null;
-}
-export interface Notification {
-  id: number; kind: string; title: string; body: string; created_at: string; read: boolean;
-}
+export type ImportFlag = NonNullable<S["ImportRowModel"]["flags"]>[number];
+export type MatchCandidate = S["MatchCandidate"];
+export type ImportRow = Narrow<S["ImportRowModel"], { flags: ImportFlag[]; candidates?: MatchCandidate[] }>;
+export type ProposedChange = Narrow<S["ProposedChange"], { type: ChangeType }>;
+export type ImportDraft = Narrow<S["ImportDraftOut"], { rows: ImportRow[]; proposed_changes: ProposedChange[] }> &
+  ImportDraftPending;
+export type SecurityHit = Narrow<S["SecurityHit"], { market: MarketKey }>;
+export type PriceAlert = Narrow<S["AlertOut"], { op: "above" | "below" }>;
+export type Notification = S["NotificationOut"];
 
 // ---------- Client ----------
-export class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-  }
-}
-
 export const isMock = (): boolean => process.env.NEXT_PUBLIC_API_MOCK === "1";
 
 let csrfToken: string | null = null;
 export const setCsrfToken = (t: string | null): void => { csrfToken = t; };
 export const getCsrfToken = (): string | null => csrfToken;
 
-async function raw<T>(method: string, path: string, body?: unknown, form?: FormData): Promise<T> {
-  if (isMock()) return mockRequest(method, path, body) as T;
+interface Payload { json?: unknown; image?: Blob }
+
+async function raw<T>(method: string, path: string, payload: Payload = {}): Promise<T> {
+  if (isMock()) return mockRequest(method, path, payload.image ?? payload.json) as T;
   const headers: Record<string, string> = {};
   if (method !== "GET") {
     if (!csrfToken && path !== "/auth/login" && path !== "/auth/signup") await api.me();
     if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
   }
-  let payload: BodyInit | undefined;
-  if (form) payload = form;
-  else if (body !== undefined) {
+  let body: BodyInit | undefined;
+  if (payload.image) {
+    // Raw image body, never multipart: the server must not spool the upload to a temp file.
+    headers["Content-Type"] = payload.image.type;
+    body = payload.image;
+  } else if (payload.json !== undefined) {
     headers["Content-Type"] = "application/json";
-    payload = JSON.stringify(body);
+    body = JSON.stringify(payload.json);
   }
-  const res = await fetch(`/api${path}`, { method, headers, body: payload, credentials: "include" });
+  const res = await fetch(`${apiBase()}/api${path}`, { method, headers, body, credentials: "include" });
   if (!res.ok) {
     let msg = res.statusText;
     try { const j = await res.json(); msg = typeof j.detail === "string" ? j.detail : msg; } catch { /* ignore */ }
-    throw new ApiError(res.status, msg);
+    const ra = Number(res.headers.get("Retry-After"));
+    throw new ApiError(res.status, msg, Number.isFinite(ra) && ra > 0 ? ra : undefined);
   }
   if (res.status === 204) return undefined as T;
   const ct = res.headers.get("content-type") ?? "";
@@ -195,9 +98,9 @@ async function raw<T>(method: string, path: string, body?: unknown, form?: FormD
 }
 
 const get = <T,>(p: string) => raw<T>("GET", p);
-const post = <T,>(p: string, b?: unknown) => raw<T>("POST", p, b ?? {});
-const patch = <T,>(p: string, b: unknown) => raw<T>("PATCH", p, b);
-const del = <T,>(p: string) => raw<T>("DELETE", p);
+const post = <T,>(p: string, b?: unknown) => raw<T>("POST", p, { json: b ?? {} });
+const patch = <T,>(p: string, b: unknown) => raw<T>("PATCH", p, { json: b });
+const del = <T,>(p: string, b?: unknown) => raw<T>("DELETE", p, b === undefined ? {} : { json: b });
 
 export const api = {
   async me(): Promise<Me> {
@@ -205,17 +108,34 @@ export const api = {
     csrfToken = me.csrf_token;
     return me;
   },
-  signup: (b: { invite_code: string; email: string; password: string; accept_disclaimer: true; locale: string }) =>
-    post<Me | void>("/auth/signup", b),
+  async signup(b: { invite_code: string; email: string; password: string; accept_disclaimer: true; locale: string }) {
+    const r = await post<Me | void>("/auth/signup", b);
+    csrfToken = null;
+    await clearClientState();
+    return r;
+  },
   async login(b: { email: string; password: string }) {
     const r = await post<unknown>("/auth/login", b);
     csrfToken = null;
+    await clearClientState();
     return r;
   },
-  async logout() { await post("/auth/logout"); csrfToken = null; },
+  async logout() {
+    try { await post("/auth/logout"); } finally { csrfToken = null; await clearClientState(); }
+  },
   consentOcr: () => post("/auth/consent/ocr"),
-  exportData: () => get<unknown>("/me/export"),
-  deleteAccount: () => del("/me"),
+  /** Needs the account password (wrong password -> 403). */
+  exportData: (password: string) => post<unknown>("/me/export", { password }),
+  async deleteAccount(password: string) {
+    await del("/me", { password });
+    csrfToken = null;
+    await clearClientState();
+  },
+
+  sessions: () => get<SessionInfo[]>("/auth/sessions"),
+  revokeSession: (id: number) => del(`/auth/sessions/${id}`),
+  revokeOtherSessions: () => post("/auth/sessions/revoke-all"),
+  launchGate: () => get<LaunchGate>("/launch-gate"),
 
   portfolios: () => get<Portfolio[]>("/portfolios"),
   createPortfolio: (b: { name: string; base_currency: string }) => post<Portfolio>("/portfolios", b),
@@ -229,11 +149,14 @@ export const api = {
   heatmap: (id: number) => get<HeatmapItem[]>(`/portfolios/${id}/heatmap`),
   riskPresets: () => get<RiskPreset[] | Record<string, RiskFilter>>("/risk/presets"),
 
-  createImport(portfolioId: number, file: File) {
-    const fd = new FormData();
-    fd.append("file", file);
-    return raw<ImportDraft>("POST", `/portfolios/${portfolioId}/imports`, undefined, fd);
+  /** Server-reading path: the image goes up as the raw request body (png/jpeg/webp), not multipart. */
+  createImport(portfolioId: number, image: Blob) {
+    if (!(RASTER_TYPES as readonly string[]).includes(image.type)) throw new ApiError(415, "Unsupported image type");
+    return raw<ImportDraft>("POST", `/portfolios/${portfolioId}/imports`, { image });
   },
+  /** On-device path: rows parsed in the browser; the image never leaves the device. */
+  importRows: (portfolioId: number, rows: ImportRow[]) =>
+    post<ImportDraft>(`/portfolios/${portfolioId}/imports/rows`, { rows }),
   getImport: (id: number) => get<ImportDraft>(`/imports/${id}`),
   patchImport: (id: number, b: { rows?: ImportRow[]; proposed_changes?: ProposedChange[] }) =>
     patch<ImportDraft>(`/imports/${id}`, b),

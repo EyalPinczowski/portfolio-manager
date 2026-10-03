@@ -28,7 +28,8 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       router.replace("/");
     } catch (err) {
       const s = err instanceof ApiError ? err.status : 0;
-      setError(s === 429 ? t("tooMany") : s === 401 && !signup ? t("invalidCredentials") : t("failed"));
+      const wait = err instanceof ApiError ? err.retryAfter : undefined;
+      setError(s === 429 ? (wait ? t("tooManyWait", { seconds: wait }) : t("tooMany")) : s === 401 && !signup ? t("invalidCredentials") : t("failed"));
     } finally { setBusy(false); }
   };
 

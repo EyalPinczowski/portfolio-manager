@@ -43,14 +43,17 @@ export function PnlBarChart({ data, label }: { data: BarPoint[]; label: string }
     const p = palette();
     const chart = baseChart(el, 160);
     const s = chart.addSeries(HistogramSeries, { priceFormat: { type: "custom", formatter: (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%` } });
-    s.setData(data.map((d) => ({ time: d.time as Time, value: d.value, color: d.value >= 0 ? p.up : p.down })));
+    s.setData(data.filter((d) => isNum(d.value)).map((d) => ({ time: d.time as Time, value: d.value, color: d.value >= 0 ? p.up : p.down })));
     chart.timeScale().fitContent();
     return () => chart.remove();
   }, [data]);
   return <div ref={ref} role="img" aria-label={label} className="h-40 w-full" />;
 }
 
-export interface SeriesPoint { time: string; you: number; sp500: number; ta125: number }
+/** Benchmark values are null/undefined where the benchmark has no data for that day; those points are skipped. */
+export interface SeriesPoint { time: string; you: number; sp500?: number | null; ta125?: number | null }
+
+const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
 export function SinceStartChart({ data, label, names }: { data: SeriesPoint[]; label: string; names: { you: string; sp500: string; ta125: string } }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -62,7 +65,7 @@ export function SinceStartChart({ data, label, names }: { data: SeriesPoint[]; l
     const fmt = { type: "custom" as const, formatter: (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%` };
     const mk = (title: string, color: string, key: "you" | "sp500" | "ta125", width: 1 | 2 | 3) => {
       const s = chart.addSeries(LineSeries, { color, lineWidth: width, title, priceFormat: fmt, lastValueVisible: false, priceLineVisible: false });
-      s.setData(data.map((d) => ({ time: d.time as Time, value: d[key] })));
+      s.setData(data.flatMap((d) => { const v = d[key]; return isNum(v) ? [{ time: d.time as Time, value: v }] : []; }));
     };
     mk(names.sp500, p.sp, "sp500", 1);
     mk(names.ta125, p.ta, "ta125", 1);

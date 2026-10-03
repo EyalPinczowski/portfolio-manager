@@ -40,7 +40,9 @@
       "CRYPTO": "Crypto"
     },
     "open": "Open",
-    "closed": "Closed"
+    "closed": "Closed",
+    "sinceStartNoDate": "Since you started using the app",
+    "fxStale": "The USD/ILS exchange rate is not up to date, so ILS and USD totals may be slightly off."
   },
   "switcher": {
     "label": "Portfolio",
@@ -57,7 +59,12 @@
     "sp500": "S&P 500",
     "ta125": "TA-125",
     "up": "Gain",
-    "down": "Loss"
+    "down": "Loss",
+    "weekFrom": "Week starting Sunday {date}",
+    "weekSundayStart": "Weeks start on Sunday",
+    "weeksStartSunday": "Each bar is a week that starts on Sunday.",
+    "sinceStartChartNoDate": "Since you started using the app",
+    "noHistory": "History starts after your first import. Nothing to chart yet."
   },
   "actions": {
     "label": "Main actions",
@@ -81,7 +88,11 @@
     "stopMissing": "Stop/TP missing",
     "needsHorizon": "Needs holding period",
     "scoreValue": "Score {score}",
-    "open": "Open {name}"
+    "open": "Open {name}",
+    "pnlUnavailable": "P&L not available (cost unknown)",
+    "stale": "Stale price",
+    "staleHint": "This price is older than expected.",
+    "noScore": "No score data"
   },
   "holding": {
     "notFound": "Holding not found.",
@@ -122,7 +133,10 @@
     "alertSummary": "{op} {price}",
     "alertDelete": "Delete alert",
     "exitTitle": "Exit levels (stop-loss / take-profit)",
-    "exitSoon": "Coming in Phase 2."
+    "exitSoon": "Coming in Phase 2.",
+    "noData": "No score data yet for this security.",
+    "signalNoData": "No data",
+    "nominalWeight": "nominal {pct}"
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -138,26 +152,30 @@
     "failed": "Something went wrong. Check your details and try again.",
     "invalidCredentials": "Wrong email or password.",
     "tooMany": "Too many attempts. Wait a moment and try again.",
-    "working": "Please wait…"
+    "working": "Please wait…",
+    "tooManyWait": "Too many attempts. Try again in {seconds} seconds."
   },
   "import": {
     "title": "Import holdings",
-    "intro": "Upload a screenshot of your holdings from your broker. You will review every row before anything is saved.",
+    "intro": "Take a screenshot of your holdings from your broker. It is read on this device, and you review every row before anything is saved.",
     "portfolio": "Import into",
     "chooseFile": "Choose a screenshot",
     "upload": "Upload and read",
     "uploading": "Reading the screenshot…",
-    "consentTitle": "Allow screenshot reading (OCR)?",
-    "consentBody": "Your screenshot is processed to extract text. Long digit sequences and the header area are blurred locally first, and the image is deleted right after parsing. If a cloud vision service is configured, the redacted image may be sent to it.",
-    "consentAccept": "I agree",
+    "consentTitle": "Use server reading?",
+    "consentBody": "The server reads the image instead of your device. The top of the image is blanked and the image is re-encoded on your device first. If a cloud vision service is configured, the image may be sent to it, and free-tier services may use what they receive. We keep only the stock list and delete the screenshot right away.",
+    "consentAccept": "I agree, upload",
     "consentDecline": "No thanks",
     "reviewTitle": "Review the rows",
     "reviewHint": "Fix anything that looks wrong. Highlighted rows need your attention.",
     "flagged": "Needs review",
     "flags": {
       "value_mismatch": "Quantity × price does not match the value",
-      "no_match": "Could not match this security",
-      "low_confidence": "Low confidence reading"
+      "currency_changed": "Currency differs from what you hold",
+      "low_confidence_match": "Weak match: check the symbol",
+      "missing_fields": "Some fields are missing",
+      "unmatched": "Could not match this security",
+      "unit_mismatch": "Price unit looks wrong (shekels or agorot?)"
     },
     "col": {
       "name": "Name",
@@ -179,7 +197,31 @@
     "confirming": "Saving…",
     "done": "Import saved.",
     "backHome": "Back to portfolio",
-    "again": "Import another"
+    "again": "Import another",
+    "keepOnly": "We keep only the stock list. The screenshot is deleted right away.",
+    "readOnDevice": "Read on this device",
+    "reading": "Reading…",
+    "useServer": "Use server reading",
+    "onDeviceNote": "On-device reading is private: the image never leaves your phone or computer. The first time, about 15 MB of reading data is downloaded from this site.",
+    "progress": {
+      "loading": "Loading the reading engine…",
+      "reading": "Reading the screenshot…"
+    },
+    "expires": "This draft is deleted automatically on {time} if you do not confirm it.",
+    "taseNumber": "TASE no. {n}",
+    "error": {
+      "generic": "Could not read the screenshot. Try again.",
+      "noRows": "No holdings were found in this screenshot. Try a clearer or larger one, or use server reading.",
+      "ocr": "Reading failed on this device. Try again or use server reading.",
+      "tooLarge": "The image is too large.",
+      "type": "Use a PNG, JPEG or WebP image.",
+      "rate": "Too many uploads. Wait a moment and try again.",
+      "rateWait": "Too many uploads. Try again in {seconds} seconds.",
+      "confirm": "Could not save the import. Try again.",
+      "badNumber": "Some numbers cannot be read. Fix the red fields before saving."
+    },
+    "useCandidate": "Use {symbol} ({name}, {pct} match)",
+    "candidates": "Did you mean:"
   },
   "xray": {
     "title": "Portfolio X-ray",
@@ -242,7 +284,26 @@
     "deleteAccount": "Delete my account",
     "deleteWarn": "This permanently deletes your account, portfolios and alerts.",
     "deleteTitle": "Delete your account?",
-    "deleteBody": "This cannot be undone. All your data will be erased.",
-    "deleteYes": "Yes, delete everything"
+    "deleteBody": "This cannot be undone. All your data will be erased. Enter your password to confirm.",
+    "deleteYes": "Yes, delete everything",
+    "trackingSince": "Tracking since: {date}",
+    "exportTitle": "Export your data",
+    "exportBody": "Enter your password to download everything stored about you.",
+    "exportYes": "Download",
+    "confirmPassword": "Password",
+    "wrongPassword": "Wrong password.",
+    "tooMany": "Too many attempts. Wait a moment and try again.",
+    "sessions": "Signed-in devices",
+    "sessionsDesc": "Sign out any device you no longer use.",
+    "sessionsError": "Could not load or change sessions.",
+    "sessionCurrent": "This device",
+    "sessionOther": "Another device",
+    "sessionSignedIn": "Signed in {time}",
+    "sessionLastSeen": "last active {time}",
+    "sessionRevoke": "Sign out",
+    "sessionRevokeAll": "Sign out all other devices",
+    "gate": "Buy/sell suggestions",
+    "gateOpen": "Open: suggestions are enabled.",
+    "gateClosed": "Locked: the app shows analysis only until it has proven itself."
   }
 }

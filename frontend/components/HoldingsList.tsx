@@ -1,9 +1,26 @@
 "use client";
 import { useLocale, useTranslations } from "next-intl";
 import type { Holding } from "@/lib/api";
-import { formatMoney, formatNumber, formatPct } from "@/lib/format";
+import { DASH, formatMoney, formatWeight } from "@/lib/format";
+import { holdingHref } from "@/lib/routes";
 import { Link } from "@/i18n/navigation";
 import { PnlText } from "./Pnl";
+
+function NoData({ label }: { label: string }) {
+  return <span className="text-sm text-slate-600 dark:text-slate-400" title={label}>{DASH}<span className="sr-only"> {label}</span></span>;
+}
+
+function PnlCell({ h, locale }: { h: Holding; locale: string }) {
+  const t = useTranslations("holdings");
+  if (!h.pnl) return <NoData label={t("pnlUnavailable")} />;
+  return <PnlText value={h.pnl.ils} pct={h.pnl.pct} currency="ILS" locale={locale} />;
+}
+
+function StaleChip({ h }: { h: Holding }) {
+  const t = useTranslations("holdings");
+  if (!h.price_stale) return null;
+  return <span className="chip ms-1 bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" title={t("staleHint")}>{t("stale")}</span>;
+}
 
 function ScoreBar({ score, label }: { score: number; label: string }) {
   const w = Math.min(100, Math.abs(score)) / 2;
@@ -20,6 +37,10 @@ function ScoreBar({ score, label }: { score: number; label: string }) {
       <span className="w-9 text-xs tabular-nums" dir="ltr">{score > 0 ? "+" : ""}{score}</span>
     </span>
   );
+}
+
+function Score({ h, label, noData }: { h: Holding; label: string; noData: string }) {
+  return h.score_card.confidence === 0 ? <NoData label={noData} /> : <ScoreBar score={h.score_card.total} label={label} />;
 }
 
 function StatusChip({ h }: { h: Holding }) {
@@ -45,24 +66,24 @@ export function HoldingsList({ holdings }: { holdings: Holding[] }) {
       <ul className="space-y-2 md:hidden">
         {holdings.map((h) => (
           <li key={h.id}>
-            <Link href={`/holding/${h.id}`} aria-label={t("open", { name: name(h) })} className="card block space-y-2 hover:border-blue-400">
+            <Link href={holdingHref(h.id)} aria-label={t("open", { name: name(h) })} className="card block space-y-2 hover:border-blue-400">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold">{name(h)}</p>
                   <p className="text-xs text-slate-600 dark:text-slate-400" dir="ltr">{h.symbol}</p>
                 </div>
                 <div className="text-end">
-                  <p className="tabular-nums" dir="ltr">{price(h)}</p>
+                  <p className="tabular-nums" dir="ltr">{price(h)}<StaleChip h={h} /></p>
                   <PnlText pct={h.day_change_pct} locale={locale} className="text-sm" />
                 </div>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span><span className="text-slate-600 dark:text-slate-400">{t("pnl")}: </span><PnlText value={h.pnl.ils} pct={h.pnl.pct} currency="ILS" locale={locale} /></span>
-                <span className="tabular-nums" dir="ltr">{formatNumber(h.weight_pct, locale, 1)}%</span>
+                <span><span className="text-slate-600 dark:text-slate-400">{t("pnl")}: </span><PnlCell h={h} locale={locale} /></span>
+                <span className="tabular-nums" dir="ltr">{formatWeight(h.weight_pct, locale)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <StatusChip h={h} />
-                <ScoreBar score={h.score_card.total} label={score(h)} />
+                <Score h={h} label={score(h)} noData={t("noScore")} />
               </div>
             </Link>
           </li>
@@ -82,15 +103,15 @@ export function HoldingsList({ holdings }: { holdings: Holding[] }) {
             {holdings.map((h) => (
               <tr key={h.id} className="border-t border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50">
                 <td className="px-3 py-2">
-                  <Link href={`/holding/${h.id}`} className="font-semibold text-blue-800 hover:underline dark:text-blue-300" aria-label={t("open", { name: name(h) })}>{name(h)}</Link>
+                  <Link href={holdingHref(h.id)} className="font-semibold text-blue-800 hover:underline dark:text-blue-300" aria-label={t("open", { name: name(h) })}>{name(h)}</Link>
                   <div className="text-xs text-slate-600 dark:text-slate-400" dir="ltr">{h.symbol}</div>
                 </td>
-                <td className="px-3 py-2 tabular-nums" dir="ltr">{price(h)}</td>
+                <td className="px-3 py-2 tabular-nums" dir="ltr">{price(h)}<StaleChip h={h} /></td>
                 <td className="px-3 py-2"><PnlText pct={h.day_change_pct} locale={locale} /></td>
-                <td className="px-3 py-2"><PnlText value={h.pnl.ils} pct={h.pnl.pct} currency="ILS" locale={locale} /></td>
-                <td className="px-3 py-2 tabular-nums" dir="ltr">{formatPct(h.weight_pct, locale)}</td>
+                <td className="px-3 py-2"><PnlCell h={h} locale={locale} /></td>
+                <td className="px-3 py-2 tabular-nums" dir="ltr">{formatWeight(h.weight_pct, locale)}</td>
                 <td className="px-3 py-2"><StatusChip h={h} /></td>
-                <td className="px-3 py-2"><ScoreBar score={h.score_card.total} label={score(h)} /></td>
+                <td className="px-3 py-2"><Score h={h} label={score(h)} noData={t("noScore")} /></td>
               </tr>
             ))}
           </tbody>

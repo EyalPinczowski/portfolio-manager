@@ -1,0 +1,47 @@
+# Static-serve variant of the web image: serves the Next.js static export (out/) and reverse-proxies /api/*
+# to the API (env API_ORIGIN, e.g. http://api:8000 or https://my-api.onrender.com). Same-origin, so the
+# session cookie stays first-party. Keep the CSP in step with lib/security-headers.ts (tests check it).
+{
+	admin off
+	auto_https off
+}
+
+:{$PORT:8080} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy {$API_ORIGIN} {
+			header_up Host {upstream_hostport}
+			# The API trusts only this header from the configured proxy. Overwrite whatever the client sent.
+			header_up CF-Connecting-IP {remote_host}
+			header_up -X-Forwarded-For
+			header_up -X-Real-IP
+			header_up -True-Client-IP
+			header_down Cache-Control "no-store"
+		}
+	}
+
+	handle {
+		root * /srv
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+			X-Content-Type-Options "nosniff"
+			Referrer-Policy "strict-origin-when-cross-origin"
+			X-Frame-Options "DENY"
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+			Cross-Origin-Opener-Policy "same-origin"
+			Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		}
+		@immutable path /_next/static/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+		@sw path /sw.js
+		header @sw Cache-Control "no-cache"
+		try_files {path} {path}/index.html
+		file_server
+	}
+
+	handle_errors {
+		rewrite * /404.html
+		file_server { root /srv }
+	}
+}

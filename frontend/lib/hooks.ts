@@ -1,6 +1,7 @@
 "use client";
 import useSWR, { type SWRConfiguration } from "swr";
 import { api, type Holding, type Portfolio } from "./api";
+import { PORTFOLIO_CHOICE_KEY } from "./session";
 
 /** Polling interval for live data (spec: SWR polling every 60 s). */
 export const POLL_MS = 60_000;
@@ -33,7 +34,7 @@ export const useAlerts = () => useSWR("alerts", () => api.alerts(), cfg);
 export const useXray = (pid: number | null) => useSWR(pid === null ? null : ["xray", pid], () => api.xray(pid as number), cfg);
 export const useHeatmap = (pid: number | null) => useSWR(pid === null ? null : ["heatmap", pid], () => api.heatmap(pid as number), cfg);
 
-const KEY = "pm.portfolio";
+const KEY = PORTFOLIO_CHOICE_KEY;
 export function loadPortfolioChoice(): PortfolioRef | null {
   try {
     const v = window.localStorage.getItem(KEY);

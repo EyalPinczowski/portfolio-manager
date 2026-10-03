@@ -46,7 +46,7 @@ describe("main page (mock mode)", () => {
     buttons.forEach((b) => expect(b).toBeDisabled());
     // holdings link to the holding page
     await waitFor(() => expect(screen.getAllByRole("link", { name: "Open Teva" }).length).toBeGreaterThan(0));
-    expect(screen.getAllByRole("link", { name: "Open Teva" })[0]).toHaveAttribute("href", "/holding/1");
+    expect(screen.getAllByRole("link", { name: "Open Teva" })[0]).toHaveAttribute("href", "/holding?id=1");
     expect(screen.getByText(/Not financial advice/)).toBeInTheDocument();
   });
 

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { api, type Explanation, type Horizon } from "@/lib/api";
-import { formatDate, formatMoney, formatTime } from "@/lib/format";
+import { DASH, formatDate, formatMoney, formatTime, formatWeight } from "@/lib/format";
 import { useAlerts, useScorecard } from "@/lib/hooks";
 import { Link } from "@/i18n/navigation";
 import { AppShell } from "./AppShell";
@@ -90,19 +90,29 @@ function Body({ hid }: { hid: number }) {
           <span className="chip bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200">{t("notValidatedLabel")}</span>
         </div>
         <p className="text-sm text-slate-700 dark:text-slate-300">{t("notValidated")}</p>
-        <div className="flex items-baseline gap-3">
-          <span className="text-4xl font-bold tabular-nums" dir="ltr">{d.total > 0 ? "+" : ""}{d.total}</span>
-          <span className="text-sm text-slate-600 dark:text-slate-400">{t("total")} · {t("confidence", { pct: `${Math.round(d.confidence * 100)}%` })}</span>
-        </div>
+        {d.disclaimer && <p className="text-xs text-slate-600 dark:text-slate-400">{d.disclaimer}</p>}
+        {d.available ? (
+          <div className="flex items-baseline gap-3">
+            <span className="text-4xl font-bold tabular-nums" dir="ltr">{d.total > 0 ? "+" : ""}{d.total}</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">{t("total")} · {t("confidence", { pct: formatWeight(d.confidence * 100, locale, 0) })}</span>
+          </div>
+        ) : (
+          <p role="status" className="rounded-xl bg-slate-100 p-3 font-medium dark:bg-slate-800">
+            <span className="text-2xl font-bold" aria-hidden="true">{DASH} </span>{t("noData")}
+          </p>
+        )}
         <ul className="space-y-2">
           {d.signals.map((s) => (
             <li key={s.name} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
               <div className="flex items-center justify-between">
                 <span className="font-semibold">{t.has(`signal.${s.name}`) ? t(`signal.${s.name}`) : s.name}</span>
-                <span className="tabular-nums" dir="ltr">{s.score > 0 ? "+" : ""}{s.score}</span>
+                {s.confidence === 0
+                  ? <span className="text-sm text-slate-600 dark:text-slate-400">{t("signalNoData")}</span>
+                  : <span className="tabular-nums" dir="ltr">{s.score > 0 ? "+" : ""}{s.score}</span>}
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400">
-                {t("confidence", { pct: `${Math.round(s.confidence * 100)}%` })} · {t("weight", { pct: `${Math.round(s.weight * 100)}%` })}
+                {t("confidence", { pct: formatWeight(s.confidence * 100, locale, 0) })} · {t("weight", { pct: formatWeight(s.weight * 100, locale, 0) })}
+                {s.nominal_weight != null && Math.abs(s.nominal_weight - s.weight) >= 0.005 && ` · ${t("nominalWeight", { pct: formatWeight(s.nominal_weight * 100, locale, 0) })}`}
               </p>
             </li>
           ))}

@@ -1,0 +1,247 @@
+{
+ "hebrew_agorot_with_header": {
+  "text": "תיק השקעות - חשבון 1234567890\nשם נייר   כמות   שער (אג')   שווי   עלות\nטבע   1,000   6,500   65,000   5,800\nלאומי  500  3,200  16,000\nבנק הפועלים 200 3,450 6,900\nנייס 10 8,200 820\n",
+  "rows": [
+   {
+    "index": 0,
+    "name": "טבע",
+    "symbol": null,
+    "tase_number": null,
+    "quantity": 1000.0,
+    "price": 6500.0,
+    "value": 65000.0,
+    "cost": 5800.0,
+    "currency": "ILS",
+    "unit": "agorot",
+    "matched_name": null,
+    "flags": []
+   },
+   {
+    "index": 1,
+    "name": "לאומי",
+    "symbol": null,
+    "tase_number": null,
+    "quantity": 500.0,
+    "price": 3200.0,
+    "value": 16000.0,
+    "cost": null,
+    "currency": "ILS",
+    "unit": "agorot",
+    "matched_name": null,
+    "flags": []
+   },
+   {
+    "index": 2,
+    "name": "בנק הפועלים",
+    "symbol": null,
+    "tase_number": null,
+    "quantity": 200.0,
+    "price": 3450.0,
+    "value": 6900.0,
+    "cost": null,
+    "currency": "ILS",
+    "unit": "agorot",
+    "matched_name": null,
+    "flags": []
+   },
+   {
+    "index": 3,
+    "name": "נייס",
+    "symbol": null,
+    "tase_number": null,
+    "quantity": 10.0,
+    "price": 8200.0,
+    "value": 820.0,
+    "cost": null,
+    "currency": "ILS",
+    "unit": "agorot",
+    "matched_name": null,
+    "flags": []
+   }
+  ]
+ },
+ "english_usd": {
+  "text": "Symbol Quantity Price Value\nNVDA NVIDIA Corp 10 $120.50 $1,205.00\nAAPL 5 $190.20 $951.00\n",
+  "rows": [
+   {
+    "index": 0,
+    "name": "NVDA NVIDIA Corp",
+    "symbol": "NVDA",
+    "tase_number": null,
+    "quantity": 10.0,
+    "price": 120.5,
+    "value": 1205.0,
+    "cost": null,
+    "currency": "USD",
+    "unit": "USD",
+    "matched_name": null,
+    "flags": []
+   },
+   {
+    "index": 1,
+    "name": "AAPL",
+    "symbol": "AAPL",
+    "tase_number": null,
+    "quantity": 5.0,
+    "price": 190.2,
+    "value": 951.0,
+    "cost": null,
+    "currency": "USD",
+    "unit": "USD",
+    "matched_name": null,
+    "flags": []
+   }
+  ]
+ },
+ "reordered_with_tase_number": {
+  "text": "טבע 629014 65,000 6,500 1,000 ₪ אג'",
+  "rows": [
+   {
+    "index": 0,
+    "name": "טבע",
+    "symbol": null,
+    "tase_number": "629014",
+    "quantity": 6500.0,
+    "price": 1000.0,
+    "value": 65000.0,
+    "cost": null,
+    "currency": "ILS",
+    "unit": "agorot",
+    "matched_name": null,
+    "flags": []
+   }
+  ]
+ },
+ "row_in_shekels_page_in_agorot": {
+  "text": "מחיר באגורות\nטבע 1,000 6,500 65,000\nאלביט 10 1,200 12,000\n",
+  "rows": [
+   {
+    "index": 0,
+    "name": "טבע",
+    "symbol": null,
+    "tase_number": null,
+    "quantity": 1000.0,
+    "price": 6500.0,
+    "value": 65000.0,
+    "cost": null,
+    "currency": "ILS",
+    "unit": "agorot",
+    "matched_name": null,
+    "flags": []
+   },
+   {
+    "index": 1,
+    "name": "אלביט",
+    "symbol": null,
+    "tase_number": null,
+    "quantity": 10.0,
+    "price": 1200.0,
+    "value": 12000.0,
+    "cost": null,
+    "currency": "ILS",
+    "unit": "ILS",
+    "matched_name": null,
+    "flags": []
+   }
+  ]
+ },
+ "agorot_buy": {
+  "text": "טבע 1,200 6,500 78,000",
+  "rows": [
+   {
+    "index": 0,
+    "name": "טבע",
+    "symbol": null,
+    "tase_number": null,
+    "quantity": 1200.0,
+    "price": 6500.0,
+    "value": 78000.0,
+    "cost": null,
+    "currency": "ILS",
+    "unit": "agorot",
+    "matched_name": null,
+    "flags": []
+   }
+  ]
+ },
+ "shekels_thousands": {
+  "text": "אלביט מערכות 25 ₪1,480.00 ₪37,000.00 1,210",
+  "rows": [
+   {
+    "index": 0,
+    "name": "אלביט מערכות",
+    "symbol": null,
+    "tase_number": null,
+    "quantity": 25.0,
+    "price": 1480.0,
+    "value": 37000.0,
+    "cost": 1210.0,
+    "currency": "ILS",
+    "unit": "ILS",
+    "matched_name": null,
+    "flags": []
+   }
+  ]
+ },
+ "percent_and_negative": {
+  "text": "מיקרוסופט 12 $415.20 $4,982.40 (3.1%) -1.2%",
+  "rows": [
+   {
+    "index": 0,
+    "name": "מיקרוסופט )",
+    "symbol": null,
+    "tase_number": null,
+    "quantity": 12.0,
+    "price": 415.2,
+    "value": 4982.4,
+    "cost": null,
+    "currency": "USD",
+    "unit": "USD",
+    "matched_name": null,
+    "flags": []
+   }
+  ]
+ },
+ "no_letters_or_one_number": {
+  "text": "12345 67890\nטבע 5\n",
+  "rows": []
+ },
+ "mismatch_fallback": {
+  "text": "טבע 100 62.4 9999",
+  "rows": [
+   {
+    "index": 0,
+    "name": "טבע",
+    "symbol": null,
+    "tase_number": null,
+    "quantity": 100.0,
+    "price": 62.4,
+    "value": 9999.0,
+    "cost": null,
+    "currency": "ILS",
+    "unit": "ILS",
+    "matched_name": null,
+    "flags": []
+   }
+  ]
+ },
+ "dotted_symbol": {
+  "text": "BRK.B Berkshire 3 $450.00 $1,350.00",
+  "rows": [
+   {
+    "index": 0,
+    "name": "BRK.B Berkshire",
+    "symbol": "BRK.B",
+    "tase_number": null,
+    "quantity": 3.0,
+    "price": 450.0,
+    "value": 1350.0,
+    "cost": null,
+    "currency": "USD",
+    "unit": "USD",
+    "matched_name": null,
+    "flags": []
+   }
+  ]
+ }
+}
