@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 A personal portfolio analysis and recommendation assistant for **US and Israeli (TASE)** stocks. It combines technical/chart analysis, analyst consensus, geopolitical/news signals and market sentiment (Fear & Greed, VIX) into buy/sell/hold suggestions. Every suggestion is filtered through **risk limits the user sets**. The output goes to a web app that refreshes continuously. See `README.md` for the feature spec.
 
-Status: **early stage**. Only the docs exist so far. Follow the layout and conventions below when adding code.
+Status: **early stage**. Only the docs exist so far. See README → "Decisions so far". Follow the layout and conventions below when adding code.
 
 ## Stack
 
@@ -49,6 +49,18 @@ cd frontend && npm run dev | npm test | npm run lint
 - Thresholds, weights and refresh intervals belong in config (`backend/app/config.py` / user settings in the DB), never inline.
 - Secrets live only in `.env`, and `.env` is never committed. Keep `.env.example` up to date.
 - Show the "not financial advice" disclaimer in the UI footer and in alert messages.
+
+## Product decisions (from the user)
+
+- Holdings come from **broker screenshots**: Gemini free-tier vision first, Tesseract `heb+eng` as fallback. **Never save OCR output without the user confirming it** in the review screen. Don't send account numbers to free-tier APIs; redact where possible.
+- Every LLM call (Gemini/Groq free tier) needs a rule-based template fallback for when quota runs out.
+- Multi-user: every query must be scoped to the logged-in user's portfolios.
+- Risk profiles: Conservative / Balanced / Balanced-Aggressive (default) / Aggressive. They are set per portfolio and can be overridden per holding. The per-holding profile wins.
+- Assets: US + TASE stocks, ETFs, crypto. Crypto has no analyst/insider signal, so those return `confidence=0`, and it uses the crypto Fear & Greed index.
+- Tax is ignored.
+- **Backtest gate**: the API must not return live recommendations until a passing backtest exists for the active weights config.
+- **Analyze a stock** (`/analyze/[symbol]`): on-demand analysis of any ticker, plus optional user notes or a question answered by the LLM using the computed signal data.
+- **Exit levels** (`scoring/exit_levels.py`): stop-loss / take-profit suggestions shown when the user taps a holding on My Portfolio. A trailing stop may only move up (for longs). Every level carries a reason.
 
 ## When unsure
 

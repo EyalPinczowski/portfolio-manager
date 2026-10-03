@@ -42,6 +42,64 @@ A recommendation is shown only if it passes every rule. When a rule blocks a str
 - **Alerts**: notifications when a recommendation changes or a stop-loss or target is hit.
 - **Auto-refresh**: prices every few minutes during market hours, and a full re-analysis on a schedule (see below).
 
+### Analyze a stock
+
+Type any ticker or company name, in English or Hebrew (`NVDA`, `טבע`, `TEVA.TA`, `BTC`), and get a full analysis on demand. The stock doesn't have to be in your portfolio.
+
+- **Your input** (optional):
+  - which portfolio to check it against
+  - a risk profile just for this stock
+  - your own thesis or notes
+  - a free-text question, e.g. "is this a good entry before earnings?"
+- **What you get**:
+  - A buy / hold / sell verdict (add / trim if you already own it) with a confidence level.
+  - The breakdown of all five signals with the reasons behind each.
+  - An interactive chart with moving averages, Bollinger bands, support/resistance and detected patterns, plus RSI/MACD.
+  - Analyst consensus and price targets, recent insider buys and sells, and the latest news with its tone.
+  - **Portfolio fit**: the largest position your risk rules allow, your sector/country exposure after buying, and a suggested entry, stop-loss and target.
+  - An AI-written answer to your question, saved with your notes.
+- **Actions**: add to watchlist, add to portfolio, or set a Telegram alert. In Telegram, `/analyze TICKER` returns a short version.
+
+### Stop-loss & take-profit recommendations (My Portfolio)
+
+On the **My Portfolio** page, tap any holding to open its detail page. The top of that page has an **Exit levels** panel:
+
+- **Suggested stop-loss**, picked from several candidates:
+  - ATR-based (wider for riskier profiles and for crypto)
+  - just below the nearest support or swing low
+  - below the 50-day moving average
+  - your profile's maximum loss from your average cost
+- **Trailing stop**: once the position is in profit, the app suggests raising the stop, and it never suggests lowering it. It also tells you when to move the stop to breakeven.
+- **Suggested take-profits**, picked from:
+  - the nearest resistance levels
+  - analyst price targets
+  - 2R/3R risk/reward multiples (2 or 3 times the distance to your stop)
+  - breakout extensions
+- **Scale-out plan**: e.g. sell ⅓ at TP1, ⅓ at TP2, and trail the rest.
+- **For each level**: the price, its distance from the current price, your P&L at that level in ILS and USD, its risk/reward ratio, and a one-line reason.
+- **Market context**: stops tighten during Extreme Greed or sharp geopolitical risk, and the app warns you before earnings or ex-dividend dates.
+- **Accept or edit** the levels to save them. Saved levels drive Telegram alerts ("TEVA.TA hit your stop ₪41.0") and update automatically when trailing.
+
+---
+
+## Decisions so far
+
+| Topic | Choice |
+|---|---|
+| App | Web app that works on phones and can be installed to the home screen (PWA); Hebrew + English with right-to-left layout |
+| Users | You plus family/friends, each with their own login and multiple portfolios, plus a combined view |
+| Hosting | Small cloud server (~$5/month), running 24/7 |
+| Alerts | Telegram bot |
+| Holdings input | **Broker screenshots**, read by AI (Gemini free tier; Tesseract offline as a fallback). You always review the result before it's saved. |
+| Horizon | Swing trading (weeks to months) |
+| Risk | Conservative / Balanced / **Balanced-Aggressive (default)** / Aggressive, set per portfolio and changeable per stock |
+| Assets | US + TASE stocks, ETFs, crypto |
+| Analysts | Wall Street consensus + insider trading (SEC Form 4, MAYA) |
+| AI text | Free LLM tier (Gemini / Groq), with fixed-template explanations as a fallback |
+| Refresh | About every 5 minutes, free data |
+| Tax | Not considered |
+| Backtesting | **Required before launch**: recommendations stay hidden until the scoring has been tested on historical data |
+
 ---
 
 ## Data sources (free first)
@@ -137,12 +195,12 @@ TELEGRAM_BOT_TOKEN=    # optional: alerts to your phone
 
 ## Roadmap
 
-1. **MVP**: portfolio import (manual / CSV), yfinance prices for US + TASE, technical signals, risk settings, recommendations dashboard.
-2. Analyst consensus + Fear & Greed + VIX.
-3. Geopolitical/news signal (GDELT + RSS, Hebrew + English sources).
-4. Alerts (Telegram / web push), auto-refresh over WebSocket.
-5. Backtesting the scoring model on history, then tuning the weights.
-6. Optional: broker import (Interactive Brokers, Israeli brokers via CSV), tax-aware sell suggestions (Israeli 25% capital gains tax).
+1. **Core**: logins and portfolios, screenshot import with a review screen, US + TASE + crypto prices, technical and chart signals, risk profiles (per portfolio and per stock).
+2. **Analyze a stock** page and **Exit levels** (stop-loss / take-profit) on holdings.
+3. Analyst consensus + insider trading, Fear & Greed (stocks + crypto), VIX.
+4. Geopolitical/news signal (GDELT + RSS, Hebrew + English sources) and free-LLM summaries.
+5. **Backtesting** of the scoring and the exit levels. This must pass before live recommendations are shown.
+6. Telegram alerts, auto-refresh over WebSocket, PWA install, deployment to a cloud server.
 
 ## License
 
