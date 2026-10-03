@@ -84,3 +84,15 @@ The import flow exists (upload → review → confirm, with diffs against the la
 
 ## Feature (added 2026-10-03, user request): App settings
 Full spec in `docs/settings-spec.md` (appearance, portfolio defaults, notifications including the one-bot Telegram link flow, privacy and AI, system status, admin). Order: backend `UserSettings` + Telegram link + admin endpoints with the importer/backend block; the Settings screens with the frontend design block (`docs/ui-decisions.md`).
+
+
+## Contract the server must meet for the on-device Meitav parser (from the frontend report, 2026-10-03)
+The frontend (`frontend/lib/ocr/`) is committed and tested against synthetic fixtures in `frontend/tests/fixtures/meitav/` (README next to them; plain JSON, three cases × three variants). Block 2.0-E must make the server accept and honour:
+1. **New `ImportRow.flags` values** (the enum is closed today, so these get a 422): `quantity_uncertain`, `cost_inferred`, `duplicate_removed`, `conflict`, `quantity_fractional`. Add them to the enum and to the OpenAPI schema; the review table already uses these names.
+2. **`index` is echoed unchanged**, including after `PATCH` re-syncs (the client re-attaches its own metadata by `row.index`).
+3. **`quantity: null` is valid** for tiny-value rows (flag `missing_fields`/`quantity_uncertain`, not an error); the user's entered quantity arrives via PATCH.
+4. **Cost unit:** `cost` is in the same unit as `price` (agorot for TLV rows), matching `cost_native` in `parse.py`.
+5. **Matching keys:** `symbol: null` with `tase_number` set for TLV funds: match on `tase_number`, accept an unknown number as a user-scoped holding with a manual symbol; unseen US tickers (exchange + ticker) are accepted as user-scoped **unverified** securities verified by the first quote.
+6. **Duplicate handling:** `merge_duplicate_rows` (summing) is wrong for overlapping screenshots; the server parser must use the same merge semantics as the client `mergeScreenshots`: identical rows → one row; a cut-off copy loses to the complete copy; two complete but different copies → the later screenshot wins and the other numbers are reported as a `conflict`. Rows are never summed.
+7. **A server-side `meitav_trade` parser** against the same fixtures (parity test: the server parser and the client parser produce the same rows for the same OCR text variants), with the layout-specific header fraction (14 %) and no blurring of the 7-digit number on `TLV •` lines.
+8. Known gaps to keep in mind: real Tesseract output is untested (ask the user for real screenshots again after this block); a column split away from its cards is unsupported; if OCR drops the `$`/`₪` the row has no value (the user fills it in).
