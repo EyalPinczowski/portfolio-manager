@@ -55,12 +55,17 @@ cd frontend && npm run dev | npm test | npm run lint
 - Holdings come from **broker screenshots**: Gemini free-tier vision first, Tesseract `heb+eng` as fallback. **Never save OCR output without the user confirming it** in the review screen. Don't send account numbers to free-tier APIs; redact where possible.
 - Every LLM call (Gemini/Groq free tier) needs a rule-based template fallback for when quota runs out.
 - Multi-user: every query must be scoped to the logged-in user's portfolios.
-- Risk profiles: Conservative / Balanced / Balanced-Aggressive (default) / Aggressive. They are set per portfolio and can be overridden per holding. The per-holding profile wins.
+- Risk profiles: presets Very Conservative → Very Aggressive (default Balanced-Aggressive), each expanding to a `RiskFilter`. They are set per portfolio and can be overridden per holding. The per-holding profile wins.
 - Assets: US + TASE stocks, ETFs, crypto. Crypto has no analyst/insider signal, so those return `confidence=0`, and it uses the crypto Fear & Greed index.
 - Tax is ignored.
 - **Backtest gate**: the API must not return live recommendations until a passing backtest exists for the active weights config.
 - **Analyze a stock** (`/analyze/[symbol]`): on-demand analysis of any ticker, plus optional user notes or a question answered by the LLM using the computed signal data.
-- **Exit levels** (`scoring/exit_levels.py`): stop-loss / take-profit suggestions shown when the user taps a holding on My Portfolio. A trailing stop may only move up (for longs). Every level carries a reason.
+- **Exit levels** (`scoring/exit_levels.py`): stop-loss / take-profit suggestions. They are computed from a `Horizon` (1w / 1m / 3m / 6m / 1y+) and a `RiskFilter`, which drive the chart timeframe, ATR multiple, moving average and take-profit sources. The horizon table in the README is the spec, and its numbers live in config. Two entry points:
+  - single holding: `GET /api/holdings/{id}/exit-levels?horizon=&risk=`
+  - full portfolio review: `POST /api/portfolios/{id}/exit-review`, which returns per-holding rows plus portfolio totals (total risk to stops, top contributors, positions with no stop)
+- Never quietly tighten a stop to fit the risk filter. Suggest a smaller position size instead.
+- A trailing stop only moves up (for longs). Every level carries a reason.
+- `RiskFilter`: preset + max loss % per position + max % of portfolio per trade + max total portfolio risk + min R:R + stop type. Presets fill in the fields, and users can save named filters.
 
 ## When unsure
 

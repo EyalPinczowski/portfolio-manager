@@ -62,23 +62,67 @@ Type any ticker or company name, in English or Hebrew (`NVDA`, `טבע`, `TEVA.T
 
 ### Stop-loss & take-profit recommendations (My Portfolio)
 
-On the **My Portfolio** page, tap any holding to open its detail page. The top of that page has an **Exit levels** panel:
+There are two ways to get them, both from the **My Portfolio** page:
 
-- **Suggested stop-loss**, picked from several candidates:
-  - ATR-based (wider for riskier profiles and for crypto)
-  - just below the nearest support or swing low
-  - below the 50-day moving average
-  - your profile's maximum loss from your average cost
+- **One stock**: tap a holding to open its detail page. The **Exit levels** panel is at the top.
+- **Full portfolio review**: a **"Review whole portfolio"** button checks every holding in one pass. You get a sortable table:
+
+  | Stock | Price | Your cost | Suggested stop | TP1 / TP2 | Risk to stop (₪/$, % of portfolio) | Action |
+  |---|---|---|---|---|---|---|
+
+  Above the table are portfolio-level totals:
+  - the total amount at risk if every stop is hit
+  - the biggest risk contributors
+  - positions with no stop
+  - stops that are too tight or too loose for the chosen horizon
+
+  From the table you can **accept all**, accept selected rows, or edit any row. The review can also run on a schedule and be sent to Telegram, e.g. a weekly summary.
+
+#### Filters (apply to both modes)
+
+The panel and the review share a filter bar. Changing a filter recalculates the levels immediately.
+
+**1. Holding period.** Levels are calculated for how long you plan to hold:
+
+| Horizon | Chart used for levels | Stop distance (typical) | Take-profit sources |
+|---|---|---|---|
+| **1 week** | Daily / 4h, ATR(14) daily | ~1–1.5× ATR, nearest minor support | Next resistance, 1.5R–2R |
+| **1 month** | Daily, ATR(14) | ~2× ATR, swing low / SMA 20 | Daily resistance, 2R, upper Bollinger |
+| **3 months** | Daily + weekly | ~2.5–3× ATR, SMA 50 / major support | Weekly resistance, 2R–3R, analyst mean target |
+| **6 months** | Weekly, weekly ATR | ~2× weekly ATR, SMA 100 / weekly swing low | Analyst mean/high target, 3R, Fibonacci extensions |
+| **1 year+** | Weekly / monthly | Below SMA 200 / major multi-month support | Analyst high target, long-term resistance, trailing only |
+
+Each holding can have its own default horizon, e.g. a long-term core position and a 1-month trade. A filter can override all of them at once for a "what if" view.
+
+**2. Risk level.** You choose how much risk you accept, and there are several ways to set it:
+- **Presets**: Very Conservative / Conservative / Balanced / Balanced-Aggressive / Aggressive / Very Aggressive.
+- **Max loss per position**: a % of the position, e.g. 5%, 8%, 12%, 20% or custom.
+- **Max loss per position as % of the whole portfolio**: e.g. 0.5%, 1%, 2% or custom. This is the classic "risk 1% per trade" rule.
+- **Max total portfolio risk**: the sum of all distances to the stops, e.g. 5%, 10% or 15%.
+- **Minimum risk/reward**: take-profits must be at least 1.5R, 2R or 3R.
+- **Stop type**: fixed, trailing, or both.
+
+Presets fill in the detailed options, and you can change any of them. You can save a combination as a named filter, e.g. "My swing setup".
+
+The selected horizon and risk filter are applied together. If a stop that fits the chart is wider than your risk filter allows, the app doesn't silently tighten it. It tells you to **reduce the position size** and shows by how much. Example: "a stop at the 6-month support is 14% away; your 8% limit means holding ~57% of the current shares".
+
+#### What each suggestion shows
+
+- **Suggested stop-loss**, picked for the chosen horizon and risk from these candidates:
+  - ATR-based (wider for riskier settings, longer horizons and crypto)
+  - just below the nearest support or swing low on the horizon's chart
+  - below the moving average that matches the horizon
+  - the max-loss limit from your risk filter
 - **Trailing stop**: once the position is in profit, the app suggests raising the stop, and it never suggests lowering it. It also tells you when to move the stop to breakeven.
 - **Suggested take-profits**, picked from:
-  - the nearest resistance levels
-  - analyst price targets
-  - 2R/3R risk/reward multiples (2 or 3 times the distance to your stop)
-  - breakout extensions
+  - resistance levels on the horizon's chart
+  - analyst price targets (for 3+ months)
+  - R-multiples (multiples of the distance to the stop) that meet your minimum risk/reward
+  - breakout and Fibonacci extensions
 - **Scale-out plan**: e.g. sell ⅓ at TP1, ⅓ at TP2, and trail the rest.
 - **For each level**: the price, its distance from the current price, your P&L at that level in ILS and USD, its risk/reward ratio, and a one-line reason.
-- **Market context**: stops tighten during Extreme Greed or sharp geopolitical risk, and the app warns you before earnings or ex-dividend dates.
-- **Accept or edit** the levels to save them. Saved levels drive Telegram alerts ("TEVA.TA hit your stop ₪41.0") and update automatically when trailing.
+- **Market context**: stops tighten during Extreme Greed or sharp geopolitical risk, and the app warns you before earnings or ex-dividend dates that fall within the horizon.
+- **Accept or edit** the levels to save them together with the horizon and risk settings used. Saved levels drive Telegram alerts ("TEVA.TA hit your stop ₪41.0") and update automatically when trailing.
 
 ---
 
@@ -92,7 +136,8 @@ On the **My Portfolio** page, tap any holding to open its detail page. The top o
 | Alerts | Telegram bot |
 | Holdings input | **Broker screenshots**, read by AI (Gemini free tier; Tesseract offline as a fallback). You always review the result before it's saved. |
 | Horizon | Swing trading (weeks to months) |
-| Risk | Conservative / Balanced / **Balanced-Aggressive (default)** / Aggressive, set per portfolio and changeable per stock |
+| Risk | A **risk filter** with presets (Very Conservative → Very Aggressive, default Balanced-Aggressive) and detailed options (max loss per position, % of portfolio per trade, total portfolio risk, min risk/reward). Set per portfolio, changeable per stock. |
+| Exit levels | Based on **holding period** (1 week / 1 month / 3 months / 6 months / 1 year+), for **one stock or a full portfolio review** |
 | Assets | US + TASE stocks, ETFs, crypto |
 | Analysts | Wall Street consensus + insider trading (SEC Form 4, MAYA) |
 | AI text | Free LLM tier (Gemini / Groq), with fixed-template explanations as a fallback |
@@ -196,7 +241,7 @@ TELEGRAM_BOT_TOKEN=    # optional: alerts to your phone
 ## Roadmap
 
 1. **Core**: logins and portfolios, screenshot import with a review screen, US + TASE + crypto prices, technical and chart signals, risk profiles (per portfolio and per stock).
-2. **Analyze a stock** page and **Exit levels** (stop-loss / take-profit) on holdings.
+2. **Analyze a stock** page and **Exit levels** (stop-loss / take-profit by holding period + risk filter) for one stock or a full portfolio review.
 3. Analyst consensus + insider trading, Fear & Greed (stocks + crypto), VIX.
 4. Geopolitical/news signal (GDELT + RSS, Hebrew + English sources) and free-LLM summaries.
 5. **Backtesting** of the scoring and the exit levels. This must pass before live recommendations are shown.
