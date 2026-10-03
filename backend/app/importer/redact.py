@@ -74,8 +74,14 @@ def redact_image(
 ) -> tuple[bytes, RedactionReport]:
     """Return (redacted PNG bytes, report). `word_boxes` can be injected (tests / other OCR)."""
     s = settings or get_settings()
-    with open_checked(image_bytes, s) as src:  # raises ImageRejectedError (413 / 400)
-        img = to_rgb_bounded(src, s)
+    src = open_checked(image_bytes, s)  # raises ImageRejectedError (413 / 400)
+    try:
+        img = to_rgb_bounded(src, s)  # may be `src` itself: the pixels are decoded only once
+    except BaseException:
+        src.close()
+        raise
+    if img is not src:
+        src.close()
     available = True
     if word_boxes is None:
         try:
@@ -102,4 +108,5 @@ def redact_image(
             blurred += 1
     out = io.BytesIO()
     img.save(out, format="PNG")
+    img.close()
     return out.getvalue(), RedactionReport(header_h > 0, blurred, available)

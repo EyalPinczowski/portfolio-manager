@@ -68,7 +68,11 @@ def open_checked(data: bytes, settings: Settings | None = None) -> Image.Image:
 
 
 def to_rgb_bounded(img: Image.Image, settings: Settings | None = None) -> Image.Image:
-    """Decode and convert to RGB, downscaling to `import_max_side_px` in horizontal strips."""
+    """Decode and convert to RGB, downscaling to `import_max_side_px` in horizontal strips.
+
+    May return `img` itself (an RGB image within bounds): the caller then must not close it before
+    it is done with the result.
+    """
     s = settings or get_settings()
     width, height = img.size
     try:
@@ -77,7 +81,9 @@ def to_rgb_bounded(img: Image.Image, settings: Settings | None = None) -> Image.
         raise ImageRejectedError(400, "The file is not a readable image") from exc
     side = max(width, height)
     if side <= s.import_max_side_px:
-        return img.convert("RGB")
+        # Already RGB: reuse the decoded pixels instead of making a second full-size copy (a 25 MP
+        # image is 75 MB; a copy would double the memory spike on a 512 MB host).
+        return img if img.mode == "RGB" else img.convert("RGB")
     scale = s.import_max_side_px / side
     new_w, new_h = max(1, round(width * scale)), max(1, round(height * scale))
     out = Image.new("RGB", (new_w, new_h))

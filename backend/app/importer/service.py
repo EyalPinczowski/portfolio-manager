@@ -33,6 +33,7 @@ from app.models import (
 from app.portfolio.valuation import ensure_tracking_started
 from app.providers.base import OcrProvider, OcrUnavailableError
 from app.providers.fx_provider import get_usd_ils
+from app.providers.ocr.tesseract import ON_DEVICE_MESSAGE
 from app.timeutil import as_utc, local_today, utcnow
 
 log = logging.getLogger(__name__)
@@ -162,6 +163,11 @@ def build_draft(
 ) -> ImportDraft:
     s = settings or get_settings()
     assert portfolio.id is not None
+    available = getattr(ocr, "available", None)
+    if callable(available) and not available():
+        # No engine on this server (the slim image has no Tesseract): say so before decoding the
+        # image, which is the memory-heavy part.
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, ON_DEVICE_MESSAGE)
     try:
         redacted, report = redact_image(image_bytes, s)
     except ImageRejectedError as exc:

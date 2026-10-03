@@ -10,19 +10,32 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import auth, imports, misc, portfolios
 from app.config import get_settings, validate_production
-from app.db import get_engine, init_db, new_session
+from app.db import get_engine, new_session, prepare_database
 from app.logging_setup import configure_logging
 from app.middleware import BodySizeLimitMiddleware, SecurityHeadersMiddleware
 from app.securities import seed_securities
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    validate_production(get_settings())  # refuses to start with unsafe production settings
-    init_db(get_engine())
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    validate_production(settings)  # refuses to start with unsafe production settings
+    prepare_database(
+        get_engine()
+    )  # migrates (dev) or checks the schema (production); no create_all
     with new_session() as db:
         seed_securities(db)
-    yield
+    runner = None
+    if settings.scheduler_in_process:  # lazy: the scheduler pulls in the market-data stack
+        from app.scheduler.inprocess import start_in_process_scheduler
+
+        runner = start_in_process_scheduler(settings)
+    app.state.scheduler = runner
+    try:
+        yield
+    finally:
+        if runner is not None:
+            runner.shutdown()
 
 
 def create_app() -> FastAPI:

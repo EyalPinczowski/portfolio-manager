@@ -6,7 +6,7 @@ from datetime import date
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DISCLAIMER = "Not financial advice."
@@ -47,13 +47,32 @@ def _default_tase_hours() -> dict[str, tuple[str, str]]:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # env_parse_none_str: "none" in the environment means None (e.g. DATABASE_PREPARE_THRESHOLD=none).
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore", env_parse_none_str="none"
+    )
 
     # --- core ---
     # "production" is the default so a forgotten variable can never expose docs or insecure cookies.
     # Local development sets ENV=dev (and COOKIE_SECURE=false when serving plain http).
     env: Literal["dev", "production"] = "production"
+    # SQLite for dev, Postgres for the cloud. Exact forms: backend/README.md ("Database URLs").
+    # `postgres://` and `postgresql://` are rewritten to the installed psycopg 3 driver.
     database_url: str = "sqlite:///./portfolio.db"
+    # Run `alembic upgrade head` when the API / scheduler / CLI starts. Unset: true in dev and
+    # false in production (there, run `alembic upgrade head` as a release step; the API then only
+    # checks that the schema is at head and refuses to start otherwise).
+    auto_migrate: bool | None = None
+    # Postgres only. Prepared statements: psycopg prepares a query after this many uses. Set it to
+    # "none" (disabled) behind Supabase's transaction pooler (port 6543), which does not support them.
+    database_prepare_threshold: int | None = 5
+    # Postgres only. Sized for a 512 MB host with one worker and a small connection limit
+    # (Supabase free: about 15 pooled / 60 direct connections): at most pool_size + max_overflow.
+    db_pool_size: int = 3
+    db_max_overflow: int = 2
+    db_pool_pre_ping: bool = True  # detect connections the pooler or server dropped
+    db_pool_recycle_seconds: int = 1800  # replace connections older than this
+    db_pool_timeout_seconds: float = 30.0
     secret_key: str = DEFAULT_SECRET_KEY
     cors_origins: list[str] = Field(default_factory=list)
 
@@ -96,9 +115,18 @@ class Settings(BaseSettings):
     provider_single_retry_max: int = 5  # tickers retried one by one after a batch came back empty
 
     # --- scheduler ---
-    # Reserved for the single-host deployment (docs/deployment.md, block D): run the jobs inside the
-    # API process. Not implemented yet; today the scheduler is `python -m app.scheduler`.
+    # True: the API process runs the jobs (single-host deployment, docs/deployment.md) behind a
+    # leader lock, so a second instance serves requests but never runs the jobs. False: run
+    # `python -m app.scheduler` as its own process.
     scheduler_in_process: bool = False
+    scheduler_lock_path: str | None = None  # SQLite leader lock file; default: next to the DB file
+    scheduler_lock_id: int = 0x504D5343  # Postgres advisory-lock key ("PMSC")
+    # Postgres leader lock connection. Session-level advisory locks do not work through a
+    # transaction pooler (port 6543): point this at the session pooler / direct URL if DATABASE_URL
+    # uses the transaction pooler. Default: DATABASE_URL.
+    scheduler_lock_database_url: str | None = None
+    scheduler_leader_check_seconds: int = 30  # standby retries the lock; the leader verifies it
+    scheduler_max_workers: int = 1  # in-process job threads (jobs run one after another)
     quotes_interval_minutes: int = 5
     scores_interval_minutes: int = 30
     score_cache_ttl_minutes: int = 360
@@ -191,6 +219,12 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = None
     telegram_timeout_seconds: float = 10.0
     seed_csv_path: str | None = None
+
+    @model_validator(mode="after")
+    def _resolve_auto_migrate(self) -> Settings:
+        if self.auto_migrate is None:
+            self.auto_migrate = self.env == "dev"
+        return self
 
 
 def validate_production(settings: Settings) -> None:

@@ -28,8 +28,8 @@ class User(SQLModel, table=True):
 class Invite(SQLModel, table=True):
     __tablename__ = "invite"
     code: str = Field(primary_key=True)
-    created_by: int | None = Field(default=None, foreign_key="user.id")
-    used_by: int | None = None
+    created_by: int | None = Field(default=None, foreign_key="user.id", ondelete="CASCADE")
+    used_by: int | None = Field(default=None, foreign_key="user.id", ondelete="SET NULL")
     expires_at: NaiveDatetime
     created_at: NaiveDatetime = Field(default_factory=utcnow)
 
@@ -41,7 +41,7 @@ class AuthSession(SQLModel, table=True):
     __tablename__ = "session"
     id: int | None = Field(default=None, primary_key=True)
     token_hash: str = Field(index=True, unique=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True, ondelete="CASCADE")
     csrf_token: str
     expires_at: NaiveDatetime
     created_at: NaiveDatetime = Field(default_factory=utcnow)
@@ -69,7 +69,7 @@ class Security(SQLModel, table=True):
 class Portfolio(SQLModel, table=True):
     __tablename__ = "portfolio"
     id: int | None = Field(default=None, primary_key=True)
-    owner_id: int = Field(foreign_key="user.id", index=True)
+    owner_id: int = Field(foreign_key="user.id", index=True, ondelete="CASCADE")
     name: str
     base_currency: str = "ILS"
     risk_filter: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
@@ -81,7 +81,7 @@ class Holding(SQLModel, table=True):
     __tablename__ = "holding"
     __table_args__ = (UniqueConstraint("portfolio_id", "symbol"),)
     id: int | None = Field(default=None, primary_key=True)
-    portfolio_id: int = Field(foreign_key="portfolio.id", index=True)
+    portfolio_id: int = Field(foreign_key="portfolio.id", index=True, ondelete="CASCADE")
     symbol: str = Field(index=True)
     quantity: float
     avg_cost: float | None = None
@@ -93,7 +93,7 @@ class Holding(SQLModel, table=True):
 class HoldingsSnapshot(SQLModel, table=True):
     __tablename__ = "holdings_snapshot"
     id: int | None = Field(default=None, primary_key=True)
-    portfolio_id: int = Field(foreign_key="portfolio.id", index=True)
+    portfolio_id: int = Field(foreign_key="portfolio.id", index=True, ondelete="CASCADE")
     taken_at: NaiveDatetime = Field(default_factory=utcnow)
     source: str = "screenshot"  # screenshot|manual
     rows: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
@@ -102,7 +102,7 @@ class HoldingsSnapshot(SQLModel, table=True):
 class ImportDraft(SQLModel, table=True):
     __tablename__ = "import_draft"
     id: int | None = Field(default=None, primary_key=True)
-    portfolio_id: int = Field(foreign_key="portfolio.id", index=True)
+    portfolio_id: int = Field(foreign_key="portfolio.id", index=True, ondelete="CASCADE")
     rows: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
     proposed_changes: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
     status: str = "draft"  # draft|confirmed|discarded
@@ -112,7 +112,7 @@ class ImportDraft(SQLModel, table=True):
 class Transaction(SQLModel, table=True):
     __tablename__ = "transaction"
     id: int | None = Field(default=None, primary_key=True)
-    portfolio_id: int = Field(foreign_key="portfolio.id", index=True)
+    portfolio_id: int = Field(foreign_key="portfolio.id", index=True, ondelete="CASCADE")
     symbol: str | None = None
     type: str  # buy|sell|deposit|withdrawal
     quantity: float | None = None
@@ -128,7 +128,7 @@ class PortfolioSnapshot(SQLModel, table=True):
     __tablename__ = "portfolio_snapshot"
     __table_args__ = (UniqueConstraint("portfolio_id", "date"),)
     id: int | None = Field(default=None, primary_key=True)
-    portfolio_id: int = Field(foreign_key="portfolio.id", index=True)
+    portfolio_id: int = Field(foreign_key="portfolio.id", index=True, ondelete="CASCADE")
     date: date
     value_ils: float
     value_usd: float
@@ -147,7 +147,7 @@ class PriceQuote(SQLModel, table=True):
 class PriceAlert(SQLModel, table=True):
     __tablename__ = "price_alert"
     id: int | None = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True, ondelete="CASCADE")
     symbol: str
     op: str  # above|below
     price: float
@@ -159,7 +159,7 @@ class PriceAlert(SQLModel, table=True):
 class Notification(SQLModel, table=True):
     __tablename__ = "notification"
     id: int | None = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True, ondelete="CASCADE")
     kind: str
     title: str
     body: str

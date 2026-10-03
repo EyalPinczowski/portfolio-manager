@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlmodel import Session, col, select
+from sqlmodel import Session, select
 
 from app.models import (
-    AuthSession,
     Holding,
     HoldingsSnapshot,
     ImportDraft,
-    Invite,
     Notification,
     Portfolio,
     PortfolioSnapshot,
@@ -73,20 +71,10 @@ def export_user_data(db: Session, user: User) -> dict[str, Any]:
 
 
 def delete_user(db: Session, user: User) -> None:
-    """Permanently delete the user and everything they own."""
-    assert user.id is not None
-    uid = user.id
-    for p in db.exec(select(Portfolio).where(Portfolio.owner_id == uid)).all():
-        pid = p.id
-        for model in (Holding, HoldingsSnapshot, Transaction, PortfolioSnapshot, ImportDraft):
-            for row in db.exec(select(model).where(col(model.portfolio_id) == pid)).all():  # type: ignore[attr-defined]
-                db.delete(row)
-        db.delete(p)
-    for model2 in (PriceAlert, Notification, AuthSession):
-        for row2 in db.exec(select(model2).where(col(model2.user_id) == uid)).all():  # type: ignore[attr-defined]
-            db.delete(row2)
-    for inv in db.exec(select(Invite).where(Invite.created_by == uid)).all():
-        db.delete(inv)
-    db.flush()
+    """Permanently delete the user and everything they own.
+
+    One DELETE: the foreign keys cascade (portfolios -> holdings, transactions, snapshots, drafts;
+    sessions, alerts, notifications, invites they created) and set `Invite.used_by` to NULL.
+    """
     db.delete(user)
     db.commit()

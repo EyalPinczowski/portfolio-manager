@@ -1,0 +1,52 @@
+# syntax=docker/dockerfile:1
+# Slim API image for a 512 MB single-service host (Render free tier + Supabase Postgres, see
+# docs/deployment.md, Option A). Same base as ./Dockerfile, but:
+#   - no Tesseract: server-side screenshot reading answers 503 "use on-device reading" and the
+#     phone reads the screenshot in the browser (tesseract.js), so no image reaches the server;
+#   - Postgres driver (the `postgres` extra) installed from uv.lock;
+#   - ONE uvicorn worker running the scheduler in-process behind a leader lock (the login rate
+#     limiter is in memory, and 512 MB has no room for a second worker).
+#
+# Build:  docker build -f backend/Dockerfile.slim -t portfolio-api backend
+#
+# Production expectations (the app refuses to start otherwise):
+#   ENV=production          the config default; leave it unset or set it explicitly
+#   COOKIE_SECURE=true      the config default
+#   SECRET_KEY=<>= 32 random chars>
+#   DATABASE_URL=postgresql://...   (exact Supabase forms: backend/README.md, "Database URLs")
+# AUTO_MIGRATE defaults to false in production; this image's start command runs
+# `python -m app.cli migrate` first, so the schema is current before the API accepts traffic.
+# Render sets $PORT (default 10000); locally it falls back to 8000.
+FROM python:3.12-slim@sha256:dddfd7e07f9d15aeeca61529320492139d21cac7f0070c00609243e51e4e0016 AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    # glibc creates one malloc arena per thread; the API's thread pools then keep freed memory
+    # (measured in scripts/memprobe.py). Two arenas keep resident memory flat.
+    MALLOC_ARENA_MAX=2 \
+    SCHEDULER_IN_PROCESS=true
+
+# uv 0.8.17 (the version that wrote uv.lock), pinned by digest.
+COPY --from=ghcr.io/astral-sh/uv:0.8.17@sha256:e4644cb5bd56fdc2c5ea3ee0525d9d21eed1603bccd6a21f887a938be7e85be1 /uv /usr/local/bin/uv
+
+WORKDIR /srv/backend
+# Dependencies come from the lockfile (exact, hashed versions), with the Postgres driver.
+COPY pyproject.toml uv.lock ./
+RUN uv export --frozen --no-dev --extra postgres --no-emit-project -o /tmp/requirements.txt \
+    && uv pip install --system --no-cache -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
+COPY app ./app
+RUN uv pip install --system --no-cache --no-deps .
+
+# Non-root runtime user. No volume: the database is external (Postgres), disk is ephemeral.
+RUN useradd --create-home --uid 10001 app
+USER app
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
+    CMD python -c 'import os,urllib.request as u; u.urlopen("http://127.0.0.1:%s/api/health" % os.environ.get("PORT", "8000"))' || exit 1
+
+# Migrate, then serve with a single worker. `exec` makes uvicorn PID 1 so SIGTERM shuts it down
+# cleanly (the scheduler releases its leader lock).
+CMD ["sh", "-c", "python -m app.cli migrate && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --no-access-log"]

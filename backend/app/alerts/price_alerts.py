@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from sqlmodel import Session, select
+from sqlalchemy import update
+from sqlmodel import Session, col, select
 
 from app.alerts.telegram import send_telegram
 from app.config import DISCLAIMER, Settings, get_settings
@@ -29,9 +30,15 @@ def check_price_alerts(
         quote = db.get(PriceQuote, alert.symbol)
         if quote is None or not _triggered(alert, quote.price):
             continue
-        alert.active = False
-        alert.triggered_at = utcnow()
-        db.add(alert)
+        # The claim is one conditional UPDATE in the database, so even two processes checking at the
+        # same moment (a second scheduler, a manual run) can never both fire the same alert.
+        claim = db.execute(
+            update(PriceAlert)
+            .where(col(PriceAlert.id) == alert.id, col(PriceAlert.active))
+            .values(active=False, triggered_at=utcnow())
+        )
+        if claim.rowcount != 1:  # type: ignore[attr-defined]
+            continue
         direction = "rose to or above" if alert.op == "above" else "fell to or below"
         body = (
             f"{alert.symbol} {direction} your alert price {alert.price:g} "

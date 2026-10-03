@@ -8,6 +8,11 @@ import shutil
 from app.config import Settings, get_settings
 from app.providers.base import OcrResult, OcrUnavailableError
 
+ON_DEVICE_MESSAGE = (
+    "Reading screenshots on the server is not available here (Tesseract is not installed). "
+    "Use on-device reading instead."
+)
+
 
 def tesseract_available() -> bool:
     return shutil.which("tesseract") is not None
@@ -20,9 +25,12 @@ class TesseractProvider:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
 
+    def available(self) -> bool:
+        return tesseract_available()
+
     def extract(self, image_bytes: bytes) -> OcrResult:
         if not tesseract_available():
-            raise OcrUnavailableError("Tesseract is not installed (need tesseract-ocr + heb data)")
+            raise OcrUnavailableError(ON_DEVICE_MESSAGE)
         import pytesseract
         from PIL import Image
 

@@ -58,6 +58,14 @@ class FakeOcr:
         return OcrResult(provider="fake", text=self.text)
 
 
+def _drop_everything() -> None:
+    from sqlalchemy import text
+
+    SQLModel.metadata.drop_all(get_engine())
+    with get_engine().begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+
+
 @pytest.fixture
 def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setenv(
@@ -65,6 +73,7 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     )
     monkeypatch.setenv("SECRET_KEY", "test-secret")
     monkeypatch.setenv("ENV", "dev")
+    monkeypatch.setenv("AUTO_MIGRATE", "false")  # tests build the schema with create_all
     monkeypatch.setenv("COOKIE_SECURE", "false")
     monkeypatch.setenv("LOGIN_RATE_LIMIT_ATTEMPTS", "3")
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
@@ -76,14 +85,14 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     if USE_POSTGRES:
         import app.models  # noqa: F401  (registers the tables)
 
-        SQLModel.metadata.drop_all(get_engine())  # a clean slate left by nothing else
+        _drop_everything()  # a clean slate left by nothing else
     init_db()
     with new_session() as db:
         seed_securities(db)
     yield
     set_providers(None)
     if USE_POSTGRES:
-        SQLModel.metadata.drop_all(get_engine())
+        _drop_everything()
         get_engine().dispose()
     get_settings.cache_clear()
     get_engine.cache_clear()

@@ -1,4 +1,4 @@
-"""CLI: `python -m app.cli create-invite` / `create-admin`."""
+"""CLI: `python -m app.cli migrate` / `create-invite` / `create-admin`."""
 
 from __future__ import annotations
 
@@ -12,14 +12,14 @@ from sqlmodel import select
 
 from app.auth.passwords import hash_password
 from app.config import get_settings
-from app.db import get_engine, init_db, new_session
+from app.db import get_engine, new_session, prepare_database, run_migrations
 from app.models import Invite, User
 from app.timeutil import utcnow
 
 
 def create_invite(days: int | None = None, created_by: int | None = None) -> str:
     s = get_settings()
-    init_db(get_engine())
+    prepare_database(get_engine())
     code = secrets.token_urlsafe(12)
     with new_session() as db:
         db.add(
@@ -37,7 +37,7 @@ def create_admin(email: str, password: str) -> int:
     s = get_settings()
     if len(password) < s.password_min_length:
         raise ValueError(f"Password must be at least {s.password_min_length} characters")
-    init_db(get_engine())
+    prepare_database(get_engine())
     with new_session() as db:
         email = email.strip().lower()
         if db.exec(select(User).where(User.email == email)).first() is not None:
@@ -57,6 +57,7 @@ def create_admin(email: str, password: str) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     sub = parser.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("migrate", help="Upgrade the database schema to the latest revision")
     inv = sub.add_parser("create-invite", help="Create a single-use signup invite code")
     inv.add_argument(
         "--days", type=int, default=None, help="Validity in days (default from config)"
@@ -65,6 +66,10 @@ def main(argv: list[str] | None = None) -> int:
     adm.add_argument("--email", required=True)
     adm.add_argument("--password", help="Prompted if omitted")
     args = parser.parse_args(argv)
+    if args.cmd == "migrate":
+        run_migrations(get_engine())
+        print("database schema is up to date")
+        return 0
     if args.cmd == "create-invite":
         print(create_invite(args.days))
         return 0

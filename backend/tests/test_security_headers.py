@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import pytest
+from alembic import command
 from fastapi.testclient import TestClient
 
 from app.config import Settings, get_settings, validate_production
+from app.db import alembic_config, get_engine
 from app.main import create_app
 from tests.asgi_helpers import asgi_request
 
@@ -100,6 +102,11 @@ def test_production_starts_with_safe_settings(env: None, monkeypatch: pytest.Mon
     monkeypatch.setenv("COOKIE_SECURE", "true")
     monkeypatch.setenv("SECRET_KEY", GOOD_SECRET)
     get_settings.cache_clear()
+    # Production never calls create_all: the schema must already be migrated (here: stamped).
+    with get_engine().begin() as conn:
+        cfg = alembic_config()
+        cfg.attributes["connection"] = conn
+        command.stamp(cfg, "head")
     with TestClient(create_app()) as c:
         assert c.get("/api/health").status_code == 200
 
