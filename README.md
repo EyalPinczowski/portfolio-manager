@@ -136,6 +136,23 @@ Type any ticker or company name, in English or Hebrew (`NVDA`, `טבע`, `TEVA.T
   - An AI-written answer to your question, saved with your notes.
 - **Actions**: add to watchlist, add to portfolio, or set a Telegram alert. In Telegram, `/analyze TICKER` returns a short version.
 
+#### How the analysis is made: an "Investment Committee"
+
+Instead of asking one AI "buy or sell?", the analysis is split into specialised roles. Each role hands a strict, validated data structure to the next ([design](docs/analysis-committee.md)):
+
+1. **Data Scout** (code): price, P/E, EPS consensus, free-cash-flow yield, ROIC, margins, analyst targets, insiders, earnings date.
+2. **Chartist** (code): RSI, MA 20/50/200, MACD, Bollinger, ATR, support/resistance, patterns. Every number is pre-computed; the AI never does the maths.
+3. **News & Macro analyst** (AI): summarises news and filings from primary sources (SEC, Reuters, Globes, MAYA…), with every claim linked to its source.
+4. **The Bear** (AI): its only job is to find reasons **not** to buy, such as overvaluation, falling margins, debt, regulation or geopolitics.
+5. **CIO** (AI): weighs the evidence against the Bear's case and gives the final structured verdict. It can move the score by at most ±15 points and must answer every Bear point. Your risk filter is applied after that.
+
+The **Why?** button shows the whole committee: each report, the Bear's case, and how the CIO answered it.
+
+Before any verdict goes live, the committee is checked in three ways:
+- an **evaluation suite**: 15+ tricky scenarios such as crashes, mixed earnings and missing data, each run 3–5 times
+- **paper trading**: a simulated portfolio follows its calls
+- the historical backtest
+
 ### Stop-loss & take-profit recommendations (My Portfolio)
 
 There are two ways to get them, both from the **My Portfolio** page:

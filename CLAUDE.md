@@ -59,7 +59,14 @@ cd frontend && npm run dev | npm test | npm run lint
 - Assets: US + TASE stocks, ETFs, crypto. Crypto has no analyst/insider signal, so those return `confidence=0`, and it uses the crypto Fear & Greed index.
 - Tax is ignored.
 - **Backtest gate**: the API must not return live recommendations until a passing backtest exists for the active weights config.
-- **Analyze a stock** (`/analyze/[symbol]`): on-demand analysis of any ticker, plus optional user notes or a question answered by the LLM using the computed signal data.
+- **Analyze a stock** (`/analyze/[symbol]`): on-demand analysis of any ticker, plus optional user notes or a question answered by the LLM using the computed signal data. It uses the **Investment Committee** (`docs/analysis-committee.md`, `backend/app/committee/`):
+  - Scout and Chartist are deterministic code; the News analyst, Bear and CIO are LLM roles.
+  - Every role hand-off is a Pydantic model, with a JSON response schema, validate → retry once → template fallback.
+  - Numbers must be grounded in the input reports. LLMs never calculate indicators.
+  - The CIO adjusts the deterministic score by at most ±15 and must answer every Bear risk.
+  - The screener runs the committee only on the top finalists.
+  - Evals live in `backend/evals/` (≥15 scenarios × 3–5 trials, with a mock LLM in CI).
+  - The LLM layer is validated by **forward paper trading**, not by historical backtests, because LLMs leak future knowledge.
 - **Exit levels** (`scoring/exit_levels.py`): stop-loss / take-profit suggestions. They are computed from a `Horizon` (1w / 1m / 3m / 6m / 1y+) and a `RiskFilter`, which drive the chart timeframe, ATR multiple, moving average and take-profit sources. The horizon table in the README is the spec, and its numbers live in config. Two entry points:
   - single holding: `GET /api/holdings/{id}/exit-levels?horizon=&risk=`
   - full portfolio review: `POST /api/portfolios/{id}/exit-review`, which returns per-holding rows plus portfolio totals (total risk to stops, top contributors, positions with no stop)
