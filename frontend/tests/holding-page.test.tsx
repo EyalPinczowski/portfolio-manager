@@ -27,13 +27,13 @@ const render1 = (id: number, locale: "en" | "he" = "en") =>
 const realNoData = (): ScoreCardDetail => {
   const sig = (name: string, nominal: number) => ({
     name, score: 0, confidence: 0, weight: 0, nominal_weight: nominal, reasons: ["Not available yet (planned for Phase 2)."],
-    data_as_of: "2026-10-03T15:16:29Z", explanation: { summary: "Not available yet", inputs: {}, rules_applied: [] },
+    data_as_of: "2026-10-03T15:16:29Z", explanation: { version: 1, summary: "Not available yet", inputs: {}, rules_applied: [] },
   });
   return {
     holding_id: 3, portfolio_id: 2, symbol: "NICE.TA", name_en: "NICE Ltd", name_he: "נייס", horizon: null, total: 0, confidence: 0,
     available: false, validated: false, disclaimer: "Not financial advice.",
     signals: [sig("technical", 25), sig("patterns", 10), sig("fundamentals", 20), sig("analysts", 20), sig("geo_news", 12.5), sig("sentiment", 12.5)],
-    explanation: { summary: "No signal has data for this security yet.", inputs: {}, rules_applied: [] },
+    explanation: { version: 1, summary: "No signal has data for this security yet.", inputs: {}, rules_applied: [] },
   } as ScoreCardDetail;
 };
 

@@ -26,10 +26,18 @@ describe("security headers", () => {
     expect(csp).toContain("worker-src 'self'");
     expect(csp).toContain("'wasm-unsafe-eval'");
     expect(csp).not.toContain("'unsafe-eval'");
-    expect(csp).not.toMatch(/https?:\/\//);
     expect(csp).toContain("connect-src 'self'");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("frame-ancestors 'none'");
+  });
+  it("the only remote origin is Cloudflare Turnstile, for script, frame and connect", () => {
+    const csp = buildCsp();
+    expect([...new Set(csp.match(/https?:\/\/[^\s;]+/g))]).toEqual(["https://challenges.cloudflare.com"]);
+    const dir = (n: string) => csp.split("; ").find((d) => d.startsWith(`${n} `)) ?? "";
+    for (const n of ["script-src", "frame-src", "connect-src"]) expect(dir(n), n).toContain("https://challenges.cloudflare.com");
+    for (const n of ["default-src", "style-src", "img-src", "font-src", "worker-src", "object-src", "form-action", "frame-ancestors"]) {
+      expect(dir(n), n).not.toMatch(/https?:/);
+    }
   });
   it("dev CSP adds eval and websockets only for the dev server", () => {
     expect(buildCsp({ dev: true })).toContain("'unsafe-eval'");

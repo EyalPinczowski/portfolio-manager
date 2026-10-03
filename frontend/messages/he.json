@@ -140,7 +140,23 @@
     "exitSoon": "יגיע בשלב 2.",
     "noData": "עדיין אין נתוני ציון לנייר הזה.",
     "signalNoData": "אין נתונים",
-    "nominalWeight": "נומינלי {pct}"
+    "nominalWeight": "נומינלי {pct}",
+    "whyContributions": "תרומת כל אות",
+    "colSignal": "אות",
+    "colScore": "ציון",
+    "colWeight": "משקל",
+    "colConfidence": "ביטחון",
+    "colBar": "פס ציון",
+    "whyAnnotations": "רמות ותבניות בגרף",
+    "annotationKinds": {
+      "support": "תמיכה",
+      "resistance": "התנגדות",
+      "moving_average": "ממוצע נע",
+      "pattern": "תבנית"
+    },
+    "whyRiskRules": "כללי סיכון שהופעלו",
+    "whyInvalidation": "מה עלול לבטל את ההערכה",
+    "whySources": "מקורות"
   },
   "auth": {
     "loginTitle": "התחברות",
@@ -157,7 +173,13 @@
     "invalidCredentials": "אימייל או סיסמה שגויים.",
     "tooMany": "יותר מדי ניסיונות. המתינו רגע ונסו שוב.",
     "working": "רגע…",
-    "tooManyWait": "יותר מדי ניסיונות. נסו שוב בעוד {seconds} שניות."
+    "tooManyWait": "יותר מדי ניסיונות. נסו שוב בעוד {seconds} שניות.",
+    "challengeTitle": "בדיקה קצרה",
+    "challengeBody": "היו יותר מדי ניסיונות כושלים. השלימו את הבדיקה ואז התחברו שוב.",
+    "challengeMissing": "יש להשלים את הבדיקה לפני ההתחברות.",
+    "challengeInvalid": "הבדיקה נכשלה או פגה. נסו שוב.",
+    "challengeLoadError": "לא הצלחנו לטעון את הבדיקה. רעננו את העמוד ונסו שוב.",
+    "challengeLabel": "בדיקת אבטחה"
   },
   "import": {
     "title": "ייבוא החזקות",
@@ -238,6 +260,22 @@
         "sell": "נמכר",
         "withdrawal": "הועבר החוצה (משיכה)"
       }
+    },
+    "rowError": "שורה {row}{name}: {field} {msg}",
+    "rowErrorsTitle": "השרת דחה את השורות הבאות. תקנו ונסו שוב.",
+    "rowFields": {
+      "quantity": "כמות",
+      "price": "מחיר",
+      "value": "שווי",
+      "cost": "עלות",
+      "currency": "מטבע",
+      "unit": "יחידה",
+      "symbol": "סימול",
+      "tase_number": "מספר בורסה",
+      "name": "שם",
+      "index": "מספר שורה",
+      "candidates": "הצעות",
+      "flags": "דגלים"
     }
   },
   "xray": {
@@ -321,7 +359,28 @@
     "sessionRevokeAll": "ניתוק כל המכשירים האחרים",
     "gate": "המלצות קנייה/מכירה",
     "gateOpen": "פתוח: ההמלצות פעילות.",
-    "gateClosed": "נעול: האפליקציה מציגה ניתוח בלבד עד שתוכיח את עצמה."
+    "gateClosed": "נעול: האפליקציה מציגה ניתוח בלבד עד שתוכיח את עצמה.",
+    "status": "מצב המערכת",
+    "statusLoadError": "לא הצלחנו לטעון את מצב המערכת.",
+    "scheduler": "משימות רקע",
+    "schedulerStates": {
+      "leader": "פועלות (השרת הזה מריץ אותן)",
+      "standby": "המתנה (שרת אחר מריץ אותן)",
+      "unavailable": "לא פועלות",
+      "external": "מופעלות על ידי מתזמן חיצוני"
+    },
+    "lastQuotes": "עדכון מחירים אחרון",
+    "lastSnapshot": "תמונת מצב יומית אחרונה",
+    "never": "אף פעם",
+    "staleWarning": "נראה שהמחירים לא מעודכנים, ולכן הנתונים עלולים לפגר אחרי השוק.",
+    "schedulerDown": "משימות הרקע לא פועלות, ולכן מחירים וציונים לא מתעדכנים.",
+    "fxNote": "סכומים המוצגים במטבע השני משתמשים בשער הדולר-שקל. אם השער לא מעודכן, תופיע הודעה בעמוד הראשי והסכומים עלולים להיות מעט לא מדויקים.",
+    "fxNow": "שער החליפין כרגע לא מעודכן.",
+    "fxOk": "שער החליפין מעודכן.",
+    "relNow": "הרגע",
+    "relMinutes": "לפני {n} דק׳",
+    "relHours": "לפני {n} שע׳",
+    "relDays": "לפני {n} ימים"
   },
   "createPortfolio": {
     "title": "צרו את התיק הראשון שלכם",

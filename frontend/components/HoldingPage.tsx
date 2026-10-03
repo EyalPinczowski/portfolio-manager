@@ -1,48 +1,14 @@
 "use client";
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { api, type Explanation, type Horizon } from "@/lib/api";
-import { DASH, formatDate, formatMoney, formatTime, formatWeight } from "@/lib/format";
+import { api, type Horizon } from "@/lib/api";
+import { DASH, formatMoney, formatWeight } from "@/lib/format";
 import { useAlerts, useScorecard } from "@/lib/hooks";
 import { Link } from "@/i18n/navigation";
 import { AppShell } from "./AppShell";
+import { ExplanationView } from "./ExplanationView";
 
 const HORIZONS: Horizon[] = ["1w", "1m", "3m", "6m", "1y"];
-
-function ExplanationView({ e, reasons, asOf }: { e: Explanation; reasons?: string[]; asOf?: string }) {
-  const t = useTranslations("holding");
-  const locale = useLocale();
-  return (
-    <div className="space-y-3 text-sm">
-      <div>
-        <h4 className="font-semibold">{t("whySummary")}</h4>
-        <p>{e.summary}</p>
-      </div>
-      {reasons && reasons.length > 0 && (
-        <div>
-          <h4 className="font-semibold">{t("whyReasons")}</h4>
-          <ul className="list-disc ps-5">{reasons.map((r) => <li key={r}>{r}</li>)}</ul>
-        </div>
-      )}
-      <div>
-        <h4 className="font-semibold">{t("whyInputs")}</h4>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-          {Object.entries(e.inputs).map(([k, v]) => (
-            <div key={k} className="contents">
-              <dt className="text-slate-600 dark:text-slate-400">{k}</dt>
-              <dd className="tabular-nums" dir="ltr">{String(v)}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-      <div>
-        <h4 className="font-semibold">{t("whyRules")}</h4>
-        <ul className="list-disc ps-5">{e.rules_applied.map((r) => <li key={r}>{r}</li>)}</ul>
-      </div>
-      {asOf && <p className="text-xs text-slate-600 dark:text-slate-400">{t("asOf", { time: `${formatDate(asOf)} ${formatTime(asOf, locale)}` })}</p>}
-    </div>
-  );
-}
 
 function Body({ hid }: { hid: number }) {
   const t = useTranslations("holding");
@@ -60,6 +26,7 @@ function Body({ hid }: { hid: number }) {
   const d = sc.data;
   if (!d) return <p role="status">{c("loading")}</p>;
   const name = locale === "he" ? d.name_he : d.name_en;
+  const cur = d.symbol.endsWith(".TA") ? "ILS" : "USD";
   const mine = (alerts.data ?? []).filter((a) => a.symbol === d.symbol);
 
   const setHorizon = async (h: Horizon) => {
@@ -128,11 +95,11 @@ function Body({ hid }: { hid: number }) {
         </button>
         {open && (
           <div id="why-panel" className="space-y-4 rounded-xl bg-slate-100 p-3 dark:bg-slate-800">
-            <ExplanationView e={d.explanation} />
+            <ExplanationView e={d.explanation} currency={cur} />
             {d.signals.map((s) => (
               <div key={s.name} className="border-t border-slate-300 pt-3 dark:border-slate-600">
                 <h3 className="mb-1 font-semibold">{t.has(`signal.${s.name}`) ? t(`signal.${s.name}`) : s.name}</h3>
-                <ExplanationView e={s.explanation} reasons={s.reasons} asOf={s.data_as_of} />
+                <ExplanationView e={s.explanation} reasons={s.reasons} asOf={s.data_as_of} currency={cur} showContributions={false} />
               </div>
             ))}
           </div>

@@ -1,3 +1,6 @@
+/** The only third-party origin the app may contact, and only when the login asks for a challenge (lib/turnstile.ts). */
+export const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
+
 /**
  * Security headers for the web app, shared by next.config.ts (dev server) and checked against
  * public/_headers (Cloudflare Pages, production) by tests/security-headers.test.ts.
@@ -11,17 +14,20 @@
  *   (same origin) and no blob: workers are needed.
  * - connect-src 'self': the API is same-origin (Pages Function proxy) and OCR assets are self-hosted under
  *   /tesseract/, so no third-party host is contacted. If NEXT_PUBLIC_API_URL points elsewhere, add it here.
+ * - Cloudflare Turnstile (login challenge after repeated failures): its origin is allowed for script-src, frame-src
+ *   and connect-src, nothing else. The script is only requested when the server demands a challenge.
  */
 export function buildCsp(opts: { dev?: boolean; apiOrigin?: string } = {}): string {
   const dev = opts.dev ?? false;
-  const connect = ["'self'", ...(opts.apiOrigin ? [opts.apiOrigin] : []), ...(dev ? ["ws:", "http://localhost:*"] : [])];
+  const connect = ["'self'", TURNSTILE_ORIGIN, ...(opts.apiOrigin ? [opts.apiOrigin] : []), ...(dev ? ["ws:", "http://localhost:*"] : [])];
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
-    "script-src": ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'", ...(dev ? ["'unsafe-eval'"] : [])],
+    "script-src": ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'", TURNSTILE_ORIGIN, ...(dev ? ["'unsafe-eval'"] : [])],
     "style-src": ["'self'", "'unsafe-inline'"],
     "img-src": ["'self'", "data:"],
     "font-src": ["'self'"],
     "connect-src": connect,
+    "frame-src": [TURNSTILE_ORIGIN],
     "worker-src": ["'self'"],
     "manifest-src": ["'self'"],
     "object-src": ["'none'"],

@@ -3,8 +3,8 @@ import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 import { api, ApiError, toPresets, type RiskFilter } from "@/lib/api";
-import { formatDate, formatTime } from "@/lib/format";
-import { usePortfolios } from "@/lib/hooks";
+import { ageOf, formatDate, formatTime, QUOTES_STALE_MIN } from "@/lib/format";
+import { usePortfolios, useSummary } from "@/lib/hooks";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { AppShell } from "./AppShell";
 import { Modal } from "./Modal";
@@ -91,6 +91,43 @@ function Sessions() {
       )}
       {others.length > 0 && <button type="button" className="btn-secondary" onClick={() => run(() => api.revokeOtherSessions())}>{t("sessionRevokeAll")}</button>}
       {fail && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{t("sessionsError")}</p>}
+    </section>
+  );
+}
+
+/** System status from /api/health, plus the FX staleness note from the summary. Never shows a verdict. */
+export function SystemStatus() {
+  const t = useTranslations("settings");
+  const { data: health, error } = useSWR("health", () => api.health(), { refreshInterval: 60_000, shouldRetryOnError: false });
+  const { data: portfolios } = usePortfolios();
+  const { data: summary } = useSummary(portfolios?.[0]?.id ?? null);
+  const rel = (iso: string | null | undefined) => {
+    const a = ageOf(iso);
+    if (!a) return t("never");
+    return a.unit === "now" ? t("relNow") : t(a.unit === "minutes" ? "relMinutes" : a.unit === "hours" ? "relHours" : "relDays", { n: a.n });
+  };
+  if (error) return <section className="card" aria-label={t("status")}><h2 className="text-lg font-bold">{t("status")}</h2><p role="alert" className="text-sm">{t("statusLoadError")}</p></section>;
+  if (!health) return null;
+  const stockOpen = !!summary && (summary.markets.US.open || summary.markets.TASE.open);
+  const quotesAge = ageOf(health.last_quotes_at);
+  const quotesOld = quotesAge === null || quotesAge.unit === "hours" || quotesAge.unit === "days" || (quotesAge.unit === "minutes" && quotesAge.n > QUOTES_STALE_MIN);
+  const down = health.scheduler === "unavailable";
+  const stale = stockOpen && quotesOld;
+  return (
+    <section className="card space-y-2" aria-label={t("status")}>
+      <h2 className="text-lg font-bold">{t("status")}</h2>
+      {down && <p role="alert" className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">{t("schedulerDown")}</p>}
+      {stale && <p role="alert" className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">{t("staleWarning")}</p>}
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        <dt className="text-slate-600 dark:text-slate-400">{t("scheduler")}</dt>
+        <dd>{t(`schedulerStates.${health.scheduler}`)}</dd>
+        <dt className="text-slate-600 dark:text-slate-400">{t("lastQuotes")}</dt>
+        <dd data-testid="last-quotes">{rel(health.last_quotes_at)}</dd>
+        <dt className="text-slate-600 dark:text-slate-400">{t("lastSnapshot")}</dt>
+        <dd data-testid="last-snapshot" title={health.last_snapshot_at ? formatDate(health.last_snapshot_at) : undefined}>{rel(health.last_snapshot_at)}</dd>
+      </dl>
+      <p className="text-sm text-slate-600 dark:text-slate-400">{t("fxNote")}</p>
+      {summary && <p className="text-sm" role="status">{summary.fx_stale ? t("fxNow") : t("fxOk")}</p>}
     </section>
   );
 }
@@ -205,6 +242,7 @@ function Body() {
       </section>
 
       <Sessions />
+      <SystemStatus />
       <LaunchGateNote />
 
       <section className="card space-y-2" aria-label={t("data")}>

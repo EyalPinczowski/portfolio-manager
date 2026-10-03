@@ -140,7 +140,23 @@
     "exitSoon": "Coming in Phase 2.",
     "noData": "No score data yet for this security.",
     "signalNoData": "No data",
-    "nominalWeight": "nominal {pct}"
+    "nominalWeight": "nominal {pct}",
+    "whyContributions": "What each signal contributed",
+    "colSignal": "Signal",
+    "colScore": "Score",
+    "colWeight": "Weight",
+    "colConfidence": "Confidence",
+    "colBar": "Score bar",
+    "whyAnnotations": "Chart levels and patterns",
+    "annotationKinds": {
+      "support": "Support",
+      "resistance": "Resistance",
+      "moving_average": "Moving average",
+      "pattern": "Pattern"
+    },
+    "whyRiskRules": "Risk rules applied",
+    "whyInvalidation": "What could make this wrong",
+    "whySources": "Sources"
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -157,7 +173,13 @@
     "invalidCredentials": "Wrong email or password.",
     "tooMany": "Too many attempts. Wait a moment and try again.",
     "working": "Please wait…",
-    "tooManyWait": "Too many attempts. Try again in {seconds} seconds."
+    "tooManyWait": "Too many attempts. Try again in {seconds} seconds.",
+    "challengeTitle": "Quick check",
+    "challengeBody": "Too many failed attempts. Complete the check below, then sign in again.",
+    "challengeMissing": "Complete the check before signing in.",
+    "challengeInvalid": "The check failed or expired. Try it again.",
+    "challengeLoadError": "Could not load the check. Reload the page and try again.",
+    "challengeLabel": "Security check"
   },
   "import": {
     "title": "Import holdings",
@@ -238,6 +260,22 @@
         "sell": "Sold",
         "withdrawal": "Moved out (withdrawal)"
       }
+    },
+    "rowError": "Row {row}{name}: {field} {msg}",
+    "rowErrorsTitle": "The server rejected these rows. Fix them and try again.",
+    "rowFields": {
+      "quantity": "quantity",
+      "price": "price",
+      "value": "value",
+      "cost": "cost",
+      "currency": "currency",
+      "unit": "unit",
+      "symbol": "symbol",
+      "tase_number": "TASE number",
+      "name": "name",
+      "index": "row number",
+      "candidates": "suggestions",
+      "flags": "flags"
     }
   },
   "xray": {
@@ -321,7 +359,28 @@
     "sessionRevokeAll": "Sign out all other devices",
     "gate": "Buy/sell suggestions",
     "gateOpen": "Open: suggestions are enabled.",
-    "gateClosed": "Locked: the app shows analysis only until it has proven itself."
+    "gateClosed": "Locked: the app shows analysis only until it has proven itself.",
+    "status": "System status",
+    "statusLoadError": "Could not load the system status.",
+    "scheduler": "Background jobs",
+    "schedulerStates": {
+      "leader": "Running (this server is the leader)",
+      "standby": "Standby (another server runs the jobs)",
+      "unavailable": "Not running",
+      "external": "Run by an external scheduler"
+    },
+    "lastQuotes": "Last price update",
+    "lastSnapshot": "Last daily snapshot",
+    "never": "never",
+    "staleWarning": "Prices look out of date, so figures may lag the market.",
+    "schedulerDown": "The background jobs are not running, so prices and scores are not refreshing.",
+    "fxNote": "Totals shown in the second currency use the USD/ILS exchange rate. If the rate is not up to date, a notice appears on the main page and those totals may be slightly off.",
+    "fxNow": "The exchange rate is currently out of date.",
+    "fxOk": "The exchange rate is up to date.",
+    "relNow": "just now",
+    "relMinutes": "{n} min ago",
+    "relHours": "{n} h ago",
+    "relDays": "{n} d ago"
   },
   "createPortfolio": {
     "title": "Create your first portfolio",

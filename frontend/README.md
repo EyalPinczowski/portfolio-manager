@@ -24,6 +24,9 @@ npm run gen:api             # regenerate lib/api-schema.d.ts from ../backend/ope
 - Optional "Use server reading": behind a consent notice; sends a re-encoded, top-blanked PNG as the **raw request body** (`Content-Type: image/png`, not multipart).
 - The import screen says: "We keep only the stock list. The screenshot is deleted right away."
 
+## Import rows and Settings status
+`lib/import-rows.ts` makes every row consistent with the server before it is sent (currency derived from unit, bounds, NaN dropped, symbol/TASE/name cleaned); a 422 is mapped from its `loc` to the row and field. Settings shows `/api/health` (scheduler, last quotes/snapshot, stale warning), the FX note and the launch gate. The "Why?" panel is `components/ExplanationView.tsx` (typed `Explanation`, every field optional).
+
 ## Static export and hosting
 `next build` writes `out/` (`output: "export"`, `trailingSlash: true`, both locales), then `scripts/finalize-export.mjs` checks it. `NEXT_PUBLIC_API_URL` defaults to empty (same origin); the browser always calls `/api/...` and the host forwards it.
 
@@ -32,6 +35,6 @@ npm run gen:api             # regenerate lib/api-schema.d.ts from ../backend/ope
 **Docker** (`docker build -t pm-web frontend`): a static-serve image (Caddy) with the same `/api` proxy; run with `-e API_ORIGIN=http://api:8000`. It replaces the old Node standalone image.
 
 ## Security headers
-`lib/security-headers.ts` is the single source for the CSP. `next.config.ts` applies it in `next dev`; production uses `public/_headers` (Cloudflare) or `Caddyfile` (Docker); a test fails if they differ. The CSP needs `'wasm-unsafe-eval'` (tesseract's WebAssembly, not JS eval) and `worker-src 'self'` (the OCR worker is same-origin). `script-src` includes `'unsafe-inline'` because a static export has no per-request nonce for Next's inline bootstrap scripts. If `NEXT_PUBLIC_API_URL` points to another origin, add it to `connect-src` in all three places.
+`lib/security-headers.ts` is the single source for the CSP. `next.config.ts` applies it in `next dev`; production uses `public/_headers` (Cloudflare) or `Caddyfile` (Docker); a test fails if they differ. The CSP needs `'wasm-unsafe-eval'` (tesseract's WebAssembly, not JS eval) and `worker-src 'self'` (the OCR worker is same-origin). `script-src` includes `'unsafe-inline'` because a static export has no per-request nonce for Next's inline bootstrap scripts. `https://challenges.cloudflare.com` is allowed for `script-src`, `frame-src` and `connect-src` only, for the login Turnstile challenge: the script is loaded lazily and only after `POST /auth/login` answers 403 `turnstile_required` (`lib/turnstile.ts`; mock mode and tests use a stub widget; mock logins: an email starting with `challenge` demands the token, `ratelimit` gets a 429). `Caddyfile` carries the same CSP. If `NEXT_PUBLIC_API_URL` points to another origin, add it to `connect-src` in all three places.
 
 PWA: `public/manifest.webmanifest`, `public/sw.js` (offline shell only, never caches `/api`), icons from `scripts/gen-icons.mjs`.

@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { api, ApiError } from "@/lib/api";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Disclaimer } from "./Disclaimer";
+import { TurnstileWidget } from "./TurnstileWidget";
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const t = useTranslations("auth");
@@ -16,17 +17,29 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [challenge, setChallenge] = useState<{ siteKey: string; round: number } | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const signup = mode === "signup";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (signup && !accepted) return;
+    if (!signup && challenge && !token) { setError(t("challengeMissing")); return; }
     setBusy(true); setError(null);
+    const sent = token;
     try {
       if (signup) await api.signup({ invite_code: invite.trim(), email, password, accept_disclaimer: true, locale });
-      else await api.login({ email, password });
+      else await api.login({ email, password, ...(sent ? { turnstile_token: sent } : {}) });
       router.replace("/");
     } catch (err) {
+      const ch = !signup && err instanceof ApiError ? err.challenge : null;
+      if (ch) {
+        // A Turnstile token is single-use: always start a fresh widget. A repeat 403 after sending one means it was bad.
+        setToken(null);
+        setChallenge((c) => ({ siteKey: ch.siteKey, round: (c?.round ?? 0) + 1 }));
+        setError(sent ? t("challengeInvalid") : t("challengeBody"));
+        return;
+      }
       const s = err instanceof ApiError ? err.status : 0;
       const wait = err instanceof ApiError ? err.retryAfter : undefined;
       setError(s === 429 ? (wait ? t("tooManyWait", { seconds: wait }) : t("tooMany")) : s === 401 && !signup ? t("invalidCredentials") : t("failed"));
@@ -61,6 +74,12 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
               <input type="checkbox" required checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-1 h-5 w-5" />
               <span>{t("acceptDisclaimer")}</span>
             </label>
+          )}
+          {challenge && !signup && (
+            <fieldset className="space-y-2 rounded-xl border border-slate-300 p-3 dark:border-slate-600">
+              <legend className="px-1 text-sm font-semibold">{t("challengeTitle")}</legend>
+              <TurnstileWidget key={challenge.round} siteKey={challenge.siteKey} onToken={setToken} />
+            </fieldset>
           )}
           {error && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p>}
           <button type="submit" className="btn-primary w-full" disabled={busy || (signup && !accepted)}>

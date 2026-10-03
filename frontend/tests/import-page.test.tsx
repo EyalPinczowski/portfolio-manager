@@ -198,4 +198,25 @@ describe("import page", () => {
     clickRead();
     expect(await screen.findByRole("alert")).toHaveTextContent(/No holdings were found/);
   });
+
+  it("sends ILS (not USD) for a row parsed as USD with unit ILS", async () => {
+    vi.mocked(readScreenshotOnDevice).mockResolvedValueOnce([{ ...parsed[0], currency: "USD", unit: "ILS", price: 65, value: 65000 }]);
+    renderPage();
+    await pick();
+    clickRead();
+    await screen.findByRole("region", { name: "Review the rows" }); // the mock server answers 422 for a currency/unit mismatch, so this proves the row was fixed
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows a per-row message (not a generic error) when the server answers 422", async () => {
+    vi.spyOn(api, "importRows").mockRejectedValueOnce(new ApiError(422, "Validation error", undefined, { detail: [
+      { type: "value_error", loc: ["body", "rows", 0, "quantity"], msg: "Input should be less than or equal to 1000000000000" },
+    ] }));
+    renderPage();
+    await pick();
+    clickRead();
+    expect(await screen.findByText("The server rejected these rows. Fix them and try again.")).toBeInTheDocument();
+    expect(screen.getByText(/Row 1 \(טבע\): quantity Input should be less than/)).toBeInTheDocument();
+    expect(screen.queryByText("Could not read the screenshot. Try again.")).toBeNull();
+  });
 });

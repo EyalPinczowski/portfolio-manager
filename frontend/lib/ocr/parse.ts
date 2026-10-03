@@ -68,7 +68,7 @@ export function parseLine(line: string, agorotGlobal: boolean, tol: number = IMP
   if (!/[A-Za-z֐-׿]/.test(letters)) return null;
 
   const agorot = agorotGlobal || AGOROT_MARKERS.some((m) => low.includes(m));
-  let currency: string;
+  let currency: "ILS" | "USD";
   if (line.includes("$") || low.includes("usd")) currency = "USD";
   else if (agorot || ILS_MARKERS.some((m) => low.includes(m)) || HEBREW_RE.test(letters)) currency = "ILS";
   else currency = "USD";

@@ -4,6 +4,7 @@ import { apiBase } from "./config";
 import { ApiError } from "./errors";
 import { mockRequest } from "./mock";
 import { clearClientState } from "./session";
+import { sanitizeRows } from "./import-rows";
 
 export { ApiError };
 
@@ -30,13 +31,15 @@ export type Portfolio = Narrow<S["PortfolioOut"], { base_currency: "ILS" | "USD"
 export type ScoreCardMini = S["ScoreCardMini"];
 export type Holding = Narrow<S["HoldingOut"], { asset_type: AssetType; market: MarketKey }>;
 
-export interface Explanation {
-  summary: string;
-  inputs: Record<string, string | number>;
-  rules_applied: string[];
-}
-export type SignalBreakdown = Narrow<S["SignalBreakdownOut"], { explanation: Explanation }>;
-export type ScoreCardDetail = Narrow<S["ScoreCardDetail"], { explanation: Explanation; signals: SignalBreakdown[] }>;
+/** The typed "Why?" (every field after `summary` is optional: score cards cached before v1 lack them). */
+export type Explanation = S["Explanation"];
+export type SignalContribution = S["SignalContribution"];
+export type ChartAnnotation = S["ChartAnnotation"];
+export type ExplanationSource = S["ExplanationSource"];
+export type SignalBreakdown = S["SignalBreakdownOut"];
+export type ScoreCardDetail = Narrow<S["ScoreCardDetail"], { signals: SignalBreakdown[] }>;
+export type Health = S["HealthOut"];
+export type ChallengeRequired = S["ChallengeRequiredOut"];
 
 export type ExposureItem = S["ExposureItem"];
 export type Breach = S["Breach"];
@@ -88,9 +91,10 @@ async function raw<T>(method: string, path: string, payload: Payload = {}): Prom
   const res = await fetch(`${apiBase()}/api${path}`, { method, headers, body, credentials: "include" });
   if (!res.ok) {
     let msg = res.statusText;
-    try { const j = await res.json(); msg = typeof j.detail === "string" ? j.detail : msg; } catch { /* ignore */ }
+    let body: unknown;
+    try { body = await res.json(); const d = (body as { detail?: unknown }).detail; msg = typeof d === "string" ? d : msg; } catch { /* ignore */ }
     const ra = Number(res.headers.get("Retry-After"));
-    throw new ApiError(res.status, msg, Number.isFinite(ra) && ra > 0 ? ra : undefined);
+    throw new ApiError(res.status, msg, Number.isFinite(ra) && ra > 0 ? ra : undefined, body);
   }
   if (res.status === 204) return undefined as T;
   const ct = res.headers.get("content-type") ?? "";
@@ -114,7 +118,7 @@ export const api = {
     await clearClientState();
     return r;
   },
-  async login(b: { email: string; password: string }) {
+  async login(b: { email: string; password: string; turnstile_token?: string }) {
     const r = await post<unknown>("/auth/login", b);
     csrfToken = null;
     await clearClientState();
@@ -136,6 +140,7 @@ export const api = {
   revokeSession: (id: number) => del(`/auth/sessions/${id}`),
   revokeOtherSessions: () => post("/auth/sessions/revoke-all"),
   launchGate: () => get<LaunchGate>("/launch-gate"),
+  health: () => get<Health>("/health"),
 
   portfolios: () => get<Portfolio[]>("/portfolios"),
   createPortfolio: (b: { name: string; base_currency: string }) => post<Portfolio>("/portfolios", b),
@@ -156,10 +161,10 @@ export const api = {
   },
   /** On-device path: rows parsed in the browser; the image never leaves the device. */
   importRows: (portfolioId: number, rows: ImportRow[]) =>
-    post<ImportDraft>(`/portfolios/${portfolioId}/imports/rows`, { rows } satisfies ImportRowsBody),
+    post<ImportDraft>(`/portfolios/${portfolioId}/imports/rows`, { rows: sanitizeRows(rows) } satisfies ImportRowsBody),
   getImport: (id: number) => get<ImportDraft>(`/imports/${id}`),
   patchImport: (id: number, b: { rows?: ImportRow[]; proposed_changes?: ProposedChange[] }) =>
-    patch<ImportDraft>(`/imports/${id}`, b),
+    patch<ImportDraft>(`/imports/${id}`, b.rows ? { ...b, rows: sanitizeRows(b.rows) } : b),
   confirmImport: (id: number) => post<ImportDraft>(`/imports/${id}/confirm`),
   searchSecurities: (q: string) => get<SecurityHit[]>(`/securities/search?q=${encodeURIComponent(q)}`),
 

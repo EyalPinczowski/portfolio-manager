@@ -598,6 +598,87 @@ export interface components {
             /** Symbol */
             symbol?: string | null;
         };
+        /**
+         * ChallengeRequiredOut
+         * @description 403 body of `POST /auth/login` when a Cloudflare Turnstile token is needed.
+         */
+        ChallengeRequiredOut: {
+            /** Detail */
+            detail: string;
+            /**
+             * Code
+             * @constant
+             */
+            code: "turnstile_required";
+            /** Site Key */
+            site_key?: string | null;
+        };
+        /**
+         * ChartAnnotation
+         * @description Something the chart should draw: a level, a moving average or a detected pattern.
+         */
+        ChartAnnotation: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "support" | "resistance" | "moving_average" | "pattern";
+            /** Label */
+            label: string;
+            /** Price */
+            price?: number | null;
+            /** As Of */
+            as_of?: string | null;
+        };
+        /**
+         * Explanation
+         * @description The "Why?" of a scored object (CLAUDE.md shape), versioned and stored with it.
+         *
+         *     `summary`, `inputs` and `rules_applied` are the v0 fields the frontend already reads; they stay
+         *     as part of v1. Every field after them has a default, so payloads cached before v1 still load.
+         */
+        Explanation: {
+            /**
+             * Version
+             * @default 1
+             */
+            version: number;
+            /** Summary */
+            summary: string;
+            /** Inputs */
+            inputs?: {
+                [key: string]: number | string;
+            };
+            /** Rules Applied */
+            rules_applied?: string[];
+            /** As Of */
+            as_of?: string | null;
+            /** Contributions */
+            contributions?: components["schemas"]["SignalContribution"][];
+            /** Annotations */
+            annotations?: components["schemas"]["ChartAnnotation"][];
+            /** Risk Rules Applied */
+            risk_rules_applied?: string[];
+            /** Invalidation Risks */
+            invalidation_risks?: string[];
+            /** Sources */
+            sources?: components["schemas"]["ExplanationSource"][];
+        };
+        /**
+         * ExplanationSource
+         * @description Where a number came from and how fresh it is.
+         */
+        ExplanationSource: {
+            /** Name */
+            name: string;
+            /** As Of */
+            as_of?: string | null;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+        };
         /** ExposureItem */
         ExposureItem: {
             /** Name */
@@ -609,6 +690,25 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HealthOut */
+        HealthOut: {
+            /**
+             * Status
+             * @constant
+             */
+            status: "ok";
+            /**
+             * Scheduler
+             * @enum {string}
+             */
+            scheduler: "leader" | "standby" | "unavailable" | "external";
+            /** Leader */
+            leader: boolean;
+            /** Last Quotes At */
+            last_quotes_at: string | null;
+            /** Last Snapshot At */
+            last_snapshot_at: string | null;
         };
         /** HeatmapItem */
         HeatmapItem: {
@@ -748,8 +848,9 @@ export interface components {
             /**
              * Currency
              * @default ILS
+             * @enum {string}
              */
-            currency: string;
+            currency: "ILS" | "USD";
             /**
              * Unit
              * @default ILS
@@ -784,6 +885,8 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+            /** Turnstile Token */
+            turnstile_token?: string | null;
         };
         /** MarketOpen */
         MarketOpen: {
@@ -928,8 +1031,11 @@ export interface components {
             quantity: number | null;
             /** Amount */
             amount: number | null;
-            /** Currency */
-            currency: string;
+            /**
+             * Currency
+             * @enum {string}
+             */
+            currency: "ILS" | "USD";
         };
         /**
          * RiskFilterIn
@@ -1063,10 +1169,7 @@ export interface components {
             validated: boolean;
             /** Signals */
             signals: components["schemas"]["SignalBreakdownOut"][];
-            /** Explanation */
-            explanation: {
-                [key: string]: unknown;
-            };
+            explanation: components["schemas"]["Explanation"];
             /** Disclaimer */
             disclaimer: string;
         };
@@ -1139,9 +1242,24 @@ export interface components {
             reasons: string[];
             /** Data As Of */
             data_as_of: string;
-            /** Explanation */
-            explanation: {
-                [key: string]: unknown;
+            explanation: components["schemas"]["Explanation"];
+        };
+        /**
+         * SignalContribution
+         * @description One signal's part in a combined score: what it said and how much it counted.
+         */
+        SignalContribution: {
+            /** Name */
+            name: string;
+            /** Score */
+            score: number;
+            /** Weight */
+            weight: number;
+            /** Confidence */
+            confidence: number;
+            /** Raw */
+            raw?: {
+                [key: string]: number | string | null;
             };
         };
         /** SignupIn */
@@ -1299,6 +1417,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeOut"];
+                };
+            };
+            /** @description A Cloudflare Turnstile token is required (`code: turnstile_required`). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChallengeRequiredOut"];
                 };
             };
             /** @description Validation Error */
@@ -2316,9 +2443,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["HealthOut"];
                 };
             };
         };

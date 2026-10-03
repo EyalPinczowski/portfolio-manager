@@ -13,7 +13,7 @@ import path from "node:path";
 import Ajv2020 from "ajv/dist/2020";
 import addFormats from "ajv-formats";
 import { describe, expect, it } from "vitest";
-import { mockRequest, WRONG_PASSWORD } from "@/lib/mock";
+import { mockRequest, MOCK_TURNSTILE_TOKEN, WRONG_PASSWORD } from "@/lib/mock";
 import { ApiError } from "@/lib/errors";
 
 type Json = Record<string, unknown>;
@@ -71,6 +71,8 @@ const CASES: Case[] = [
   { method: "PATCH", path: "/imports/1", api: "/imports/{draft_id}", body: {} },
   { method: "GET", path: "/auth/sessions", api: "/auth/sessions" },
   { method: "GET", path: "/launch-gate", api: "/launch-gate" },
+  { method: "GET", path: "/health", api: "/health" },
+  { method: "POST", path: "/auth/login", api: "/auth/login", body: { email: "demo@example.com", password: "x" } },
 ];
 
 describe("mock fixtures match backend/openapi.json", () => {
@@ -107,6 +109,42 @@ describe("mock fixtures match backend/openapi.json", () => {
       try { mockRequest(method, p, { password: WRONG_PASSWORD }); } catch (e) { expect((e as ApiError).status).toBe(403); }
       expect(() => mockRequest(method, p, { password: "correct horse" })).not.toThrow();
     }
+  });
+
+  it("scorecard explanations are the typed Explanation (version, contributions, annotations, sources)", () => {
+    const sc = mockRequest("GET", "/holdings/1/scorecard") as { explanation: Record<string, unknown>; signals: { explanation: Record<string, unknown> }[] };
+    expect(sc.explanation.version).toBe(1);
+    expect((sc.explanation.contributions as unknown[]).length).toBeGreaterThan(0);
+    expect(sc.signals.some((x) => (x.explanation.annotations as unknown[] | undefined)?.length)).toBe(true);
+    expect(sc.signals.every((x) => (x.explanation.sources as unknown[] | undefined)?.length)).toBe(true);
+  });
+
+  const errorBody = (fn: () => unknown): { status: number; body: unknown; retryAfter?: number } => {
+    try { fn(); } catch (e) { const a = e as ApiError; return { status: a.status, body: a.body, retryAfter: a.retryAfter }; }
+    throw new Error("expected an ApiError");
+  };
+
+  it("login 403 turnstile_required body matches ChallengeRequiredOut; a valid token logs in", () => {
+    const e = errorBody(() => mockRequest("POST", "/auth/login", { email: "challenge@example.com", password: "x" }));
+    expect(e.status).toBe(403);
+    validate({ $ref: "openapi#/components/schemas/ChallengeRequiredOut" }, e.body, "403 body");
+    expect((e.body as { site_key: string }).site_key).toBeTruthy();
+    const bad = errorBody(() => mockRequest("POST", "/auth/login", { email: "challenge@example.com", password: "x", turnstile_token: "nope" }));
+    expect(bad.status).toBe(403);
+    expect(() => mockRequest("POST", "/auth/login", { email: "challenge@example.com", password: "x", turnstile_token: MOCK_TURNSTILE_TOKEN })).not.toThrow();
+  });
+
+  it("login 429 carries Retry-After", () => {
+    expect(errorBody(() => mockRequest("POST", "/auth/login", { email: "ratelimit@example.com", password: "x" }))).toMatchObject({ status: 429, retryAfter: 30 });
+  });
+
+  it("422 for an inconsistent import row matches HTTPValidationError and carries only type/loc/msg", () => {
+    const row = { index: 0, name: "x", symbol: "A", quantity: 1, price: 1, value: 1, currency: "USD", unit: "ILS", flags: [] };
+    const e = errorBody(() => mockRequest("POST", "/portfolios/1/imports/rows", { rows: [row] }));
+    expect(e.status).toBe(422);
+    validate({ $ref: "openapi#/components/schemas/HTTPValidationError" }, e.body, "422 body");
+    for (const d of (e.body as { detail: Record<string, unknown>[] }).detail) expect(Object.keys(d).sort()).toEqual(["loc", "msg", "type"]);
+    expect(errorBody(() => mockRequest("PATCH", "/imports/1", { rows: [row] })).status).toBe(422);
   });
 
   it("rejects a non-image upload with 415 like the server", () => {

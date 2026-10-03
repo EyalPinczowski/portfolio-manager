@@ -59,3 +59,18 @@ export function pnlSign(value: number): "+" | "-" | "" {
 export function formatWeight(percent: number, locale: string, digits = 1): string {
   return `${formatNumber(percent, locale, digits)}%`;
 }
+
+/** Age of a timestamp as a unit + count (for "5 min ago"); null for missing/invalid input. */
+export function ageOf(iso: string | null | undefined, now: number = Date.now()): { unit: "now" | "minutes" | "hours" | "days"; n: number } | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return null;
+  const min = Math.max(0, Math.floor((now - t) / 60_000));
+  if (min < 1) return { unit: "now", n: 0 };
+  if (min < 60) return { unit: "minutes", n: min };
+  if (min < 24 * 60) return { unit: "hours", n: Math.floor(min / 60) };
+  return { unit: "days", n: Math.floor(min / (24 * 60)) };
+}
+
+/** Quotes older than this while a stock market is open count as stale. */
+export const QUOTES_STALE_MIN = 15;

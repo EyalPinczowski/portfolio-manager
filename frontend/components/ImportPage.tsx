@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { mutate } from "swr";
 import { api, ApiError, type ChangeType, type ImportDraft, type ImportRow, type ProposedChange } from "@/lib/api";
 import { MAX_UPLOAD_BYTES } from "@/lib/config";
+import { rowProblems, type RowProblem } from "@/lib/import-rows";
 import { formatDate, formatTime, formatWeight } from "@/lib/format";
 import { useMe, usePortfolios } from "@/lib/hooks";
 import { prepareForServer, readScreenshotOnDevice, type OcrProgress } from "@/lib/ocr/engine";
@@ -14,7 +15,7 @@ import { Modal } from "./Modal";
 import { NumberCell } from "./NumberCell";
 
 const TYPES: ChangeType[] = ["buy", "sell", "deposit", "withdrawal"];
-type ErrorKind = "generic" | "noRows" | "ocr" | "tooLarge" | "type" | "rate" | "confirm" | "serverOcr" | "unmatched";
+type ErrorKind = "generic" | "noRows" | "ocr" | "tooLarge" | "type" | "rate" | "confirm" | "serverOcr" | "unmatched" | "rows";
 
 function Body() {
   const t = useTranslations("import");
@@ -33,6 +34,7 @@ function Body() {
   const [busy, setBusy] = useState<"device" | "server" | "confirm" | null>(null);
   const [progress, setProgress] = useState<OcrProgress | null>(null);
   const [error, setError] = useState<{ kind: ErrorKind; wait?: number } | null>(null);
+  const [problems, setProblems] = useState<(RowProblem & { name: string })[]>([]);
   const [done, setDone] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
 
@@ -46,8 +48,14 @@ function Body() {
     return f;
   };
   const showDraft = (d: ImportDraft) => { synced.current = d.rows; setDraft(d); setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set()); };
-  const fail = (e: unknown, fallback: ErrorKind = "generic") => {
+  /** `sent` = the rows of the failed request, so a 422 `loc` (position in the array) can be shown against its row. */
+  const fail = (e: unknown, fallback: ErrorKind = "generic", sent?: ImportRow[]) => {
     if (e instanceof ApiError) {
+      const probs = sent ? rowProblems(e) : [];
+      if (e.status === 422 && probs.length > 0) {
+        setProblems(probs.map((p) => ({ ...p, name: sent?.[p.position]?.name ?? "" })));
+        return setError({ kind: "rows" });
+      }
       if (e.status === 413) return setError({ kind: "tooLarge" });
       if (e.status === 415) return setError({ kind: "type" });
       if (e.status === 429) return setError({ kind: "rate", wait: e.retryAfter });
@@ -63,7 +71,7 @@ function Body() {
     const file = takeFile();
     if (!file || portfolioId === null) return;
     if (file.size > MAX_UPLOAD_BYTES) return setError({ kind: "tooLarge" });
-    setBusy("device"); setError(null); setProgress(null);
+    setBusy("device"); setError(null); setProblems([]); setProgress(null);
     let parsed: ImportRow[];
     try {
       parsed = await readScreenshotOnDevice(file, setProgress);
@@ -71,7 +79,7 @@ function Body() {
     try {
       if (parsed.length === 0) return setError({ kind: "noRows" });
       showDraft(await api.importRows(portfolioId, parsed));
-    } catch (err) { fail(err); } finally { setBusy(null); setProgress(null); }
+    } catch (err) { fail(err, "generic", parsed); } finally { setBusy(null); setProgress(null); }
   };
 
   const uploadToServer = async () => {
@@ -88,13 +96,13 @@ function Body() {
 
   const confirm = async () => {
     if (!draft) return;
-    setBusy("confirm"); setError(null);
+    setBusy("confirm"); setError(null); setProblems([]);
     try {
       await api.patchImport(draft.id, { rows, proposed_changes: changes });
       await api.confirmImport(draft.id);
       await mutate(() => true);
       setDone(true);
-    } catch (err) { fail(err, "confirm"); } finally { setBusy(null); }
+    } catch (err) { fail(err, "confirm", rows); } finally { setBusy(null); }
   };
 
   const editRow = (i: number, patch: Partial<ImportRow>) =>
@@ -106,7 +114,7 @@ function Body() {
     try {
       const d = await api.patchImport(draft.id, { rows: next });
       synced.current = d.rows; setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set());
-    } catch (err) { fail(err, "confirm"); }
+    } catch (err) { fail(err, "confirm", next); }
   };
   const symbolOf = (list: ImportRow[], i: number) => list.find((r) => r.index === i)?.symbol ?? null;
   const pickSymbol = (i: number, symbol: string) => void resync(rows.map((r) => (r.index === i ? { ...r, symbol } : r)));
@@ -130,9 +138,21 @@ function Body() {
   /** Held before, absent from this screenshot: the server proposes a sale (row_index -1) and removes the holding on confirm. */
   const vanished = changes.filter((c) => c.row_index < 0);
   const missingSymbol = rows.some((r) => !r.symbol);
+  const problemList = error?.kind === "rows" && problems.length > 0 && (
+    <ul className="list-disc ps-5 text-sm text-red-700 dark:text-red-400">
+      {problems.map((p, i) => (
+        <li key={i}>{t("rowError", {
+          row: p.position + 1,
+          name: p.name ? ` (${p.name})` : "",
+          field: p.field ? (t.has(`rowFields.${p.field}`) ? t(`rowFields.${p.field}`) : p.field) : "",
+          msg: p.msg,
+        })}</li>
+      ))}
+    </ul>
+  );
   const errorText = error && (error.kind === "rate"
     ? (error.wait ? t("error.rateWait", { seconds: error.wait }) : t("error.rate"))
-    : t(`error.${error.kind}`));
+    : error.kind === "rows" ? t("rowErrorsTitle") : t(`error.${error.kind}`));
 
   return (
     <>
@@ -292,6 +312,7 @@ function Body() {
           {missingSymbol && <p role="status" className="text-sm text-amber-900 dark:text-amber-200">{t("error.unmatchedHint")}</p>}
           {bad.size > 0 && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{t("error.badNumber")}</p>}
           {error && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{errorText}</p>}
+          {problemList}
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn-primary" onClick={confirm} disabled={busy === "confirm" || bad.size > 0 || missingSymbol || rows.length === 0}>
               {busy === "confirm" ? t("confirming") : t("confirm")}
@@ -301,6 +322,7 @@ function Body() {
         </section>
       )}
       {!draft && error && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{errorText}</p>}
+      {!draft && problemList}
     </>
   );
 }

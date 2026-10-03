@@ -5,6 +5,7 @@ import type {
 } from "./api";
 import type { LaunchGate, SessionInfo } from "./api";
 import { ApiError } from "./errors";
+import type { Health } from "./api";
 
 const FX = 3.7; // USD/ILS
 const AS_OF = "2026-10-03T08:55:00Z";
@@ -137,7 +138,16 @@ function signals(h: Seed): SignalBreakdown[] {
         `RSI(14) is ${h.tech >= 0 ? 58 : 36}`,
       ], data_as_of: asOf,
       explanation: {
+        version: 1,
         summary: h.tech >= 0 ? "Trend and momentum lean positive." : "Trend and momentum lean negative.",
+        as_of: asOf,
+        annotations: [
+          { kind: "moving_average", label: "SMA 50", price: +(h.price * (h.tech >= 0 ? 0.96 : 1.05)).toFixed(2), as_of: asOf },
+          { kind: "moving_average", label: "SMA 200", price: +(h.price * 0.9).toFixed(2), as_of: asOf },
+        ],
+        risk_rules_applied: [],
+        invalidation_risks: [h.tech >= 0 ? "A close below the 50-day average would weaken this reading." : "A close above the 50-day average would weaken this reading."],
+        sources: [{ name: "Price history (Yahoo Finance)", as_of: asOf, detail: "Daily bars, 1 year" }],
         inputs: { "SMA 50": +(h.price * (h.tech >= 0 ? 0.96 : 1.05)).toFixed(2), "SMA 200": +(h.price * 0.9).toFixed(2), "RSI(14)": h.tech >= 0 ? 58 : 36, "MACD hist": h.tech >= 0 ? 0.42 : -0.37 },
         rules_applied: ["Trend: price vs SMA 20/50/200", "Momentum: RSI, MACD, Stochastic", "Volatility: Bollinger position", "Volume: OBV slope"],
       },
@@ -147,7 +157,15 @@ function signals(h: Seed): SignalBreakdown[] {
         h.pat >= 0 ? "Held support 3% below the price" : "Failed to break resistance twice",
       ], data_as_of: asOf,
       explanation: {
+        version: 1,
         summary: h.pat >= 0 ? "Chart structure is constructive." : "Chart structure is weak.",
+        as_of: asOf,
+        annotations: [
+          { kind: "support", label: "Support", price: +(h.price * 0.97).toFixed(2), as_of: asOf },
+          { kind: "resistance", label: "Resistance", price: +(h.price * 1.06).toFixed(2), as_of: asOf },
+          ...(h.pat >= 0 ? [{ kind: "pattern" as const, label: "Golden cross", price: null, as_of: asOf }] : []),
+        ],
+        sources: [{ name: "Price history (Yahoo Finance)", as_of: asOf, detail: "Daily bars, 1 year" }],
         inputs: { support: +(h.price * 0.97).toFixed(2), resistance: +(h.price * 1.06).toFixed(2), "last cross": h.pat >= 0 ? "golden cross" : "none" },
         rules_applied: ["Support/resistance proximity", "Higher highs / lower lows", "Golden / death cross"],
       },
@@ -164,6 +182,12 @@ function scorecard(hid: number): ScoreCardDetail {
     horizon: s.horizon, total: h.score_card.total, confidence: s.conf, available: !s.noData, validated: false, signals: sig,
     disclaimer: "Not financial advice. Scores are experimental and not validated.",
     explanation: {
+      version: 1,
+      as_of: AS_OF,
+      contributions: sig.map((x) => ({ name: x.name, score: x.score, weight: x.weight, confidence: x.confidence, raw: {} })),
+      risk_rules_applied: ["Risk limits are applied after scoring and can only block or downgrade"],
+      invalidation_risks: ["Unvalidated weights: the score may change when the backtest runs"],
+      sources: [{ name: "Price history (Yahoo Finance)", as_of: AS_OF, detail: "Daily bars" }],
       summary: `Combined score ${h.score_card.total} from technical (67%) and chart-pattern (33%) signals. Analyst, geopolitical and sentiment signals are not available in Phase 1, so their weight was redistributed.`,
       inputs: { technical: s.tech, patterns: s.pat, "weight redistributed": "analyst, geopolitics, sentiment" },
       rules_applied: ["Weighted combination with confidence redistribution", "Missing signals get confidence 0, never a neutral score", "No buy/sell verdict until the backtest passes"],
@@ -233,7 +257,7 @@ function draftFromRows(pid: number, rows: ImportRow[]): ImportDraft {
     changes.push({ row_index: r.index, symbol: r.symbol ?? null, type: diff < 0 ? "sell" : "buy", quantity: Math.abs(diff), amount: null, currency: r.currency });
   }
   for (const h of held) {
-    if (!kept.some((r) => r.symbol === h.symbol)) changes.push({ row_index: -1, symbol: h.symbol, type: "sell", quantity: h.quantity, amount: null, currency: h.currency });
+    if (!kept.some((r) => r.symbol === h.symbol)) changes.push({ row_index: -1, symbol: h.symbol, type: "sell", quantity: h.quantity, amount: null, currency: h.currency as "ILS" | "USD" });
   }
   draft = { id: 1, portfolio_id: pid, status: "draft", expires_at: EXPIRES, rows: kept, proposed_changes: changes };
   return draft;
@@ -259,6 +283,33 @@ const LAUNCH_GATE: LaunchGate = {
   reasons: ["No passing backtest for the active weights config", "Paper-trading gate: 2 of 4 weeks completed"],
 };
 
+/** Mock login: an email starting with "challenge" demands a Turnstile token (valid: MOCK_TURNSTILE_TOKEN); "ratelimit" gets a 429. */
+export const MOCK_TURNSTILE_TOKEN = "mock-turnstile-token";
+export const MOCK_SITE_KEY = "1x00000000000000000000AA";
+const HEALTH: Health = { status: "ok", scheduler: "leader", leader: true, last_quotes_at: new Date().toISOString(), last_snapshot_at: "2026-10-02" };
+function mockLogin(b: Record<string, unknown>): unknown {
+  const email = String(b.email ?? "");
+  if (email.startsWith("ratelimit")) throw new ApiError(429, "Too many attempts", 30);
+  if (email.startsWith("challenge") && b.turnstile_token !== MOCK_TURNSTILE_TOKEN) {
+    throw new ApiError(403, "Complete the challenge to continue", undefined, { detail: "Complete the challenge to continue", code: "turnstile_required", site_key: MOCK_SITE_KEY });
+  }
+  return ME;
+}
+
+/** Like the server's ImportRowModel validation: unit must agree with currency, numbers within bounds. */
+function validateRows(rows: ImportRow[]): void {
+  const detail: { type: string; loc: (string | number)[]; msg: string }[] = [];
+  rows.forEach((r, i) => {
+    const want = r.unit === "USD" ? "USD" : "ILS";
+    if (r.currency !== want) detail.push({ type: "value_error", loc: ["body", "rows", i, "unit"], msg: `Value error, unit ${r.unit} does not match currency ${r.currency}` });
+    for (const k of ["quantity", "price", "value", "cost"] as const) {
+      const v = r[k];
+      if (v !== null && v !== undefined && (!Number.isFinite(v) || v < 0 || v > (k === "quantity" ? 1e12 : 1e15))) detail.push({ type: "greater_than_equal", loc: ["body", "rows", i, k], msg: "Input should be within bounds" });
+    }
+  });
+  if (detail.length) throw new ApiError(422, "Validation error", undefined, { detail });
+}
+
 const ME: Me = { id: 1, email: "demo@example.com", locale: "he", disclaimer_accepted: true, ocr_consent: false, csrf_token: "mock-csrf-token" };
 
 export function mockRequest(method: string, path: string, body?: unknown): unknown {
@@ -266,7 +317,9 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
   const b = (body ?? {}) as Record<string, unknown>;
   let m: RegExpMatchArray | null;
   if (p === "/auth/me") return ME;
-  if (p === "/auth/signup" || p === "/auth/login" || p === "/auth/logout") return ME;
+  if (p === "/auth/login") return mockLogin(b);
+  if (p === "/auth/signup" || p === "/auth/logout") return ME;
+  if (p === "/health") return HEALTH;
   if (p === "/auth/consent/ocr") { ME.ocr_consent = true; return { ok: true }; }
   if (p === "/me/export" || (p === "/me" && method === "DELETE")) {
     if (typeof b.password !== "string" || b.password === "" || b.password === WRONG_PASSWORD) throw new ApiError(403, "Wrong password");
@@ -296,7 +349,7 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
   if ((m = p.match(/^\/portfolios\/(\d+)\/holdings$/))) return holdingsFor(Number(m[1]));
   if ((m = p.match(/^\/portfolios\/(\d+)\/xray$/))) return xray();
   if ((m = p.match(/^\/portfolios\/(\d+)\/heatmap$/))) return heatmap();
-  if ((m = p.match(/^\/portfolios\/(\d+)\/imports\/rows$/))) return draftFromRows(Number(m[1]), (b.rows as ImportRow[]) ?? []);
+  if ((m = p.match(/^\/portfolios\/(\d+)\/imports\/rows$/))) return (validateRows((b.rows as ImportRow[]) ?? []), draftFromRows(Number(m[1]), (b.rows as ImportRow[]) ?? []));
   if ((m = p.match(/^\/portfolios\/(\d+)\/imports$/))) {
     if (typeof Blob !== "undefined" && body instanceof Blob && !/^image\/(png|jpeg|webp)$/.test(body.type)) throw new ApiError(415, "Unsupported media type");
     return draft;
@@ -312,6 +365,7 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
     if (method === "PATCH") {
       const patch = b as Partial<ImportDraft>;
       // Like the server: new rows without explicit changes => re-match and recompute the changes.
+      if (patch.rows) validateRows(patch.rows);
       const redone = patch.rows && !patch.proposed_changes ? draftFromRows(draft.portfolio_id, patch.rows) : null;
       draft = { ...draft, ...patch, ...(redone ? { rows: redone.rows, proposed_changes: redone.proposed_changes } : {}) };
     }
