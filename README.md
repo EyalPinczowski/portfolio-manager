@@ -37,7 +37,7 @@ A recommendation is shown only if it passes every rule. When a rule blocks a str
 
 The first screen after you log in:
 
-1. **Live header**: total value in ₪ and $, today's P&L, and P&L since you started. It updates automatically (about every 5 minutes) and shows when it was last updated and whether TASE / US markets are open.
+1. **Live header**: total value in ₪ and $, today's P&L, and P&L **since you started using the app**. It updates automatically (about every 5 minutes) and shows when it was last updated and whether TASE / US markets are open.
 2. **P&L strip**:
    - this week's and this month's profit/loss
    - small weekly and monthly bar charts
@@ -101,7 +101,7 @@ Until you set it, no buy alerts are sent. Each idea is sent once and isn't repea
 - **Performance (P&L)**, with three views:
   - **Weekly**: a bar chart of profit/loss per week, plus this week so far.
   - **Monthly**: a bar chart per month, plus a calendar heat-map (green or red by month).
-  - **Since start**: a cumulative P&L line from the first day you used the app.
+  - **Since start**: a cumulative P&L line from **the day you first started using the app** (your first import). Gains made before that aren't counted here; each holding still shows its own profit vs. your purchase price.
 
   Each view shows:
   - ₪ and $ amounts and %

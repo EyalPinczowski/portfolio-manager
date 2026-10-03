@@ -65,6 +65,7 @@ backend/tests/   # fixtures only; mark live tests with @pytest.mark.live (skippe
 - **Explainability**: every `SignalResult` has `score` [-100, 100], `confidence` [0, 1], `reasons: list[str]`, `data_as_of` and `explanation: Explanation`. `Explanation` has summary, inputs (name → value) and rules_applied. Missing data gives `confidence=0`.
 - **Combine**: the weights are in config. Signals with confidence 0 get their weight redistributed.
 - **Risk presets**: very_conservative, conservative, balanced, balanced_aggressive (default), aggressive, very_aggressive. Each sets max_position_pct, max_sector_pct, max_country_pct, max_loss_per_position_pct, max_portfolio_risk_per_trade_pct, max_total_portfolio_risk_pct, min_rr, stop_type, drawdown_defensive_pct. Phase 1 computes the exposures and limit breaches only.
+- **"Since start" = since the user first started using the app** (user decision). The start date is the date of the portfolio's **first confirmed import or manual add**, stored as `Portfolio.tracking_started_at`. The baseline is the value on that day, *not* the broker's historical cost basis. Earlier gains are not counted. The combined view starts at the user's earliest `tracking_started_at`. The API returns `since_start_date`, and the UI label reads "Since you started using the app (dd/mm/yyyy)". Cost-basis P&L per holding, from the broker's avg cost, is still shown separately on each holding.
 - **TWR**: daily-chained, with flows treated as happening at the start of the day. Weekly, monthly and since-first-import figures come from `PortfolioSnapshot` and inferred `Transaction`s.
 - **Screenshot pipeline**:
   1. upload (requires consent)
@@ -93,7 +94,7 @@ backend/tests/   # fixtures only; mark live tests with @pytest.mark.live (skippe
 | GET | /me/export · DELETE /me | data export (JSON) / account deletion |
 | GET/POST | /portfolios | list / create {name, base_currency} |
 | GET/PATCH/DELETE | /portfolios/{id} | PATCH can include risk_filter |
-| GET | /portfolios/{id}/summary | {value:{ils,usd}, day_pnl:{ils,usd,pct}, week_pnl, month_pnl, since_start_pnl, weekly_bars:[{week_start, pnl_ils, pct}], monthly_bars:[{month, pnl_ils, pct}], since_start_series:[{date, pct, sp500_pct, ta125_pct}], as_of, markets:{US:{open}, TASE:{open}, CRYPTO:{open:true}}} |
+| GET | /portfolios/{id}/summary | {value:{ils,usd}, day_pnl:{ils,usd,pct}, week_pnl, month_pnl, since_start_pnl, since_start_date, weekly_bars:[{week_start, pnl_ils, pct}], monthly_bars:[{month, pnl_ils, pct}], since_start_series:[{date, pct, sp500_pct, ta125_pct}], as_of, markets:{US:{open}, TASE:{open}, CRYPTO:{open:true}}} |
 | GET | /portfolios/combined/summary | same shape, across all of the user's portfolios |
 | GET | /portfolios/{id}/holdings | [{id, symbol, name_en, name_he, asset_type, market, quantity, price, currency, day_change_pct, value_ils, pnl:{ils,usd,pct}, weight_pct, horizon, stop_tp_status: "missing"|"needs_horizon", score_card:{total, technical, patterns, confidence}}] |
 | POST/PATCH/DELETE | /portfolios/{id}/holdings[/{hid}] | manual add/edit (including horizon) |
