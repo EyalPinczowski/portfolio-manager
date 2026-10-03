@@ -13,8 +13,10 @@ import math
 from collections.abc import Callable, Coroutine
 from typing import Any
 
-from fastapi import Request, Response
+from fastapi import HTTPException, Request, Response, status
 from fastapi.routing import APIRoute
+
+from app.middleware import BodyTooLargeError
 
 
 class _NonFiniteError(json.JSONDecodeError):
@@ -37,6 +39,16 @@ def strict_loads(data: str | bytes) -> Any:
 
 
 class StrictJsonRequest(Request):
+    async def body(self) -> bytes:
+        # The size-limit middleware aborts a streamed body that grows past the limit by raising from
+        # `receive`. FastAPI would turn that into a generic 400, so answer 413 here.
+        try:
+            return await super().body()
+        except BodyTooLargeError:
+            raise HTTPException(
+                status.HTTP_413_CONTENT_TOO_LARGE, "Request body is too large"
+            ) from None
+
     async def json(self) -> Any:
         if not hasattr(self, "_json"):
             self._json = strict_loads(await self.body())

@@ -9,6 +9,7 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from app.config import Settings, get_settings
+from app.model_probe import active_model
 from app.providers.base import OcrResult, OcrRow, OcrUnavailableError
 
 log = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ class GeminiProvider:
                 PROMPT,
             ]
             response: Any = client.models.generate_content(
-                model=self.settings.gemini_model,
+                model=active_model("gemini", self.settings),
                 contents=contents,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",

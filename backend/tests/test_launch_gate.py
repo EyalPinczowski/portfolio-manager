@@ -25,6 +25,23 @@ from tests.verdict_contract import find_violations, verdict_token
 # `require_launch_gate`. Phase 2 adds entries here (e.g. "CIOVerdict.action"); keep it empty until then.
 VERDICT_ALLOWLIST: dict[str, str] = {}
 
+# `dict[str, Any]` fields and untyped responses that are still allowed, each with the reason. The
+# typed `Explanation` (Phase 2.0-C) removes the two `explanation` entries; the rest are data
+# structures that are not verdicts. A stale entry fails `test_the_allowlists_have_no_stale_entries`.
+UNTYPED_ALLOWLIST: dict[str, str] = {
+    "ValidationError.input": "FastAPI's own 422 schema (our handler never echoes the input)",
+    "ValidationError.ctx": "FastAPI's own 422 schema",
+    "POST /api/me/export": "account export: a JSON dump of the user's own data",
+    "XrayOut.concentration": "x-ray breakdown rows; typed in Phase 2",
+    "XrayOut.home_bias": "x-ray numbers; typed in Phase 2",
+    "ScoreCardDetail.explanation": "replaced by the typed Explanation in Phase 2.0-C",
+    "SignalBreakdownOut.explanation": "replaced by the typed Explanation in Phase 2.0-C",
+}
+# Verdict-looking names that are not verdicts.
+BENIGN: dict[str, str] = {
+    "ProposedChange.type": "the user's own recorded change in quantity (a trade they made), not advice",
+}
+
 S = Settings(_env_file=None)
 GOOD_BACKTEST = BacktestRecord(weights_fingerprint(S.signal_weights), True, datetime(2026, 10, 1))
 GOOD_PAPER = PaperMetrics(
@@ -144,8 +161,18 @@ def test_the_gated_dependency_blocks_routes_while_closed() -> None:
 
 # ---------------------------------------------------------------- the contract test
 def test_no_response_model_has_a_verdict_field() -> None:
-    violations = find_violations(app, VERDICT_ALLOWLIST)
+    used: set[str] = set()
+    violations = find_violations(app, VERDICT_ALLOWLIST, UNTYPED_ALLOWLIST, used, BENIGN)
     assert violations == [], "\n".join(str(v) for v in violations)
+
+
+def test_the_allowlists_have_no_stale_entries() -> None:
+    used: set[str] = set()
+    find_violations(app, VERDICT_ALLOWLIST, UNTYPED_ALLOWLIST, used, BENIGN)
+    stale = (set(UNTYPED_ALLOWLIST) | set(BENIGN)) - used
+    assert not stale, (
+        f"remove these allowlist entries, they match nothing any more: {sorted(stale)}"
+    )
 
 
 def test_the_real_app_is_checked_over_a_meaningful_number_of_models() -> None:

@@ -12,6 +12,7 @@ from sqlmodel import Session, col, select
 from app.api.schemas import LoginIn, MeOut, PasswordBody, SessionOut, SignupIn
 from app.auth import account
 from app.auth.deps import AuthContext, AuthDep, DbDep, SettingsDep
+from app.auth.device import is_known_device, remember_device
 from app.auth.passwords import burn_verify, hash_password, needs_rehash, verify_password
 from app.auth.ratelimit import (
     client_ip,
@@ -21,7 +22,9 @@ from app.auth.ratelimit import (
     too_many,
 )
 from app.auth.sessions import clear_session_cookie, create_session, set_session_cookie
-from app.config import Settings
+from app.auth.turnstile import TurnstileDep
+from app.config import Settings, turnstile_state
+from app.errors import ApiError, ChallengeRequiredOut
 from app.models import AuthSession, Invite, User
 from app.strictjson import StrictJsonRoute
 from app.timeutil import as_utc, utcnow
@@ -102,40 +105,76 @@ def signup(
     return _me(user, session)
 
 
-@router.post("/auth/login", response_model=MeOut)
+@router.post(
+    "/auth/login",
+    response_model=MeOut,
+    responses={
+        403: {
+            "model": ChallengeRequiredOut,
+            "description": "A Cloudflare Turnstile token is required (`code: turnstile_required`).",
+        }
+    },
+)
 def login(
-    body: LoginIn, request: Request, response: Response, db: DbDep, settings: SettingsDep
+    body: LoginIn,
+    request: Request,
+    response: Response,
+    db: DbDep,
+    settings: SettingsDep,
+    turnstile: TurnstileDep,
 ) -> MeOut:
     email = body.email.strip().lower()
     ip = client_ip(request, settings)
     window = float(settings.login_rate_limit_window_seconds)
     base = settings.login_backoff_base_seconds
     free = settings.login_rate_limit_attempts
-    keys = ((f"ip:{ip}", free * settings.login_rate_limit_ip_multiplier), (f"email:{email}", free))
-    # The limiter runs before any password hashing (hashing is the expensive part).
+    user = db.exec(select(User).where(User.email == email)).first()
+    pair_key = f"pair:{email}|{ip}"
+    email_key = f"email:{email}"
+    # Per-IP and per-(email, IP) backoff always apply. The email-only key (all IPs together) has a
+    # much higher threshold, and a device that already logged in as this user is exempt from it, so a
+    # stranger cannot keep the owner out. The limiter runs before any password hashing.
+    keys = [
+        (f"ip:{ip}", free * settings.login_rate_limit_ip_multiplier),
+        (pair_key, free),
+    ]
+    known = user is not None and user.id is not None and is_known_device(request, settings, user.id)
+    if not known:
+        keys.append((email_key, free * settings.login_rate_limit_email_multiplier))
     for k, k_free in keys:
         wait = login_limiter.retry_after(k, k_free, base, window)
         if wait:
             raise too_many(wait, "Too many login attempts. Try again later.")
-    user = db.exec(select(User).where(User.email == email)).first()
+    if turnstile_state(settings) == "on" and (
+        login_limiter.failures(pair_key, window) >= settings.turnstile_after_failures
+    ):
+        token = (body.turnstile_token or "").strip()
+        if not token or not turnstile.verify(token, ip):
+            raise ApiError(
+                status.HTTP_403_FORBIDDEN,
+                "turnstile_required",
+                "Please complete the verification and try again.",
+                extra={"site_key": settings.turnstile_site_key},
+            )
     if user is None:
         burn_verify(body.password)
         ok = False
     else:
         ok = verify_password(user.password_hash, body.password)
-    if not ok or user is None:
-        for k, _ in keys:
+    if not ok or user is None or user.id is None:
+        for k in (f"ip:{ip}", pair_key, email_key):
             login_limiter.record_failure(k, window)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Incorrect email or password")
-    login_limiter.reset(
-        keys[1][0]
-    )  # only the email key: a valid login must not clear the IP's count
+    # A valid login clears this pair and the email key, but never the IP's count.
+    login_limiter.reset(pair_key)
+    login_limiter.reset(email_key)
     if needs_rehash(user.password_hash):
         user.password_hash = hash_password(body.password)
         db.add(user)
         db.commit()
     session, cookie = create_session(db, user, settings)
     set_session_cookie(response, cookie, settings)
+    remember_device(request, response, settings, user.id)
     return _me(user, session)
 
 

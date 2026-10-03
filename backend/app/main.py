@@ -12,10 +12,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import auth, imports, misc, portfolios
-from app.config import get_settings, validate_production
+from app.config import get_settings, validate_production, validate_proxy
 from app.db import get_engine, new_session, prepare_database
+from app.errors import ApiError, api_error_handler
+from app.health import HealthOut, HealthProbe, scheduler_state
 from app.logging_setup import configure_logging
 from app.middleware import BodySizeLimitMiddleware, SecurityHeadersMiddleware
+from app.model_probe import start_probe_in_background
 from app.securities import seed_securities
 from app.strictjson import StrictJsonRoute
 
@@ -23,12 +26,15 @@ from app.strictjson import StrictJsonRoute
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
+    validate_proxy(settings)  # a trusted client-IP header needs the shared secret (any env)
     validate_production(settings)  # refuses to start with unsafe production settings
     prepare_database(
         get_engine()
     )  # migrates (dev) or checks the schema (production); no create_all
     with new_session() as db:
         seed_securities(db)
+    if settings.model_probe_enabled:  # in the background: a slow provider never delays startup
+        start_probe_in_background(settings)
     runner = None
     if settings.scheduler_in_process:  # lazy: the scheduler pulls in the market-data stack
         from app.scheduler.inprocess import start_in_process_scheduler
@@ -62,6 +68,8 @@ def create_app() -> FastAPI:
         redoc_url=None,
         lifespan=lifespan,
     )
+    app.state.health_probe = HealthProbe()
+    app.add_exception_handler(ApiError, api_error_handler)  # type: ignore[arg-type]
     app.add_exception_handler(RequestValidationError, _validation_error)  # type: ignore[arg-type]
     app.add_middleware(BodySizeLimitMiddleware, settings_factory=get_settings)
     app.add_middleware(SecurityHeadersMiddleware, settings_factory=get_settings)
@@ -77,9 +85,19 @@ def create_app() -> FastAPI:
     for module in (auth, portfolios, imports, misc):
         api.include_router(module.router)
 
-    @api.get("/health", tags=["meta"])
-    def health() -> dict[str, str]:
-        return {"status": "ok"}
+    @api.get("/health", tags=["meta"], response_model=HealthOut)
+    def health(request: Request) -> HealthOut:
+        state, leader = scheduler_state(
+            getattr(request.app.state, "scheduler", None), get_settings().scheduler_in_process
+        )
+        quotes_at, snapshot_at = request.app.state.health_probe.read()
+        return HealthOut(
+            status="ok",
+            scheduler=state,
+            leader=leader,
+            last_quotes_at=quotes_at,
+            last_snapshot_at=snapshot_at,
+        )
 
     app.include_router(api)
     return app

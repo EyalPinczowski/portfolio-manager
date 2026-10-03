@@ -44,6 +44,11 @@ def _purge_drafts() -> None:
         log.info("purged %d expired import drafts", jobs.run_draft_purge(db))
 
 
+def _purge_sessions() -> None:
+    with new_session() as db:
+        log.info("purged %d expired sessions", jobs.run_session_purge(db))
+
+
 def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> None:
     """Add the recurring jobs (shared by `python -m app.scheduler` and the in-process scheduler)."""
     s = settings or get_settings()
@@ -81,9 +86,17 @@ def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> Non
         coalesce=True,
         misfire_grace_time=s.scheduler_misfire_grace_seconds,
     )
+    sched.add_job(
+        _purge_sessions,
+        IntervalTrigger(minutes=s.session_purge_interval_minutes),
+        id="purge_sessions",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=s.scheduler_misfire_grace_seconds,
+    )
 
 
-JOB_IDS = ("quotes", "daily_snapshot", "scores", "purge_drafts")
+JOB_IDS = ("quotes", "daily_snapshot", "scores", "purge_drafts", "purge_sessions")
 
 
 def build_scheduler() -> BlockingScheduler:

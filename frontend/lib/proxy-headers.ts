@@ -10,7 +10,14 @@ const HOP_BY_HOP = new Set([
 ]);
 
 /** Headers a client must not be able to use to impersonate the proxy or choose its own client IP. */
-const IP_HEADERS = ["cf-connecting-ip", "x-forwarded-for", "x-real-ip", "true-client-ip", "forwarded", "x-forwarded-host", "x-forwarded-proto"];
+const IP_HEADERS = [
+  "cf-connecting-ip", "x-forwarded-for", "x-real-ip", "true-client-ip", "forwarded", "x-forwarded-host", "x-forwarded-proto",
+  "x-client-ip", "x-proxy-auth",
+];
+
+/** Header names the API reads (backend settings TRUSTED_PROXY_HEADER=X-Client-IP, PROXY_AUTH_HEADER=X-Proxy-Auth). */
+export const CLIENT_IP_HEADER = "X-Client-IP";
+export const PROXY_AUTH_HEADER = "X-Proxy-Auth";
 
 /** Cloudflare adds these; the API does not need them. */
 const CF_INTERNAL = /^cf-(?!connecting-ip$)|^x-forwarded-|^cdn-loop$/i;
@@ -32,15 +39,20 @@ function copyWithoutHopByHop(src: Headers): Headers {
 
 /**
  * Request headers for the upstream API: method/body are handled by the caller; this keeps cookies, content type,
- * CSRF header etc., drops hop-by-hop headers, and sets CF-Connecting-IP from the incoming CF-Connecting-IP
- * (the real client IP as Cloudflare saw it). Client-supplied forwarding headers are removed so they cannot be spoofed.
+ * CSRF header etc. and drops hop-by-hop headers. Every client-supplied IP or proxy-auth header is removed first
+ * (so none can be spoofed), then:
+ *  - `X-Client-IP` = the incoming `CF-Connecting-IP` (the real visitor as Cloudflare saw it). Cloudflare itself
+ *    overwrites `CF-Connecting-IP` on a Worker -> origin subrequest, so a dedicated header is needed.
+ *  - `X-Proxy-Auth` = the shared secret, only when `sharedSecret` is set. Without it the API refuses to trust
+ *    `X-Client-IP` (the safe state: every visitor then looks like the proxy to the rate limiter).
  */
-export function buildUpstreamHeaders(incoming: Headers): Headers {
+export function buildUpstreamHeaders(incoming: Headers, sharedSecret?: string): Headers {
   const clientIp = incoming.get("cf-connecting-ip");
   const out = copyWithoutHopByHop(incoming);
   for (const h of [...out.keys()]) if (CF_INTERNAL.test(h)) out.delete(h);
   for (const h of IP_HEADERS) out.delete(h);
-  if (clientIp) out.set("CF-Connecting-IP", clientIp);
+  if (clientIp) out.set(CLIENT_IP_HEADER, clientIp);
+  if (sharedSecret) out.set(PROXY_AUTH_HEADER, sharedSecret);
   out.delete("accept-encoding"); // let the runtime negotiate; avoids double-compressed bodies
   return out;
 }

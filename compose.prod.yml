@@ -1,0 +1,98 @@
+# Production-style stack for Option B (a home device, docs/deployment.md):
+#
+#   SECRET_KEY=$(python3 -c 'import secrets;print(secrets.token_urlsafe(48))') docker compose -f compose.prod.yml up -d --build
+#
+#   migrate    one-shot release step: `python -m app.cli migrate`, before anything else starts
+#   api        FastAPI, ENV=production (docs and the schema endpoint are off), single worker. Not published on
+#              any host port: only the web container can reach it, so the client-IP header Caddy sets cannot be
+#              forged from the LAN.
+#   scheduler  the same image running `python -m app.scheduler` (quotes, snapshots, scores, purges)
+#   web        Caddy: the static frontend plus a same-origin proxy for /api/*. Published on 127.0.0.1 only by
+#              default; put Tailscale Serve, a Cloudflare Tunnel or another HTTPS reverse proxy in front of it
+#              (the session cookie is Secure, so the browser must use https).
+#
+# No development defaults: SECRET_KEY has none (compose refuses to start without it), cookies are Secure,
+# migrations are a separate step, and nothing here reads a ".env" with dev values. Optional keys default to empty.
+# Back up the `pm-data` volume (it holds portfolio.db); see docs/security.md.
+
+x-backend-env: &backend-env
+  ENV: production
+  COOKIE_SECURE: "true"
+  SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY to a random string of 32+ characters}
+  DATABASE_URL: ${DATABASE_URL:-sqlite:////data/portfolio.db}
+  AUTO_MIGRATE: "false" # the migrate service does it; the API only checks the schema
+  # Caddy (the only thing that reaches the API) overwrites CF-Connecting-IP with the real peer address.
+  # It is trusted ONLY because the API port is not published. TRUSTED_PROXY_HEADER is deliberately unset:
+  # that mode needs a shared secret that the Pages Function sends (docs/deployment.md, Option A).
+  FALLBACK_IP_HEADER: CF-Connecting-IP
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GROQ_API_KEY: ${GROQ_API_KEY:-}
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
+  TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+
+x-hardening: &hardening
+  restart: unless-stopped
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  migrate:
+    build: ./backend
+    command: ["python", "-m", "app.cli", "migrate"]
+    environment: *backend-env
+    volumes:
+      - pm-data:/data
+    restart: "no"
+
+  api:
+    <<: *hardening
+    build: ./backend
+    environment:
+      <<: *backend-env
+      SCHEDULER_IN_PROCESS: "false" # the scheduler service runs the jobs
+    volumes:
+      - pm-data:/data
+    expose:
+      - "8000" # reachable inside the compose network only: no `ports:` on purpose
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  scheduler:
+    <<: *hardening
+    build: ./backend
+    command: ["python", "-m", "app.scheduler"]
+    environment: *backend-env
+    volumes:
+      - pm-data:/data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true # no HTTP port; the image's API healthcheck does not apply
+
+  web:
+    <<: *hardening
+    build: ./frontend
+    environment:
+      API_ORIGIN: http://api:8000
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pm-data:

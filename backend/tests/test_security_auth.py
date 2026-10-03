@@ -30,6 +30,20 @@ def raw_signup(c: TestClient, code: str, email: str, **over: Any) -> Any:
     return c.post("/api/auth/signup", json={"invite_code": code, "email": email, **GOOD, **over})
 
 
+SECRET = "proxy-secret-0123456789"
+
+
+def via_proxy(ip: str) -> dict[str, str]:
+    """Headers the Pages Function sends: the visitor's IP plus the shared secret."""
+    return {"X-Client-IP": ip, "X-Proxy-Auth": SECRET}
+
+
+def trust_proxy(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TRUSTED_PROXY_HEADER", "X-Client-IP")
+    monkeypatch.setenv("PROXY_SHARED_SECRET", SECRET)
+    get_settings.cache_clear()
+
+
 def fake_request(peer: str, headers: dict[str, str]) -> Request:
     scope = {
         "type": "http",
@@ -139,42 +153,45 @@ def test_backoff_is_capped_at_the_window() -> None:
     assert lim.retry_after("k", 3, 10.0, 300.0) <= 301
 
 
-def test_per_ip_and_per_email_are_independent(
+def test_backoff_is_per_email_and_ip_pair(
     signup: SignupFn, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("TRUSTED_PROXY_HEADER", "CF-Connecting-IP")
-    get_settings.cache_clear()
+    trust_proxy(monkeypatch)
     signup("victim@mail.com").post("/api/auth/logout")
     attacker = TestClient(create_app())
-    for _ in range(3):  # 3 free failures per email: the victim's email key is now in backoff
+    for _ in range(3):  # 3 free failures per (email, IP): this pair is now in backoff
         attacker.post(
             "/api/auth/login",
             json={"email": "victim@mail.com", "password": "x"},
-            headers={"CF-Connecting-IP": "198.51.100.1"},
+            headers=via_proxy("198.51.100.1"),
         )
-    r = attacker.post(
+    blocked = attacker.post(
         "/api/auth/login",
         json={"email": "victim@mail.com", "password": PW},
-        headers={"CF-Connecting-IP": "198.51.100.2"},
+        headers=via_proxy("198.51.100.1"),
     )
-    assert (
-        r.status_code == 429
-    )  # per-email: another IP is held back too (brute force on one account)
+    assert blocked.status_code == 429
+    # the same email from another IP (the owner, or another attacker IP) is NOT held back
+    owner = TestClient(create_app()).post(
+        "/api/auth/login",
+        json={"email": "victim@mail.com", "password": PW},
+        headers=via_proxy("198.51.100.2"),
+    )
+    assert owner.status_code == 200
     other = attacker.post(
         "/api/auth/login",
         json={"email": "other@mail.com", "password": "x"},
-        headers={"CF-Connecting-IP": "198.51.100.2"},
+        headers=via_proxy("198.51.100.1"),
     )
-    assert other.status_code == 401  # but a different email from a different IP is unaffected
+    assert other.status_code == 401  # a different email from the same IP is still allowed
 
 
 def test_one_ip_is_blocked_after_many_distinct_emails(
     env: None, providers: object, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("TRUSTED_PROXY_HEADER", "CF-Connecting-IP")
-    get_settings.cache_clear()
+    trust_proxy(monkeypatch)
     c = TestClient(create_app())
-    hdr = {"CF-Connecting-IP": "198.51.100.7"}
+    hdr = via_proxy("198.51.100.7")
     codes = [
         c.post(
             "/api/auth/login", json={"email": f"u{i}@mail.com", "password": "x"}, headers=hdr
@@ -185,30 +202,88 @@ def test_one_ip_is_blocked_after_many_distinct_emails(
     clean = c.post(
         "/api/auth/login",
         json={"email": "z@mail.com", "password": "x"},
-        headers={"CF-Connecting-IP": "198.51.100.8"},
+        headers=via_proxy("198.51.100.8"),
     )
     assert clean.status_code == 401  # other IPs are not affected: no global lock-out
 
 
 # ---------------------------------------------------------------- proxy trust
 def test_proxy_header_is_ignored_by_default() -> None:
-    req = fake_request("10.0.0.5", {"CF-Connecting-IP": "203.0.113.50"})
+    req = fake_request("10.0.0.5", via_proxy("203.0.113.50"))
     assert client_ip(req, Settings()) == "10.0.0.5"
 
 
-def test_proxy_header_is_trusted_only_when_configured() -> None:
-    req = fake_request("10.0.0.5", {"CF-Connecting-IP": "203.0.113.50"})
-    s = Settings(trusted_proxy_header="CF-Connecting-IP")
-    assert client_ip(req, s) == "203.0.113.50"
-    assert client_ip(fake_request("10.0.0.5", {"CF-Connecting-IP": "not-an-ip"}), s) == "10.0.0.5"
+def test_proxy_header_is_trusted_only_with_the_shared_secret() -> None:
+    s = Settings(trusted_proxy_header="X-Client-IP", proxy_shared_secret=SECRET)
+    assert client_ip(fake_request("10.0.0.5", via_proxy("203.0.113.50")), s) == "203.0.113.50"
+    assert client_ip(fake_request("10.0.0.5", via_proxy("not-an-ip")), s) == "10.0.0.5"
     assert client_ip(fake_request("10.0.0.5", {}), s) == "10.0.0.5"
 
 
+def test_spoofed_client_ip_without_the_secret_is_ignored() -> None:
+    s = Settings(trusted_proxy_header="X-Client-IP", proxy_shared_secret=SECRET)
+    spoof = {"X-Client-IP": "6.6.6.6"}
+    assert client_ip(fake_request("10.0.0.5", spoof), s) == "10.0.0.5"
+    wrong = {**spoof, "X-Proxy-Auth": "wrong-secret-0123456789"}
+    assert client_ip(fake_request("10.0.0.5", wrong), s) == "10.0.0.5"
+    empty = {**spoof, "X-Proxy-Auth": ""}
+    assert client_ip(fake_request("10.0.0.5", empty), s) == "10.0.0.5"
+
+
+def test_untrusted_request_falls_back_to_the_host_header_then_the_peer() -> None:
+    s = Settings(
+        trusted_proxy_header="X-Client-IP",
+        proxy_shared_secret=SECRET,
+        fallback_ip_header="CF-Connecting-IP",
+    )
+    req = fake_request("10.0.0.5", {"X-Client-IP": "6.6.6.6", "CF-Connecting-IP": "2a06:98c0::103"})
+    assert client_ip(req, s) == "2a06:98c0::103"  # Render's own header, never the spoofed one
+    assert client_ip(fake_request("10.0.0.5", {"X-Client-IP": "6.6.6.6"}), s) == "10.0.0.5"
+
+
+def test_secret_comparison_is_constant_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    import app.auth.ratelimit as rl
+
+    calls: list[tuple[bytes, bytes]] = []
+    real = rl.hmac.compare_digest
+
+    def spy(a: bytes, b: bytes) -> bool:
+        calls.append((a, b))
+        return real(a, b)
+
+    monkeypatch.setattr(rl.hmac, "compare_digest", spy)
+    s = Settings(trusted_proxy_header="X-Client-IP", proxy_shared_secret=SECRET)
+    client_ip(fake_request("10.0.0.5", via_proxy("203.0.113.50")), s)
+    assert calls == [(SECRET.encode(), SECRET.encode())]
+
+
 def test_proxy_header_is_trusted_only_from_the_configured_proxy_networks() -> None:
-    s = Settings(trusted_proxy_header="CF-Connecting-IP", trusted_proxy_cidrs=["10.0.0.0/8"])
-    spoof = {"CF-Connecting-IP": "203.0.113.50"}
+    s = Settings(
+        trusted_proxy_header="X-Client-IP",
+        proxy_shared_secret=SECRET,
+        trusted_proxy_cidrs=["10.0.0.0/8"],
+    )
+    spoof = via_proxy("203.0.113.50")
     assert client_ip(fake_request("10.1.2.3", spoof), s) == "203.0.113.50"
     assert client_ip(fake_request("192.0.2.9", spoof), s) == "192.0.2.9"  # not from the proxy
+
+
+def test_app_refuses_to_start_when_the_proxy_header_has_no_secret(
+    env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("TRUSTED_PROXY_HEADER", "X-Client-IP")
+    monkeypatch.delenv("PROXY_SHARED_SECRET", raising=False)
+    get_settings.cache_clear()
+    with pytest.raises(RuntimeError, match="PROXY_SHARED_SECRET"), TestClient(create_app()):
+        pass
+    monkeypatch.setenv("PROXY_SHARED_SECRET", "short")
+    get_settings.cache_clear()
+    with pytest.raises(RuntimeError, match="at least"), TestClient(create_app()):
+        pass
+    monkeypatch.setenv("PROXY_SHARED_SECRET", SECRET)
+    get_settings.cache_clear()
+    with TestClient(create_app()) as ok:
+        assert ok.get("/api/health").status_code == 200
 
 
 # ---------------------------------------------------------------- signup / upload limits, LRU

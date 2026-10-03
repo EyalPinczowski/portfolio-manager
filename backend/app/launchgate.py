@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Annotated, Protocol
+from dataclasses import InitVar, dataclass, field
+from datetime import UTC, datetime
+from typing import Annotated, Literal, Protocol
 
 from fastapi import Depends, HTTPException, status
 
@@ -122,6 +122,67 @@ class LaunchGate:
                 elif edge <= 0:
                     reasons.append(f"Paper trading does not beat {bench} ({edge:+.1f}%).")
         return GateStatus(open=not reasons, reasons=reasons)
+
+    def release(
+        self,
+        symbol: str,
+        action: VerdictAction,
+        score: float,
+        confidence: float,
+        reasons: list[str],
+    ) -> Verdict:
+        """The only way to get a `Verdict`. Raises `LaunchGateClosedError` while the gate is closed."""
+        status_ = self.evaluate()
+        if not status_.open:
+            raise LaunchGateClosedError(status_.reasons)
+        if not reasons or not all(r.strip() for r in reasons):
+            raise ValueError("a verdict needs at least one human-readable reason")
+        if not -100.0 <= score <= 100.0 or not 0.0 <= confidence <= 1.0:
+            raise ValueError("score must be in [-100, 100] and confidence in [0, 1]")
+        return Verdict(
+            symbol=symbol,
+            action=action,
+            score=score,
+            confidence=confidence,
+            reasons=tuple(reasons),
+            released_at=datetime.now(UTC),
+            weights_hash=weights_fingerprint(self.settings.signal_weights),
+            _mint=_MINT,
+        )
+
+
+class LaunchGateClosedError(Exception):
+    """`LaunchGate.release()` was called while the gate is closed."""
+
+    def __init__(self, reasons: list[str]) -> None:
+        super().__init__("launch gate is closed: " + "; ".join(reasons))
+        self.reasons = reasons
+
+
+_MINT = object()  # only `LaunchGate.release()` knows this key
+VerdictAction = Literal["buy", "sell", "hold"]
+
+
+@dataclass(frozen=True)
+class Verdict:
+    """A live buy/sell/hold verdict. It cannot be built directly: `Verdict(...)` raises unless the
+    private mint key is passed, and only `LaunchGate.release()` has it, after checking that the
+    gate is open. Every place that produces a verdict (API, Telegram, notifications, weekly review)
+    therefore has to go through the gate. `tests/test_verdict_type.py` also scans the source so that
+    `Verdict(` is constructed nowhere else."""
+
+    symbol: str
+    action: VerdictAction
+    score: float  # [-100, 100]
+    confidence: float  # [0, 1]
+    reasons: tuple[str, ...]  # never empty: no verdict without a human-readable reason
+    released_at: datetime
+    weights_hash: str  # the weights config the gate was opened for
+    _mint: InitVar[object] = None
+
+    def __post_init__(self, _mint: object) -> None:
+        if _mint is not _MINT:
+            raise TypeError("Verdict can only be created through LaunchGate.release()")
 
 
 def get_launch_gate() -> LaunchGate:

@@ -12,7 +12,7 @@ import tempfile
 import textwrap
 import time
 import zlib
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -502,3 +502,17 @@ def test_run_draft_purge_job(signup: SignupFn) -> None:
         db.add(row)
         db.commit()
         assert jobs.run_draft_purge(db) == 1
+
+
+def test_streamed_json_body_over_the_limit_is_413_not_400(client: TestClient) -> None:
+    """Re-review: a chunked JSON body without Content-Length that grew past the limit got a 400."""
+
+    def chunks() -> Iterator[bytes]:
+        for _ in range(40):  # 40 x 50 KB = 2 MB against the 1 MiB limit
+            yield b"a" * 50_000
+
+    r = client.post(
+        "/api/auth/login", content=chunks(), headers={"content-type": "application/json"}
+    )
+    assert r.status_code == 413 and r.json() == {"detail": "Request body is too large"}
+    assert r.headers["x-content-type-options"] == "nosniff"  # still a normal API error response

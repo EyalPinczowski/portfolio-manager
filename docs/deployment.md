@@ -51,7 +51,7 @@ Risks:
 
 ## Option B: home device
 - A spare PC or laptop, or a Raspberry Pi 5 (~$60 one-time), always on and connected.
-- Run the **same Docker Compose** as development: SQLite, Tesseract, separate scheduler. No code changes.
+- Run **`compose.prod.yml`** (no dev defaults, secure cookies, a separate `migrate` step, read-only containers, web bound to 127.0.0.1) with SQLite, Tesseract and a separate scheduler. No code changes. Do not use the dev `docker-compose.yml` for a device that other people can reach.
 - Reach it from the phone and from family through **Tailscale** (free, no card, private) or Cloudflare Tunnel (free; *verify whether a card is needed for Zero Trust*).
 - Risks: the app stops updating when the device or the internet is down, and each family member installs Tailscale.
 
@@ -100,7 +100,9 @@ Render's free plan probably has no shell, so do this locally against Supabase *(
 | `COOKIE_SECURE` | must be true in production | `true` | no |
 | `SECRET_KEY` | signs sessions, 32+ characters (the app refuses to start otherwise) | output of `secrets.token_urlsafe(48)` | **yes** |
 | `DATABASE_URL` | Supabase session pooler | see step 1 | **yes** |
-| `TRUSTED_PROXY_HEADER` | the rate limiter trusts the proxy's client-IP header | `CF-Connecting-IP` | no |
+| `TRUSTED_PROXY_HEADER` | which header carries the client IP from the Pages Function (**not** `CF-Connecting-IP`: Cloudflare overwrites it for Worker-to-Render requests, so every user would share one IP) | `X-Client-IP` | no |
+| `PROXY_SHARED_SECRET` | the same random 16+ character value on Render **and** in the Pages project; the API trusts `X-Client-IP` only when `X-Proxy-Auth` matches it, and refuses to start if the header is trusted without it | `python -c "import secrets;print(secrets.token_urlsafe(32))"` | **yes** |
+| `TURNSTILE_ENABLED`, `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | free Cloudflare human check after 3 failed logins (create a Turnstile widget in the Cloudflare dashboard, no card) | `true`, site key, secret key | secret key **yes** |
 | `TELEGRAM_BOT_TOKEN` | alerts (optional) | | **yes** |
 | `SCHEDULER_IN_PROCESS`, `MALLOC_ARENA_MAX`, `PORT` | already set by the image / Render | | no |
 
@@ -113,7 +115,7 @@ Add an HTTP monitor on `https://<service>.onrender.com/api/health`, interval **5
 
 **5. Cloudflare Pages (website + same-origin proxy)**
 1. Create a Pages project from this repository: root directory `frontend`, build command `npm ci && npm run build`, output directory `out`.
-2. Environment variables: `API_ORIGIN` = the Render URL (used by `functions/api/[[path]].ts`). Leave `NEXT_PUBLIC_API_URL` empty so the browser calls the same origin.
+2. Environment variables: `API_ORIGIN` = the Render URL (used by `functions/api/[[path]].ts`), and `PROXY_SHARED_SECRET` (the same value as on Render). Leave `NEXT_PUBLIC_API_URL` empty so the browser calls the same origin.
 3. The Function forwards `/api/*` to Render and passes `CF-Connecting-IP`; the browser only ever talks to the Pages domain, so the login cookie is first-party.
 
 **6. First login**

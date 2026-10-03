@@ -57,11 +57,17 @@ class YFinanceProvider:
         self.settings = settings or get_settings()
         self._clock = clock
         self._sleep = sleep
-        self._currency: TTLCache[str] = TTLCache(self.settings.currency_cache_ttl_seconds)
-        self._history: TTLCache[tuple[pd.DataFrame, str]] = TTLCache(
-            self.settings.history_cache_ttl_seconds
+        small = self.settings.provider_small_cache_max_entries
+        self._currency: TTLCache[str] = TTLCache(
+            self.settings.currency_cache_ttl_seconds, max_entries=small
         )
-        self._failures: TTLCache[bool] = TTLCache(self.settings.history_failure_ttl_seconds)
+        self._history: TTLCache[tuple[pd.DataFrame, str]] = TTLCache(
+            self.settings.history_cache_ttl_seconds,
+            max_entries=self.settings.history_cache_max_entries,
+        )
+        self._failures: TTLCache[bool] = TTLCache(
+            self.settings.history_failure_ttl_seconds, max_entries=small
+        )
         self.currency_hint: CurrencyHint | None = None  # e.g. Security.currency from the DB
         # Persistence of Yahoo's own (raw) currency, e.g. `Security.yahoo_currency`. Never raises.
         self.stored_currency: StoredCurrency | None = None

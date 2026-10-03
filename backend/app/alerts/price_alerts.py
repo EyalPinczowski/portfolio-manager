@@ -10,6 +10,7 @@ from sqlmodel import Session, col, select
 from app.alerts.telegram import send_telegram
 from app.config import DISCLAIMER, Settings, get_settings
 from app.models import Notification, PriceAlert, PriceQuote, User
+from app.outbound import release_text
 from app.timeutil import utcnow
 
 Sender = Callable[[str | None, str], bool]
@@ -47,13 +48,13 @@ def check_price_alerts(
         note = Notification(
             user_id=alert.user_id,
             kind="price_alert",
-            title=f"Price alert: {alert.symbol}",
-            body=body,
+            title=release_text(f"Price alert: {alert.symbol}", settings=s),
+            body=release_text(body, settings=s),
         )
         db.add(note)
         created.append(note)
         user = db.get(User, alert.user_id)
         if user is not None:
-            send(user.telegram_chat_id, f"{note.title}\n{body}")
+            send(user.telegram_chat_id, release_text(f"{note.title}\n{body}", settings=s))
     db.commit()
     return created

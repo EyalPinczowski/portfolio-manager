@@ -22,12 +22,14 @@ describe("Pages Function header handling", () => {
       forwarded: "for=6.6.6.6",
     });
 
-  it("forwards cookies and request headers, sets CF-Connecting-IP, strips hop-by-hop headers", () => {
-    const h = buildUpstreamHeaders(incoming());
+  it("forwards cookies and request headers, sets X-Client-IP and X-Proxy-Auth, strips hop-by-hop headers", () => {
+    const h = buildUpstreamHeaders(incoming(), "s3cret-0123456789abc");
     expect(h.get("cookie")).toBe("session=abc; csrf=1");
     expect(h.get("content-type")).toBe("application/json");
     expect(h.get("x-csrf-token")).toBe("tok");
-    expect(h.get("cf-connecting-ip")).toBe("203.0.113.7");
+    expect(h.get("x-client-ip")).toBe("203.0.113.7");
+    expect(h.get("x-proxy-auth")).toBe("s3cret-0123456789abc");
+    expect(h.has("cf-connecting-ip")).toBe(false);
     for (const gone of ["host", "connection", "keep-alive", "transfer-encoding", "upgrade", "x-custom-hop"]) {
       expect(h.has(gone), gone).toBe(false);
     }
@@ -40,10 +42,30 @@ describe("Pages Function header handling", () => {
     }
   });
 
-  it("does not invent CF-Connecting-IP when the incoming request has none", () => {
-    const h = buildUpstreamHeaders(new Headers({ cookie: "a=b", "x-forwarded-for": "6.6.6.6" }));
-    expect(h.has("cf-connecting-ip")).toBe(false);
+  it("does not invent X-Client-IP when the incoming request has none", () => {
+    const h = buildUpstreamHeaders(new Headers({ cookie: "a=b", "x-forwarded-for": "6.6.6.6" }), "s3cret-0123456789abc");
+    expect(h.has("x-client-ip")).toBe(false);
     expect(h.has("x-forwarded-for")).toBe(false);
+  });
+
+  it("sends no secret when PROXY_SHARED_SECRET is unset (the API then ignores X-Client-IP)", () => {
+    for (const secret of [undefined, ""]) {
+      const h = buildUpstreamHeaders(incoming(), secret);
+      expect(h.has("x-proxy-auth")).toBe(false);
+      expect(h.get("x-client-ip")).toBe("203.0.113.7");
+    }
+  });
+
+  it("drops a client-supplied X-Client-IP / X-Proxy-Auth and never forwards them", () => {
+    const evil = incoming();
+    evil.set("x-client-ip", "6.6.6.6");
+    evil.set("x-proxy-auth", "guess");
+    const withSecret = buildUpstreamHeaders(evil, "real-secret-0123456789");
+    expect(withSecret.get("x-client-ip")).toBe("203.0.113.7");
+    expect(withSecret.get("x-proxy-auth")).toBe("real-secret-0123456789");
+    const noSecret = buildUpstreamHeaders(evil);
+    expect(noSecret.has("x-proxy-auth")).toBe(false);
+    expect(noSecret.get("x-client-ip")).toBe("203.0.113.7");
   });
 
   it("never caches the response, keeps every Set-Cookie, drops hop-by-hop headers", () => {

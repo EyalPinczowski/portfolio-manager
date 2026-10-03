@@ -11,6 +11,7 @@ Two shapes, both with bounded LRU storage so a flood of distinct keys cannot gro
 
 from __future__ import annotations
 
+import hmac
 import ipaddress
 import threading
 import time
@@ -80,6 +81,12 @@ class BackoffLimiter:
                 return 0
             wait = self._delay(st[0], free_attempts, base, window) - (self._clock() - st[1])
             return max(1, int(wait) + 1) if wait > 0 else 0
+
+    def failures(self, key: str, window: float) -> int:
+        """Failures currently remembered for the key."""
+        with self._lock:
+            st = self._live(key, window)
+            return st[0] if st else 0
 
     def record_failure(self, key: str, window: float) -> None:
         with self._lock:
@@ -163,25 +170,39 @@ def _valid_ip(value: str) -> str | None:
 
 
 def client_ip(request: Request, settings: Settings) -> str:
-    """The caller's IP. A proxy header (e.g. CF-Connecting-IP) is trusted only when
-    `trusted_proxy_header` is set and, if `trusted_proxy_cidrs` is set, the TCP peer is inside one
-    of those networks. Otherwise (the default) the header is ignored: it is client-controlled."""
+    """The caller's IP.
+
+    The proxy's client-IP header (`trusted_proxy_header`, e.g. `X-Client-IP`) is trusted only when
+    the request also carries the shared secret in `proxy_auth_header` (constant-time compare) and,
+    if `trusted_proxy_cidrs` is set, the TCP peer is inside one of those networks. Otherwise the
+    optional `fallback_ip_header` (the host's own, e.g. Render's CF-Connecting-IP) and finally the
+    peer address are used. A client-supplied `X-Client-IP` without the secret is ignored.
+    """
     peer = request.client.host if request.client else "unknown"
     header = settings.trusted_proxy_header
-    if not header:
-        return peer
-    if settings.trusted_proxy_cidrs:
-        try:
-            addr = ipaddress.ip_address(peer)
-        except ValueError:
-            return peer
-        if not any(
-            addr in ipaddress.ip_network(c, strict=False) for c in settings.trusted_proxy_cidrs
-        ):
-            return peer
-    raw = request.headers.get(header)
-    if raw:
-        parsed = _valid_ip(raw.split(",")[0])
+    secret = settings.proxy_shared_secret
+    if header and secret and _peer_allowed(peer, settings):
+        sent = request.headers.get(settings.proxy_auth_header, "")
+        if sent and hmac.compare_digest(sent.encode(), secret.encode()):
+            parsed = _first_ip(request.headers.get(header))
+            if parsed:
+                return parsed
+    if settings.fallback_ip_header:
+        parsed = _first_ip(request.headers.get(settings.fallback_ip_header))
         if parsed:
             return parsed
     return peer
+
+
+def _first_ip(raw: str | None) -> str | None:
+    return _valid_ip(raw.split(",")[0]) if raw else None
+
+
+def _peer_allowed(peer: str, settings: Settings) -> bool:
+    if not settings.trusted_proxy_cidrs:
+        return True
+    try:
+        addr = ipaddress.ip_address(peer)
+    except ValueError:
+        return False
+    return any(addr in ipaddress.ip_network(c, strict=False) for c in settings.trusted_proxy_cidrs)

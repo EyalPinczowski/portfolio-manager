@@ -5,10 +5,11 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from fastapi import Request, Response
 from itsdangerous import BadSignature, URLSafeTimedSerializer
+from sqlalchemy import delete
 from sqlmodel import Session, col, select
 
 from app.config import Settings
@@ -90,3 +91,10 @@ def csrf_ok(request: Request, session: AuthSession) -> bool:
         return True
     sent = request.headers.get(CSRF_HEADER, "")
     return hmac.compare_digest(sent.encode(), session.csrf_token.encode())
+
+
+def purge_expired_sessions(db: Session, now: datetime | None = None) -> int:
+    """Delete session rows whose `expires_at` has passed (they are already refused at login time)."""
+    result = db.execute(delete(AuthSession).where(col(AuthSession.expires_at) <= (now or utcnow())))
+    db.commit()
+    return int(result.rowcount)  # type: ignore[attr-defined]

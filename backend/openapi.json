@@ -75,6 +75,16 @@
               }
             }
           },
+          "403": {
+            "description": "A Cloudflare Turnstile token is required (`code: turnstile_required`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChallengeRequiredOut"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -1404,11 +1414,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Health Api Health Get"
+                  "$ref": "#/components/schemas/HealthOut"
                 }
               }
             }
@@ -1537,6 +1543,37 @@
         ],
         "title": "Breach"
       },
+      "ChallengeRequiredOut": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "code": {
+            "type": "string",
+            "const": "turnstile_required",
+            "title": "Code"
+          },
+          "site_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail",
+          "code"
+        ],
+        "title": "ChallengeRequiredOut",
+        "description": "403 body of `POST /auth/login` when a Cloudflare Turnstile token is needed."
+      },
       "ExposureItem": {
         "properties": {
           "name": {
@@ -1567,6 +1604,62 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HealthOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          },
+          "scheduler": {
+            "type": "string",
+            "enum": [
+              "leader",
+              "standby",
+              "unavailable",
+              "external"
+            ],
+            "title": "Scheduler"
+          },
+          "leader": {
+            "type": "boolean",
+            "title": "Leader"
+          },
+          "last_quotes_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Quotes At"
+          },
+          "last_snapshot_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Snapshot At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "scheduler",
+          "leader",
+          "last_quotes_at",
+          "last_snapshot_at"
+        ],
+        "title": "HealthOut"
       },
       "HeatmapItem": {
         "properties": {
@@ -2155,6 +2248,18 @@
             "type": "string",
             "maxLength": 1024,
             "title": "Password"
+          },
+          "turnstile_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turnstile Token"
           }
         },
         "additionalProperties": false,

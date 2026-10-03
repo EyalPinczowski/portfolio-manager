@@ -10,10 +10,19 @@ log = logging.getLogger(__name__)
 
 
 class TTLCache[T]:
-    def __init__(self, ttl_seconds: float, clock: Callable[[], float] = time.monotonic) -> None:
+    def __init__(
+        self,
+        ttl_seconds: float,
+        clock: Callable[[], float] = time.monotonic,
+        max_entries: int | None = None,
+    ) -> None:
         self.ttl = ttl_seconds
         self._clock = clock
+        self._max = max_entries  # None: unbounded. Otherwise the oldest entry is evicted.
         self._data: dict[str, tuple[float, T]] = {}
+
+    def __len__(self) -> int:
+        return len(self._data)
 
     def get(self, key: str) -> T | None:
         item = self._data.get(key)
@@ -30,7 +39,11 @@ class TTLCache[T]:
         return None if item is None else item[1]
 
     def set(self, key: str, value: T) -> None:
+        self._data.pop(key, None)  # re-inserting moves the key to the newest position
         self._data[key] = (self._clock(), value)
+        if self._max is not None:
+            while len(self._data) > self._max:
+                del self._data[next(iter(self._data))]
 
     def clear(self) -> None:
         self._data.clear()

@@ -14,7 +14,7 @@ x-backend-env: &backend-env
   COOKIE_SECURE: "false"
   SECRET_KEY: ${SECRET_KEY:-dev-only-secret-change-me-0123456789abcdef}
   DATABASE_URL: sqlite:////data/portfolio.db
-  TRUSTED_PROXY_HEADER: CF-Connecting-IP
+  FALLBACK_IP_HEADER: CF-Connecting-IP
   GEMINI_API_KEY: ${GEMINI_API_KEY:-}
   TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
 

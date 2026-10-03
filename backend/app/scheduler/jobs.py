@@ -105,3 +105,10 @@ def run_draft_purge(db: Session, settings: Settings | None = None) -> int:
     from app.importer.service import purge_expired_drafts
 
     return purge_expired_drafts(db, settings)
+
+
+def run_session_purge(db: Session) -> int:
+    """Hygiene: delete expired `session` rows."""
+    from app.auth.sessions import purge_expired_sessions
+
+    return purge_expired_sessions(db)

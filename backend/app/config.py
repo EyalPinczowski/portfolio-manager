@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     # false in production (there, run `alembic upgrade head` as a release step; the API then only
     # checks that the schema is at head and refuses to start otherwise).
     auto_migrate: bool | None = None
+    # Rollback safety (docs/migrations.md). An older image started against a database that a newer
+    # release already migrated ("DB ahead") keeps running when the newer revisions are expand-only:
+    # at most this many numbered revisions ahead, and none of them a `contract` revision.
+    db_ahead_max_revisions: int = 1
+    # Extra revision ids to accept as "ahead and compatible" (operator override, comma separated).
+    db_accepted_ahead_revisions: list[str] = Field(default_factory=list)
     # Postgres only. Prepared statements: psycopg prepares a query after this many uses. Set it to
     # "none" (disabled) behind Supabase's transaction pooler (port 6543), which does not support them.
     database_prepare_threshold: int | None = 5
@@ -81,20 +87,45 @@ class Settings(BaseSettings):
     cookie_secure: bool = True  # must stay True in production (the app refuses to start otherwise)
     session_ttl_hours: int = 24 * 14
     session_touch_seconds: int = 300  # how often `last_seen_at` is refreshed
+    session_purge_interval_minutes: int = 60  # expired session rows are deleted this often
     password_min_length: int = 10
     login_rate_limit_attempts: int = 5  # free failures per email before backoff starts
     login_rate_limit_ip_multiplier: int = 4  # a shared IP gets this many times more free failures
+    # Email-only backoff (all IPs together) tolerates this many times more failures than one
+    # (email, IP) pair, so a stranger cannot lock an account out; a known device is exempt.
+    login_rate_limit_email_multiplier: int = 20
+    device_cookie_name: str = "pm_device"
+    device_cookie_days: int = 90
+    device_cookie_max_users: int = 5  # accounts remembered per browser
     login_rate_limit_window_seconds: int = 300  # failures are forgotten / backoff capped at this
     login_backoff_base_seconds: float = 15.0  # first block; doubles with every further failure
     signup_rate_limit_per_hour: int = 10  # per IP, every attempt counts
     upload_rate_limit_per_hour: int = 30  # per user, screenshot and on-device rows imports
     import_edit_rate_limit_per_hour: int = 300  # per user, PATCH of an import draft (review edits)
-    trusted_proxy_header: str | None = None  # e.g. "CF-Connecting-IP"; off by default
-    trusted_proxy_cidrs: list[str] = Field(default_factory=list)  # restrict who may set it
+    # Client IP behind the Cloudflare Pages Function proxy (docs/deployment.md). The Function sends
+    # the visitor's IP in `trusted_proxy_header` (e.g. "X-Client-IP") and the shared secret in
+    # `proxy_auth_header`. The IP header is trusted ONLY when the secret matches (constant-time
+    # compare); the app refuses to start when the header is configured and no secret is set.
+    trusted_proxy_header: str | None = None
+    proxy_shared_secret: str | None = None  # env PROXY_SHARED_SECRET; at least 16 characters
+    proxy_auth_header: str = "X-Proxy-Auth"
+    trusted_proxy_cidrs: list[str] = Field(default_factory=list)  # optionally also restrict peers
+    # Used when the proxy header is not trusted for a request: the host's own client-IP header
+    # (Render sets CF-Connecting-IP). Off by default because a client can forge it when the API is
+    # reachable directly. Without either, the TCP peer address is used.
+    fallback_ip_header: str | None = None
     argon2_memory_kib: int = 19 * 1024  # OWASP: m=19 MiB, t=2, p=1
     argon2_time_cost: int = 2
     argon2_parallelism: int = 1
     argon2_max_concurrent: int = 2  # concurrent hashes (memory bound on a 512 MB host)
+    # Cloudflare Turnstile on login after repeated failures for one (email, IP). `turnstile_enabled`
+    # unset means: off in dev, on in production when both keys are set.
+    turnstile_enabled: bool | None = None
+    turnstile_site_key: str | None = None
+    turnstile_secret_key: str | None = None
+    turnstile_after_failures: int = 3
+    turnstile_verify_url: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+    turnstile_timeout_seconds: float = 5.0
     max_alerts_per_user: int = 50
     invite_ttl_days: int = 14
 
@@ -107,6 +138,8 @@ class Settings(BaseSettings):
     quote_stale_after_minutes: int = 30
     history_cache_ttl_seconds: int = 6 * 3600
     history_failure_ttl_seconds: int = 300
+    history_cache_max_entries: int = 200  # one entry per symbol; the oldest is evicted
+    provider_small_cache_max_entries: int = 5000  # currencies and failure markers
     history_days: int = 420
     provider_max_retries: int = 3
     provider_backoff_base_seconds: float = 2.0
@@ -211,7 +244,21 @@ class Settings(BaseSettings):
     match_max_candidates: int = 5
     tesseract_lang: str = "heb+eng"
     gemini_api_key: str | None = None
+    # Model ids live here, never inline. The startup probe (`app.model_probe`) checks that the id
+    # exists for the key and otherwise takes the first available fallback. The Gemini 2.5 series
+    # shuts down no earlier than 2026-10-16; Groq's Llama models may have left the free tier. The
+    # fallback ids are best guesses: an id the provider does not list is simply skipped.
     gemini_model: str = "gemini-2.5-flash"
+    gemini_model_fallbacks: list[str] = Field(
+        default_factory=lambda: ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite"]
+    )
+    groq_api_key: str | None = None
+    groq_model: str = "openai/gpt-oss-20b"
+    groq_model_fallbacks: list[str] = Field(
+        default_factory=lambda: ["openai/gpt-oss-120b", "llama-3.3-70b-versatile"]
+    )
+    model_probe_enabled: bool = True
+    model_probe_timeout_seconds: float = 8.0
 
     # --- launch gate (no live buy/sell verdicts until both gates pass) ---
     launch_require_backtest: bool = True
@@ -221,6 +268,17 @@ class Settings(BaseSettings):
     launch_paper_must_beat: list[str] = Field(default_factory=lambda: ["^GSPC", "^TA125.TA"])
 
     # --- alerts ---
+    # Whole words that make outgoing text (Telegram, notifications, weekly review) read as a
+    # buy/sell verdict. `app.outbound.release_text` refuses text containing one while the launch gate
+    # is closed. The disclaimer is ignored. Price-rule words (stop, target) are deliberately absent.
+    outbound_verdict_words: list[str] = Field(
+        default_factory=lambda: [
+            "buy", "sell", "hold", "accumulate", "recommend", "recommendation", "verdict",
+            "upgrade", "downgrade", "bullish", "bearish", "rating", "outlook", "trim",
+            "opinion", "stance", "conviction", "outperform", "underperform", "overweight",
+            "underweight",
+        ]
+    )  # fmt: skip
     telegram_bot_token: str | None = None
     telegram_timeout_seconds: float = 10.0
     seed_csv_path: str | None = None
@@ -229,7 +287,43 @@ class Settings(BaseSettings):
     def _resolve_auto_migrate(self) -> Settings:
         if self.auto_migrate is None:
             self.auto_migrate = self.env == "dev"
+        if self.turnstile_enabled is None:
+            self.turnstile_enabled = bool(
+                self.env == "production" and self.turnstile_site_key and self.turnstile_secret_key
+            )
         return self
+
+
+MIN_PROXY_SECRET_CHARS = 16
+
+
+def validate_proxy(settings: Settings) -> None:
+    """The client-IP header may only be trusted together with a shared secret. Raises RuntimeError."""
+    if not settings.trusted_proxy_header:
+        return
+    secret = settings.proxy_shared_secret
+    if not secret:
+        raise RuntimeError(
+            "TRUSTED_PROXY_HEADER is set but PROXY_SHARED_SECRET is not: refusing to trust a "
+            "client-IP header that anyone could forge"
+        )
+    if len(secret) < MIN_PROXY_SECRET_CHARS:
+        raise RuntimeError(
+            f"PROXY_SHARED_SECRET must be at least {MIN_PROXY_SECRET_CHARS} characters"
+        )
+
+
+TurnstileState = Literal["off", "on", "misconfigured"]
+
+
+def turnstile_state(settings: Settings) -> TurnstileState:
+    """`on` needs the flag and both keys; the flag without keys is `misconfigured` (the login
+    then does not ask for a challenge, which would lock everyone out, and the check says so)."""
+    if not settings.turnstile_enabled:
+        return "off"
+    if settings.turnstile_site_key and settings.turnstile_secret_key:
+        return "on"
+    return "misconfigured"
 
 
 def validate_production(settings: Settings) -> None:
@@ -241,6 +335,10 @@ def validate_production(settings: Settings) -> None:
         problems.append("COOKIE_SECURE must be true (session cookies need the Secure flag)")
     if settings.secret_key == DEFAULT_SECRET_KEY or len(settings.secret_key) < 32:
         problems.append("SECRET_KEY must be set to a random string of at least 32 characters")
+    if any(o.strip() == "*" for o in settings.cors_origins):
+        problems.append(
+            'CORS_ORIGINS must not contain "*" (credentialed requests need explicit origins)'
+        )
     if problems:
         raise RuntimeError("Refusing to start with ENV=production: " + "; ".join(problems))
 

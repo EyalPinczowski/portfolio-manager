@@ -57,6 +57,8 @@ class SignupIn(Body):
 class LoginIn(Body):
     email: str = Field(max_length=254)
     password: str = Field(max_length=1024)
+    # Cloudflare Turnstile response, needed only after the API answered 403 `turnstile_required`.
+    turnstile_token: str | None = Field(default=None, max_length=2048)
 
 
 class PasswordBody(Body):

@@ -127,7 +127,7 @@ def test_factory_picks_the_lock_by_database_url(tmp_path: Path) -> None:
 
 # --- the scheduler -------------------------------------------------------------------------------
 
-EXPECTED_JOBS = {"quotes", "daily_snapshot", "scores", "purge_drafts"}
+EXPECTED_JOBS = {"quotes", "daily_snapshot", "scores", "purge_drafts", "purge_sessions"}
 
 
 def _job_ids(runner: InProcessScheduler) -> set[str]:
@@ -165,7 +165,7 @@ def test_the_leader_registers_the_same_jobs_as_the_standalone_scheduler(
     r = _make(runners, FileLeaderLock(tmp_path / "l"))
     assert r.start() is True and r.is_leader
     assert standalone == EXPECTED_JOBS
-    assert _job_ids(r) == EXPECTED_JOBS | {"leader_check", "startup"}
+    assert _job_ids(r) - {"startup"} == EXPECTED_JOBS  # the election is a thread, not a job
     assert r.scheduler is not None and r.scheduler.running
     quotes = r.scheduler.get_job("quotes")
     assert quotes is not None and quotes.max_instances == 1 and quotes.coalesce
@@ -208,7 +208,7 @@ def test_a_second_instance_serves_without_jobs_and_takes_over_later(
     second = _make(runners, FileLeaderLock(path))
     assert first.start() is True
     assert second.start() is False
-    assert _job_ids(second) == {"leader_check"}  # only the cheap election check
+    assert _job_ids(second) == set()  # a standby has no jobs, only the election thread
     first.shutdown()  # the old instance of a rolling deploy exits
     second.elect()  # the next leader check
     assert second.is_leader and _job_ids(second) >= EXPECTED_JOBS
