@@ -33,6 +33,68 @@ You set these in the app's settings:
 
 A recommendation is shown only if it passes every rule. When a rule blocks a strong signal, the app tells you so (for example: "Strong buy signal on NVDA, blocked because tech exposure is already 34% and your cap is 30%").
 
+### Main page: My Portfolio
+
+The first screen after you log in:
+
+1. **Live header**: total value in ₪ and $, today's P&L, and P&L since you started. It updates automatically (about every 5 minutes) and shows when it was last updated and whether TASE / US markets are open.
+2. **P&L strip**:
+   - this week's and this month's profit/loss
+   - small weekly and monthly bar charts
+   - a since-start line compared with the S&P 500 and TA-125
+
+   Tap it for the full Performance page.
+3. **Three buttons:**
+   - **Review my portfolio**: the full portfolio review, with a stop-loss / take-profit table and the total risk.
+   - **Suggest new stocks**: new buy ideas (see below).
+   - **Analyze a stock**: an analysis of any ticker.
+4. **Your holdings**: price, day change, P&L, weight, the current verdict, and the stop/TP status (set / close to being hit / missing / needs holding period). **Tap any holding** for its stop-loss and take-profit recommendations.
+
+You can switch between portfolios or see all of them combined. On a phone, the three buttons stay pinned at the bottom.
+
+### Suggest new stocks
+
+The app scans the S&P 500, NASDAQ-100, TA-125, main US and TASE ETFs and the top cryptocurrencies, and scores each one with the same five signals.
+
+- **The app asks you each time; nothing is assumed:**
+  - how much to invest (₪/$)
+  - holding period
+  - risk filter
+  - which markets and asset types
+- **You get the top 5–10 ideas.** Each shows:
+  - verdict, confidence and reasons
+  - a suggested amount within your budget and risk rules
+  - an entry zone, stop-loss and take-profits for your holding period
+  - **Why?**, **Analyze** and **Add to watchlist / portfolio** buttons
+- **Diversification-aware:** ideas that fill gaps in your portfolio rank higher, and ideas that would break your sector or country limits are left out.
+
+### "Why?" on every suggestion
+
+Every suggestion the app makes has a **Why?** button. That includes buy/sell verdicts, new buy ideas, stop-losses, take-profits, stop raises, "reduce size" advice and review items. Tapping it shows:
+
+1. a plain-language explanation (Hebrew or English)
+2. each signal's score and weight, and the exact data behind it (e.g. "RSI 28 on 2 Oct", "3% above support at ₪41.2", "32 analysts, mean target $185")
+3. the chart with the relevant levels and patterns highlighted
+4. which of your risk rules were applied and what they changed
+5. the main risks: what would make this suggestion wrong
+6. the data sources and when they were last updated
+
+Telegram messages have a **Why?** button too.
+
+### Push notifications for buy opportunities
+
+When the background scan finds a **new** buy that matches your **Buy alerts** filter, you get a Telegram message and a phone push from the installed app, e.g. "🟢 Buy idea: NICE.TA, confidence 78%, entry ₪…, stop ₪…, target ₪…", with **Why?** and **Analyze** buttons.
+
+You set the Buy alerts filter once in settings:
+- minimum confidence
+- holding period
+- risk filter
+- markets
+- max alerts per day
+- quiet hours
+
+Until you set it, no buy alerts are sent. Each idea is sent once and isn't repeated every refresh.
+
 ### The app
 
 - **Dashboard**: portfolio value in ILS and USD, P&L, allocation by market, sector and currency, and the risk gauges.
@@ -102,6 +164,7 @@ There are two ways to get them, both from the **My Portfolio** page:
   - new sell / trim warnings
   - holdings that still have no holding period
   - total portfolio risk vs. your limit
+  - **new buy ideas**: the top 3, using your last-used amount, holding period and risk filter. If you haven't set them yet, the bot asks you first.
   - a link to the full review in the app
 - **Urgent alerts don't wait for Sunday:** a stop hit, or a sharp move, still triggers an immediate Telegram message.
 
@@ -172,6 +235,10 @@ The selected horizon and risk filter are applied together. If a stop that fits t
 | Holding period | **No default**: the app asks for each holding before suggesting exit levels |
 | Weekly review | On by default, Telegram, **Sunday 20:00 Israel time** (configurable) |
 | P&L view | Weekly, monthly and since start, compared with S&P 500 / TA-125 |
+| Main page | My Portfolio: live value + P&L, weekly/monthly strip, buttons for **Review**, **Suggest new stocks** and **Analyze a stock**; tap a holding for stop/TP |
+| New buys | Screener across US + TASE + ETFs + crypto; asks amount, holding period, risk and markets every time |
+| Explanations | A **Why?** button on every suggestion |
+| Buy alerts | Telegram + phone push when a new buy matches your Buy alerts filter (no alerts until you set it) |
 | Tax | Not considered |
 | Backtesting | **Required before launch**: recommendations stay hidden until the scoring has been tested on historical data |
 
@@ -262,21 +329,27 @@ npm run dev                   # http://localhost:3000
 ```
 FINNHUB_API_KEY=       # free tier: analyst ratings + news
 FRED_API_KEY=          # free: macro data
-ANTHROPIC_API_KEY=     # optional: AI-written summaries
-TELEGRAM_BOT_TOKEN=    # optional: alerts to your phone
+GEMINI_API_KEY=        # free tier: screenshot reading + AI explanations
+GROQ_API_KEY=          # free tier: fallback LLM
+TELEGRAM_BOT_TOKEN=    # alerts, weekly review, buy ideas
+VAPID_PUBLIC_KEY=      # web push to the installed app (generate for free)
+VAPID_PRIVATE_KEY=
+SECRET_KEY=            # session signing
 ```
 
 ---
 
 ## Roadmap
 
-1. **Core**: logins and portfolios, screenshot import with a review screen, US + TASE + crypto prices, technical and chart signals, risk profiles (per portfolio and per stock).
-2. **Analyze a stock** page and **Exit levels** (stop-loss / take-profit by holding period + risk filter) for one stock or a full portfolio review.
-3. Analyst consensus + insider trading, Fear & Greed (stocks + crypto), VIX.
-4. Geopolitical/news signal (GDELT + RSS, Hebrew + English sources) and free-LLM summaries.
-5. Performance page (weekly / monthly / since start P&L) and the weekly Telegram review.
+1. **Core + main page shell**: logins and portfolios, screenshot import with a review screen, US + TASE + crypto prices, the My Portfolio main page with live value and P&L, technical and chart signals, risk filters.
+2. **Analyze a stock**, **Exit levels** (one stock + full portfolio review), and **Why?** explanations.
+3. **Suggest new stocks** (screener) + analyst consensus, insider trading, Fear & Greed (stocks + crypto), VIX.
+4. Geopolitical/news signal (GDELT + RSS, Hebrew + English) and free-LLM summaries.
+5. Performance page (weekly / monthly / since start), weekly Telegram review, buy-idea push notifications.
 6. **Backtesting** of the scoring and the exit levels. This must pass before live recommendations are shown.
-7. Telegram alerts, auto-refresh over WebSocket, PWA install, deployment to a cloud server.
+7. Auto-refresh over WebSocket, PWA install, deployment to a cloud server.
+
+Before each phase, an independent review checks the code built so far and compares the app with similar tools on the web. Reports are saved in `docs/reviews/`.
 
 ## License
 

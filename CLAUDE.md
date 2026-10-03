@@ -70,6 +70,37 @@ cd frontend && npm run dev | npm test | npm run lint
 - A trailing stop only moves up (for longs). Every level carries a reason.
 - `RiskFilter`: preset + max loss % per position + max % of portfolio per trade + max total portfolio risk + min R:R + stop type. Presets fill in the fields, and users can save named filters.
 
+- **Main page** is My Portfolio (`frontend/app/page.tsx`):
+  - live value and P&L
+  - weekly/monthly P&L strip
+  - three buttons: Review my portfolio / Suggest new stocks / Analyze a stock
+  - holdings list, where tapping a holding opens exit levels
+- **Screener** (`scoring/screener.py`):
+  - Asks amount, horizon, risk filter and markets with **no defaults**.
+  - Diversification-aware: never suggest something that breaks the sector/country caps.
+  - Reads cached universe scores, which background jobs refresh.
+  - Reuses `exit_levels.py` for entry/stop/TP.
+- **"Why?" everywhere**: every `SignalResult`, `Recommendation`, `ExitLevel`, `BuyIdea` and review item carries a structured `Explanation`, built at scoring time and stored with it:
+  - summary
+  - per-signal score, weight and raw data
+  - chart annotations
+  - risk rules applied
+  - invalidation risks
+  - sources with timestamps
+
+  No suggestion may ship without one. Telegram messages get a "Why?" inline button.
+- **Buy alerts**: push (Telegram + Web Push/VAPID) only when a candidate *newly* becomes a buy that matches the user's saved Buy-alerts filter. Nothing is sent until the user sets that filter. Dedupe per symbol and state, and apply a cooldown, a daily cap and quiet hours.
+
+## Workflow (user rule; follow it every phase)
+
+1. **Before every new phase**, run a **review agent on Opus** (`Agent` with `model: "opus"`). It must:
+   - review all code so far: bugs, missing tests, risk-logic, agorot/FX/timezone, auth scoping, secrets, rate limits
+   - **search the web** for comparable apps (TradingView, Finviz, TipRanks, Seeking Alpha, Simply Wall St, Getquin, Delta, Snowball, Ghostfolio, OpenBB, Israeli tools such as Bizportal / Funder) and recent changes in free data APIs
+   - return problems, suggested features and improvements, and risks for the next phase, each with a **"Why"** line and a source link
+2. Save the report to `docs/reviews/phase-<n>-<YYYY-MM-DD>.md` and show it to the user. The user chooses which suggestions to include. The rest go to `docs/ideas.md`.
+3. **Write code with Sonnet agents** (`Agent` with `model: "sonnet"`). The main session plans, verifies (tests, lint, typecheck) and commits.
+4. Problems the review found are fixed in the same phase.
+
 ## When unsure
 
 Ask the user before you change scoring weights, the risk logic, or add a paid data source. Those choices are theirs.
