@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { SWRConfig } from "swr";
 import type { ReactNode } from "react";
@@ -39,15 +39,18 @@ describe("main page (mock mode)", () => {
     expect(screen.getByText(/TASE: Open/)).toBeInTheDocument();
     expect(screen.getByText(/US: Closed/)).toBeInTheDocument();
     expect(screen.getByText("This week")).toBeInTheDocument();
-    // three disabled action buttons
-    const nav = screen.getByRole("navigation", { name: "Main actions" });
-    const buttons = within(nav).getAllByRole("button");
-    expect(buttons).toHaveLength(3);
-    buttons.forEach((b) => expect(b).toBeDisabled());
+    // the tab bar replaces the three big buttons; the "+" menu is tested in app-shell.test.tsx
+    expect(screen.getByRole("navigation", { name: "Main tabs" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Main actions" })).toBeNull();
     // holdings link to the holding page
     await waitFor(() => expect(screen.getAllByRole("link", { name: "Open Teva" }).length).toBeGreaterThan(0));
     expect(screen.getAllByRole("link", { name: "Open Teva" })[0]).toHaveAttribute("href", "/holding?id=1");
     expect(screen.getByText(/Not financial advice/)).toBeInTheDocument();
+    // freshness line, and no raw placeholders anywhere on the home screen
+    expect(screen.getByText(/Prices as of/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/NaN|undefined|\bnull\b|1970|Invalid/);
+    // the holding without a cost price shows a dash and a hint, not 0
+    expect(screen.getAllByText(en.holdings.pnlHint).length).toBeGreaterThan(0);
   });
 
   it("shows Hebrew names and signed P&L in he", async () => {

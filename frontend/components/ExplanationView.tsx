@@ -35,7 +35,7 @@ export function ExplanationView({ e, reasons, asOf, currency, showContributions 
   const sources = e.sources ?? [];
   const time = asOf ?? e.as_of ?? undefined;
   const h = "font-semibold";
-  const muted = "text-slate-600 dark:text-slate-400";
+  const muted = "text-muted";
   return (
     <div className="space-y-3 text-sm" data-testid="explanation">
       <div>
@@ -68,14 +68,14 @@ export function ExplanationView({ e, reasons, asOf, currency, showContributions 
                   const none = c.confidence === 0 || !finite(c.confidence) || noScore;
                   const pct = noScore ? 0 : Math.min(100, Math.max(0, Math.abs(c.score)));
                   return (
-                    <tr key={c.name} className="border-t border-slate-200 dark:border-slate-700">
+                    <tr key={c.name} className="border-t border-line">
                       <th scope="row" className="py-1 pe-2 text-start font-normal">{t.has(`signal.${c.name}`) ? t(`signal.${c.name}`) : c.name}</th>
                       <td className="px-2 tabular-nums" dir="ltr">{none ? DASH : `${c.score > 0 ? "+" : ""}${c.score}`}</td>
                       <td className="px-2 tabular-nums" dir="ltr">{finite(c.weight) ? formatWeight(c.weight, locale, 0) : DASH}</td>
                       <td className="px-2 tabular-nums" dir="ltr">{finite(c.confidence) ? formatWeight(c.confidence * 100, locale, 0) : DASH}</td>
                       <td className="ps-2">
-                        <div className="h-2 w-24 overflow-hidden rounded bg-slate-200 dark:bg-slate-700" role="presentation">
-                          {!none && <div data-testid="contribution-bar" className="h-full bg-slate-500 dark:bg-slate-400" style={{ width: `${pct}%` }} />}
+                        <div className="h-2 w-24 overflow-hidden rounded bg-surface-2" role="presentation">
+                          {!none && <div data-testid="contribution-bar" className="h-full bg-muted" style={{ width: `${pct}%` }} />}
                         </div>
                       </td>
                     </tr>

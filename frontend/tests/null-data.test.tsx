@@ -52,7 +52,7 @@ describe("missing data never crashes and never shows 0 or an epoch date", () => 
     // the holding with a known pnl still shows it
     expect(screen.getAllByText(/100\.00/).length).toBeGreaterThan(0);
     // stale price indicator is present for the first holding only
-    expect(screen.getAllByText((locale === "en" ? en : he).holdings.stale).length).toBe(2); // mobile + desktop layouts
+    expect(screen.getAllByText((locale === "en" ? en : he).holdings.stale).length).toBe(1);
     expect(document.body.textContent).not.toMatch(/NaN|1970|undefined|null/);
   });
 

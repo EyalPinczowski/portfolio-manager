@@ -11,9 +11,9 @@ export function MarketBadges({ markets }: { markets: Summary["markets"] }) {
         return (
           <li
             key={k}
-            className={`chip gap-1.5 border ${open ? "border-emerald-600 text-emerald-800 dark:text-emerald-300" : "border-slate-400 text-slate-600 dark:text-slate-400"}`}
+            className={`chip gap-1.5 border ${open ? "border-gain text-gain" : "border-line text-muted"}`}
           >
-            <span aria-hidden="true" className={`inline-block h-2 w-2 rounded-full ${open ? "bg-emerald-600" : "bg-slate-400"}`} />
+            <span aria-hidden="true" className={`inline-block h-2 w-2 rounded-full ${open ? "bg-gain" : "bg-muted"}`} />
             {t(`market.${k}`)}: {open ? t("open") : t("closed")}
           </li>
         );

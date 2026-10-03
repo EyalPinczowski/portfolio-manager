@@ -6,6 +6,7 @@ import { api, ApiError, toPresets, type RiskFilter } from "@/lib/api";
 import { ageOf, formatDate, formatTime, QUOTES_STALE_MIN } from "@/lib/format";
 import { usePortfolios, useSummary } from "@/lib/hooks";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { guideActions } from "@/lib/guide";
 import { AppShell } from "./AppShell";
 import { Modal } from "./Modal";
 import { PortfolioSwitcher } from "./PortfolioSwitcher";
@@ -48,7 +49,7 @@ function PasswordPrompt({ action, onDone, onCancel }: { action: PasswordAction; 
           <label htmlFor="confirm-password" className="label">{t("confirmPassword")}</label>
           <input id="confirm-password" className="input" type="password" required autoComplete="current-password" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
-        {err && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{err}</p>}
+        {err && <p role="alert" className="text-sm text-loss">{err}</p>}
         <div className="flex gap-2">
           <button type="submit" className={isDelete ? "btn-danger" : "btn-primary"} disabled={busy || password === ""}>{isDelete ? t("deleteYes") : t("exportYes")}</button>
           <button type="button" className="btn-secondary" onClick={onCancel}>{c("cancel")}</button>
@@ -73,16 +74,16 @@ function Sessions() {
     <section className="card space-y-3" aria-label={t("sessions")}>
       <div>
         <h2 className="text-lg font-bold">{t("sessions")}</h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400">{t("sessionsDesc")}</p>
+        <p className="text-sm text-muted">{t("sessionsDesc")}</p>
       </div>
       {error && <p role="alert" className="text-sm">{t("sessionsError")}</p>}
       {data && (
         <ul className="space-y-2">
           {data.map((x) => (
-            <li key={x.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">
+            <li key={x.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line p-3 text-sm ">
               <div>
                 <p className="font-semibold">{x.current ? t("sessionCurrent") : t("sessionOther")}</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400">{t("sessionSignedIn", { time: when(x.created_at) })} · {t("sessionLastSeen", { time: when(x.last_seen_at) })}</p>
+                <p className="text-xs text-muted">{t("sessionSignedIn", { time: when(x.created_at) })} · {t("sessionLastSeen", { time: when(x.last_seen_at) })}</p>
               </div>
               {!x.current && <button type="button" className="btn-secondary" onClick={() => run(() => api.revokeSession(x.id))}>{t("sessionRevoke")}</button>}
             </li>
@@ -90,7 +91,7 @@ function Sessions() {
         </ul>
       )}
       {others.length > 0 && <button type="button" className="btn-secondary" onClick={() => run(() => api.revokeOtherSessions())}>{t("sessionRevokeAll")}</button>}
-      {fail && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{t("sessionsError")}</p>}
+      {fail && <p role="alert" className="text-sm text-loss">{t("sessionsError")}</p>}
     </section>
   );
 }
@@ -116,17 +117,17 @@ export function SystemStatus() {
   return (
     <section className="card space-y-2" aria-label={t("status")}>
       <h2 className="text-lg font-bold">{t("status")}</h2>
-      {down && <p role="alert" className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">{t("schedulerDown")}</p>}
-      {stale && <p role="alert" className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">{t("staleWarning")}</p>}
+      {down && <p role="alert" className="rounded-lg bg-warn-bg px-3 py-2 text-sm font-medium text-warn-fg">{t("schedulerDown")}</p>}
+      {stale && <p role="alert" className="rounded-lg bg-warn-bg px-3 py-2 text-sm font-medium text-warn-fg">{t("staleWarning")}</p>}
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt className="text-slate-600 dark:text-slate-400">{t("scheduler")}</dt>
+        <dt className="text-muted">{t("scheduler")}</dt>
         <dd>{t(`schedulerStates.${health.scheduler}`)}</dd>
-        <dt className="text-slate-600 dark:text-slate-400">{t("lastQuotes")}</dt>
+        <dt className="text-muted">{t("lastQuotes")}</dt>
         <dd data-testid="last-quotes">{rel(health.last_quotes_at)}</dd>
-        <dt className="text-slate-600 dark:text-slate-400">{t("lastSnapshot")}</dt>
+        <dt className="text-muted">{t("lastSnapshot")}</dt>
         <dd data-testid="last-snapshot" title={health.last_snapshot_at ? formatDate(health.last_snapshot_at) : undefined}>{rel(health.last_snapshot_at)}</dd>
       </dl>
-      <p className="text-sm text-slate-600 dark:text-slate-400">{t("fxNote")}</p>
+      <p className="text-sm text-muted">{t("fxNote")}</p>
       {summary && <p className="text-sm" role="status">{summary.fx_stale ? t("fxNow") : t("fxOk")}</p>}
     </section>
   );
@@ -140,7 +141,7 @@ function LaunchGateNote() {
     <section className="card space-y-2" aria-label={t("gate")}>
       <h2 className="text-lg font-bold">{t("gate")}</h2>
       <p className="text-sm">{data.open ? t("gateOpen") : t("gateClosed")}</p>
-      {!data.open && data.reasons.length > 0 && <ul className="list-disc ps-5 text-sm text-slate-700 dark:text-slate-300">{data.reasons.map((r) => <li key={r}>{r}</li>)}</ul>}
+      {!data.open && data.reasons.length > 0 && <ul className="list-disc ps-5 text-sm text-muted">{data.reasons.map((r) => <li key={r}>{r}</li>)}</ul>}
     </section>
   );
 }
@@ -199,7 +200,7 @@ function Body() {
       <form onSubmit={save} className="card space-y-4" aria-label={t("risk")}>
         <div>
           <h2 className="text-lg font-bold">{t("risk")}</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400">{t("riskIntro")}</p>
+          <p className="text-sm text-muted">{t("riskIntro")}</p>
         </div>
         {portfolios && id !== null && <PortfolioSwitcher portfolios={portfolios} value={id} onChange={(v) => { setPid(v as number); setEdits(null); setSaved(false); }} allowCombined={false} />}
         <div>
@@ -223,10 +224,10 @@ function Body() {
             </select>
           </div>
         </div>
-        <p className="text-sm text-slate-600 dark:text-slate-400">{t("trackingSince", { date: formatDate(current?.tracking_started_at) })}</p>
+        <p className="text-sm text-muted">{t("trackingSince", { date: formatDate(current?.tracking_started_at) })}</p>
         <div className="flex items-center gap-3">
           <button type="submit" className="btn-primary">{c("save")}</button>
-          {saved && <span role="status" className="text-sm text-emerald-700 dark:text-emerald-400">✓ {c("saved")}</span>}
+          {saved && <span role="status" className="text-sm text-gain">✓ {c("saved")}</span>}
         </div>
       </form>
 
@@ -241,18 +242,24 @@ function Body() {
         </div>
       </section>
 
+      <section className="card space-y-2" aria-label={t("guideTitle")}>
+        <h2 className="text-lg font-bold">{t("guideTitle")}</h2>
+        <p className="text-sm text-muted">{t("guideDesc")}</p>
+        <button type="button" className="btn-secondary" onClick={() => { guideActions.reopen(); router.push("/"); }}>{t("guideOpen")}</button>
+      </section>
+
       <Sessions />
       <SystemStatus />
       <LaunchGateNote />
 
       <section className="card space-y-2" aria-label={t("data")}>
         <h2 className="text-lg font-bold">{t("data")}</h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400">{t("exportDesc")}</p>
+        <p className="text-sm text-muted">{t("exportDesc")}</p>
         <button type="button" className="btn-secondary" onClick={() => setPrompt("export")}>{t("export")}</button>
       </section>
 
-      <section className="card space-y-2 border-red-300 dark:border-red-900" aria-label={t("danger")}>
-        <h2 className="text-lg font-bold text-red-800 dark:text-red-400">{t("danger")}</h2>
+      <section className="card space-y-2 border-loss" aria-label={t("danger")}>
+        <h2 className="text-lg font-bold text-loss">{t("danger")}</h2>
         <p className="text-sm">{t("deleteWarn")}</p>
         <button type="button" className="btn-danger" onClick={() => setPrompt("delete")}>{t("deleteAccount")}</button>
       </section>

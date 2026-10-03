@@ -47,7 +47,7 @@ export function CloudflareTurnstile({ siteKey, onToken }: TurnstileProps) {
   return (
     <div>
       <div ref={host} data-testid="turnstile-real" aria-label={t("challengeLabel")} />
-      {failed && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{t("challengeLoadError")}</p>}
+      {failed && <p role="alert" className="text-sm text-loss">{t("challengeLoadError")}</p>}
     </div>
   );
 }

@@ -153,7 +153,7 @@ function Body() {
   const needsQuantity = (r: ImportRow) => metaByIndex[r.index]?.quantity_uncertain === true && !(typeof r.quantity === "number" && r.quantity > 0);
   const missingQuantity = rows.some(needsQuantity);
   const problemList = error?.kind === "rows" && problems.length > 0 && (
-    <ul className="list-disc ps-5 text-sm text-red-700 dark:text-red-400">
+    <ul className="list-disc ps-5 text-sm text-loss">
       {problems.map((p, i) => (
         <li key={i}>{t("rowError", {
           row: p.position + 1,
@@ -174,7 +174,7 @@ function Body() {
       {!draft && portfolios && portfolios.length === 0 && <CreatePortfolio />}
       {!draft && portfolios && portfolios.length > 0 && (
         <form onSubmit={readOnDevice} className="card space-y-4">
-          <p className="text-sm text-slate-700 dark:text-slate-300">{t("intro")}</p>
+          <p className="text-sm text-muted">{t("intro")}</p>
           <p className="rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">{t("keepOnly")}</p>
           <div>
             <label htmlFor="imp-portfolio" className="label">{t("portfolio")}</label>
@@ -188,7 +188,7 @@ function Body() {
               id="imp-file" ref={fileRef} className="input" type="file" accept="image/png,image/jpeg,image/webp" multiple required
               onChange={(e) => setFileCount(e.target.files?.length ?? 0)}
             />
-            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{t("manyFilesHint", { max: MAX_IMPORT_IMAGES })}</p>
+            <p className="mt-1 text-xs text-muted">{t("manyFilesHint", { max: MAX_IMPORT_IMAGES })}</p>
           </div>
           <div>
             <label htmlFor="imp-layout" className="label">{t("layout")}</label>
@@ -205,7 +205,7 @@ function Body() {
               {busy === "server" ? t("uploading") : t("useServer")}
             </button>
           </div>
-          <p className="text-xs text-slate-600 dark:text-slate-400">{t("onDeviceNote")}</p>
+          <p className="text-xs text-muted">{t("onDeviceNote")}</p>
           {busy === "device" && (
             <div role="status" aria-live="polite" className="space-y-1 text-sm">
               <p>{progress && progress.status.includes("loading") ? t("progress.loading") : t("progress.reading")}</p>
@@ -226,13 +226,13 @@ function Body() {
       {draft && (
         <section className="card space-y-3" aria-label={t("reviewTitle")}>
           <h2 className="text-lg font-bold">{t("reviewTitle")}</h2>
-          <p className="text-sm text-slate-700 dark:text-slate-300">{t("reviewHint")}</p>
+          <p className="text-sm text-muted">{t("reviewHint")}</p>
           {draft.expires_at && (
-            <p className="text-xs text-slate-600 dark:text-slate-400">{t("expires", { time: `${formatDate(draft.expires_at)} ${formatTime(draft.expires_at, locale)}` })}</p>
+            <p className="text-xs text-muted">{t("expires", { time: `${formatDate(draft.expires_at)} ${formatTime(draft.expires_at, locale)}` })}</p>
           )}
           <div className="overflow-x-auto">
             <table className="w-full min-w-[56rem] text-sm">
-              <thead className="bg-slate-100 dark:bg-slate-800">
+              <thead className="bg-surface-2">
                 <tr>
                   {(["name", "symbol", "quantity", "price", "value", "currency", "change", "changeAmount"] as const).map((k) => (
                     <th key={k} scope="col" className="px-2 py-2 text-start font-semibold">{t(`col.${k}`)}</th>
@@ -249,7 +249,7 @@ function Body() {
                   const k = (f: string) => `${draft.id}-${r.index}-${f}`;
                   const isCash = ch?.type === "deposit" || ch?.type === "withdrawal";
                   return (
-                    <tr key={r.index} data-flagged={flagged} className={`border-t align-top ${flagged ? "bg-amber-50 dark:bg-amber-950/40" : ""} border-slate-200 dark:border-slate-800`}>
+                    <tr key={r.index} data-flagged={flagged} className={`border-t align-top ${flagged ? "bg-amber-50 dark:bg-amber-950/40" : ""} border-line`}>
                       <td className="px-2 py-2">
                         <input aria-label={`${t("col.name")} ${r.index + 1}`} className="input min-w-32" value={r.name} onChange={(e) => editRow(r.index, { name: e.target.value })} />
                         {flagged && (
@@ -266,7 +266,7 @@ function Body() {
                           </ul>
                         )}
                         {(m.cost_inferred || m.duplicate_removed) && (
-                          <ul className="mt-1 text-xs text-slate-700 dark:text-slate-300">
+                          <ul className="mt-1 text-xs text-muted">
                             {m.cost_inferred && <li data-testid="note-cost-inferred">{t("notes.costInferred", { pnl: `${(m.pnl_pct ?? 0) > 0 ? "+" : ""}${m.pnl_pct ?? 0}%` })}</li>}
                             {m.duplicate_removed && <li data-testid="note-duplicate">{t("notes.duplicateRemoved")}</li>}
                           </ul>
@@ -280,7 +280,7 @@ function Body() {
                             <ul className="space-y-1">
                               {r.candidates.map((cand) => (
                                 <li key={cand.symbol}>
-                                  <button type="button" className="text-start font-semibold text-blue-800 underline dark:text-blue-300" onClick={() => pickSymbol(r.index, cand.symbol)}>
+                                  <button type="button" className="text-start font-semibold text-brand-text underline" onClick={() => pickSymbol(r.index, cand.symbol)}>
                                     {t("useCandidate", { symbol: cand.symbol, name: cand.name, pct: formatWeight(cand.score, locale, 0) })}
                                   </button>
                                 </li>
@@ -288,7 +288,7 @@ function Body() {
                             </ul>
                           </div>
                         )}
-                        {r.tase_number && <p className="mt-1 text-xs text-slate-600 dark:text-slate-400" dir="ltr">{t("taseNumber", { n: r.tase_number })}</p>}
+                        {r.tase_number && <p className="mt-1 text-xs text-muted" dir="ltr">{t("taseNumber", { n: r.tase_number })}</p>}
                       </td>
                       <td className="px-2 py-2"><NumberCell key={k("q")} label={`${t("col.quantity")} ${r.index + 1}`} className="w-24" required={mustEnterQty} value={r.quantity} onValue={(n, ok) => { editRow(r.index, { quantity: n }); cell(k("q"))(ok); }} /></td>
                       <td className="px-2 py-2"><NumberCell key={k("p")} label={`${t("col.price")} ${r.index + 1}`} className="w-24" value={r.price} onValue={(n, ok) => { editRow(r.index, { price: n }); cell(k("p"))(ok); }} /></td>
@@ -349,8 +349,8 @@ function Body() {
           )}
           {missingQuantity && <p role="status" className="text-sm text-amber-900 dark:text-amber-200">{t("notes.quantityRequiredHint")}</p>}
           {missingSymbol && <p role="status" className="text-sm text-amber-900 dark:text-amber-200">{t("error.unmatchedHint")}</p>}
-          {bad.size > 0 && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{t("error.badNumber")}</p>}
-          {error && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{errorText}</p>}
+          {bad.size > 0 && <p role="alert" className="text-sm text-loss">{t("error.badNumber")}</p>}
+          {error && <p role="alert" className="text-sm text-loss">{errorText}</p>}
           {problemList}
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn-primary" onClick={confirm} disabled={busy === "confirm" || bad.size > 0 || missingSymbol || missingQuantity || rows.length === 0}>
@@ -360,7 +360,7 @@ function Body() {
           </div>
         </section>
       )}
-      {!draft && error && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{errorText}</p>}
+      {!draft && error && <p role="alert" className="text-sm text-loss">{errorText}</p>}
       {!draft && problemList}
     </>
   );

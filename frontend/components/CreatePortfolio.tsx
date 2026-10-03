@@ -29,7 +29,7 @@ export function CreatePortfolio({ onCreated }: { onCreated?: (id: number) => voi
   return (
     <form onSubmit={submit} className="card space-y-3" aria-label={t("title")}>
       <h2 className="text-lg font-bold">{t("title")}</h2>
-      <p className="text-sm text-slate-700 dark:text-slate-300">{t("intro")}</p>
+      <p className="text-sm text-muted">{t("intro")}</p>
       <div>
         <label htmlFor="cp-name" className="label">{t("name")}</label>
         <input id="cp-name" className="input" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
@@ -41,7 +41,7 @@ export function CreatePortfolio({ onCreated }: { onCreated?: (id: number) => voi
           <option value="USD">USD</option>
         </select>
       </div>
-      {error && <p role="alert" className="text-sm font-medium text-red-700 dark:text-red-300">{t("error")}</p>}
+      {error && <p role="alert" className="text-sm font-medium text-loss">{t("error")}</p>}
       <button type="submit" className="btn-primary" disabled={busy || !name.trim()}>{t("create")}</button>
     </form>
   );

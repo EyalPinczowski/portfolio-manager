@@ -1,39 +1,152 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens. Light is the default; dark follows the phone setting (prefers-color-scheme), no manual toggle.
+ * Text pairs are chosen for WCAG AA (4.5:1) on their surface. Gain/loss colours are never the only signal:
+ * the UI always adds a +/- sign and an arrow (see components/Pnl.tsx).
+ */
 :root {
   color-scheme: light dark;
+
+  /* neutrals */
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-2: #eceff4;
+  --line: #d9dee7;
+  --fg: #101828;
+  --muted: #475467; /* 7.0:1 on surface */
+
+  /* brand accent (one) */
+  --brand: #1d4ed8; /* solid fill, white text 6.7:1 */
+  --brand-hover: #1e40af;
+  --brand-on: #ffffff;
+  --brand-soft: #e3ebff;
+  --brand-text: #1e3a8a; /* text on brand-soft and on surface */
+
+  /* semantic */
+  --gain: #046c4e; /* 5.9:1 on surface */
+  --loss: #b42318; /* 6.5:1 on surface */
+  --warn-bg: #fef0c7;
+  --warn-fg: #7a2e0e;
+  --danger: #b42318;
+  --danger-hover: #912018;
+  --ring: #1d4ed8;
+
+  /* shape and rhythm */
+  --radius-card: 1rem;
+  --radius-control: 0.75rem;
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.06);
+  --tabbar-h: 3.75rem;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c1118;
+    --surface: #141b25;
+    --surface-2: #1d2635;
+    --line: #2b3646;
+    --fg: #eaeef5;
+    --muted: #a5b0c0; /* 7.4:1 on surface */
+
+    --brand: #3b6cf0; /* white text 4.8:1 */
+    --brand-hover: #5a83f5;
+    --brand-on: #ffffff;
+    --brand-soft: #1c2b52;
+    --brand-text: #a9c0ff;
+
+    --gain: #4cd9a0;
+    --loss: #ff8a80;
+    --warn-bg: #3a2a0a;
+    --warn-fg: #fcd98a;
+    --danger: #d92d20;
+    --danger-hover: #f04438;
+    --ring: #8fb0ff;
+    --shadow-card: none;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-on: var(--brand-on);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-text: var(--brand-text);
+  --color-gain: var(--gain);
+  --color-loss: var(--loss);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-fg: var(--warn-fg);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --font-sans: system-ui, -apple-system, "Segoe UI", "Noto Sans Hebrew", "Arial Hebrew", Arial, "Helvetica Neue", sans-serif;
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
   body {
-    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+    @apply bg-bg text-fg font-sans antialiased;
+    line-height: 1.6;
+    font-variant-numeric: tabular-nums;
   }
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-blue-600 dark:outline-blue-400;
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  h1, h2, h3 {
+    line-height: 1.3;
   }
 }
 
+/* Type scale: page title / section title / body / caption. */
+@utility text-title { font-size: 1.5rem; font-weight: 700; line-height: 1.3; }
+@utility text-heading { font-size: 1.125rem; font-weight: 700; line-height: 1.35; }
+@utility text-caption { font-size: 0.8125rem; line-height: 1.45; }
+@utility text-hero { font-size: 2.25rem; font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; }
+
 @utility card {
-    @apply rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900;
-  }
+  border-radius: var(--radius-card);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  padding: 1rem;
+}
 @utility btn {
-    @apply inline-flex min-h-11 items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
-  }
+  @apply inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  border-radius: var(--radius-control);
+}
 @utility btn-primary {
-    @apply btn bg-blue-700 text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500;
-  }
+  @apply btn bg-brand text-brand-on hover:bg-brand-hover;
+}
 @utility btn-secondary {
-    @apply btn border border-slate-300 bg-white text-slate-900 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800;
-  }
+  @apply btn border border-line bg-surface text-fg hover:bg-surface-2;
+}
 @utility btn-danger {
-    @apply btn bg-red-700 text-white hover:bg-red-800;
-  }
+  @apply btn bg-danger text-white hover:bg-danger-hover;
+}
 @utility input {
-    @apply min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-base dark:border-slate-700 dark:bg-slate-900;
-  }
+  @apply min-h-11 w-full border border-line bg-surface px-3 py-2 text-base text-fg;
+  border-radius: var(--radius-control);
+}
 @utility label {
-    @apply mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300;
-  }
+  @apply mb-1 block text-sm font-medium text-muted;
+}
 @utility chip {
-    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
-  }
+  @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+}
+@utility chip-neutral {
+  @apply chip bg-surface-2 text-fg;
+}
+@utility chip-warn {
+  @apply chip bg-warn-bg text-warn-fg;
+}
+@utility chip-brand {
+  @apply chip bg-brand-soft text-brand-text;
+}

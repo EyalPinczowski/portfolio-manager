@@ -23,7 +23,11 @@
     "import": "Import",
     "settings": "Settings",
     "logout": "Sign out",
-    "main": "Main navigation"
+    "main": "Main navigation",
+    "home": "Home",
+    "analyze": "Analyze",
+    "alerts": "Alerts",
+    "tabs": "Main tabs"
   },
   "disclaimer": {
     "footer": "Not financial advice. This app provides analysis and information only. Scores are experimental and have not been validated. All investment decisions are yours."
@@ -42,7 +46,9 @@
     "open": "Open",
     "closed": "Closed",
     "sinceStartNoDate": "Since you started using the app",
-    "fxStale": "The USD/ILS exchange rate is not up to date, so ILS and USD totals may be slightly off."
+    "fxStale": "The USD/ILS exchange rate is not up to date, so ILS and USD totals may be slightly off.",
+    "pricesAsOf": "Prices as of {time}",
+    "someStale": "some prices are delayed"
   },
   "switcher": {
     "label": "Portfolio",
@@ -72,7 +78,12 @@
     "suggest": "Suggest new stocks",
     "analyze": "Analyze a stock",
     "soon": "Coming soon",
-    "soonNote": "These features arrive in a later phase."
+    "soonNote": "These features arrive in a later phase.",
+    "open": "Open the actions menu",
+    "openShort": "Actions",
+    "menuTitle": "What would you like to do?",
+    "update": "Update portfolio from screenshots",
+    "updateNote": "Import your latest holdings from a broker screenshot."
   },
   "holdings": {
     "title": "Your holdings",
@@ -92,7 +103,11 @@
     "pnlUnavailable": "P&L not available (cost unknown)",
     "stale": "Stale price",
     "staleHint": "This price is older than expected.",
-    "noScore": "No score data"
+    "noScore": "No score data",
+    "today": "today",
+    "pnlHint": "Cost price unknown, so profit and loss is not shown.",
+    "stopSet": "Stop set",
+    "noData": "No data"
   },
   "holding": {
     "notFound": "Holding not found.",
@@ -393,7 +408,10 @@
     "relNow": "just now",
     "relMinutes": "{n} min ago",
     "relHours": "{n} h ago",
-    "relDays": "{n} d ago"
+    "relDays": "{n} d ago",
+    "guideTitle": "Setup guide",
+    "guideDesc": "A short walkthrough: portfolio, screenshot import, risk level and holding periods.",
+    "guideOpen": "Open the setup guide"
   },
   "createPortfolio": {
     "title": "Create your first portfolio",
@@ -402,5 +420,53 @@
     "currency": "Base currency",
     "create": "Create portfolio",
     "error": "Could not create the portfolio. Try again."
+  },
+  "comingSoon": {
+    "badge": "Coming soon",
+    "analyze": "Analyze any stock on demand. This feature is on its way.",
+    "alerts": "All your alerts in one place. This feature is on its way.",
+    "home": "Back to Home"
+  },
+  "guide": {
+    "title": "Let's get you set up",
+    "progress": "{done} of {total} steps done",
+    "skipAll": "Skip setup",
+    "finish": "Finish",
+    "skipStep": "Skip this step",
+    "choose": "Choose…",
+    "error": "Could not save. Please try again.",
+    "importCta": "Import a screenshot",
+    "needPortfolio": "Create a portfolio first.",
+    "noHoldingsYet": "Import your holdings first, then set a holding period for each.",
+    "riskLine": "Max loss per position {loss}%",
+    "riskSave": "Save risk level",
+    "state": {
+      "done": "Done",
+      "current": "Now",
+      "todo": "Next",
+      "skipped": "Skipped"
+    },
+    "steps": {
+      "disclaimer": {
+        "title": "Read the disclaimer",
+        "hint": "This app gives information only."
+      },
+      "portfolio": {
+        "title": "Create a portfolio",
+        "hint": "Holdings are always imported into a portfolio."
+      },
+      "import": {
+        "title": "Import a screenshot",
+        "hint": "We keep only the stock list. The screenshot is deleted right away."
+      },
+      "risk": {
+        "title": "Choose a risk level",
+        "hint": "Pick the level that fits you. Nothing is chosen for you."
+      },
+      "horizon": {
+        "title": "Set a holding period for each stock",
+        "hint": "How long do you plan to hold each one? No default is filled in."
+      }
+    }
   }
 }

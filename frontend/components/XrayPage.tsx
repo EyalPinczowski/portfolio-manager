@@ -20,8 +20,8 @@ function Bars({ title, items }: { title: string; items: ExposureItem[] }) {
         {sorted.map((i) => (
           <li key={i.name}>
             <div className="flex justify-between text-sm"><span>{i.name}</span><span className="tabular-nums" dir="ltr">{formatWeight(i.weight_pct, locale)}</span></div>
-            <div className="h-2 rounded bg-slate-200 dark:bg-slate-700" aria-hidden="true">
-              <div className="h-2 rounded bg-blue-700 dark:bg-blue-400" style={{ width: `${Math.min(100, i.weight_pct)}%` }} />
+            <div className="h-2 rounded bg-surface-2" aria-hidden="true">
+              <div className="h-2 rounded bg-brand" style={{ width: `${Math.min(100, i.weight_pct)}%` }} />
             </div>
           </li>
         ))}
@@ -61,7 +61,7 @@ function Body() {
                     <p>{b.why}</p>
                     {b.symbol && (
                       heldIds.has(b.symbol)
-                        ? <Link href={holdingHref(heldIds.get(b.symbol)!)} className="font-semibold text-blue-800 underline dark:text-blue-300" dir="ltr">{b.symbol}</Link>
+                        ? <Link href={holdingHref(heldIds.get(b.symbol)!)} className="font-semibold text-brand-text underline" dir="ltr">{b.symbol}</Link>
                         : <span className="font-semibold" dir="ltr">{b.symbol}</span>
                     )}
                   </li>
@@ -80,7 +80,7 @@ function Body() {
       )}
       <section className="card space-y-2" aria-label={t("heatmap")}>
         <h2 className="text-lg font-bold">{t("heatmap")}</h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400">{t("heatmapHint")}</p>
+        <p className="text-sm text-muted">{t("heatmapHint")}</p>
         {heat.data ? <Heatmap items={heat.data} /> : <p role="status">{c("loading")}</p>}
       </section>
     </>

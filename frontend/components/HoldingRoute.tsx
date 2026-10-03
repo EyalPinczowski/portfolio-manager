@@ -16,7 +16,7 @@ function FromQuery() {
 export function HoldingRoute() {
   const t = useTranslations("common");
   return (
-    <Suspense fallback={<p className="p-6 text-center text-slate-500" role="status">{t("loading")}</p>}>
+    <Suspense fallback={<p className="p-6 text-center text-muted" role="status">{t("loading")}</p>}>
       <FromQuery />
     </Suspense>
   );

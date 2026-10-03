@@ -50,8 +50,8 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     <>
       <main className="mx-auto max-w-md space-y-4 px-4 py-10">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-blue-800 dark:text-blue-300">{app("name")}</h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400">{app("tagline")}</p>
+          <h1 className="text-2xl font-bold text-brand-text">{app("name")}</h1>
+          <p className="text-sm text-muted">{app("tagline")}</p>
         </div>
         <form onSubmit={submit} className="card space-y-4">
           <h2 className="text-xl font-bold">{signup ? t("signupTitle") : t("loginTitle")}</h2>
@@ -76,18 +76,18 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
             </label>
           )}
           {challenge && !signup && (
-            <fieldset className="space-y-2 rounded-xl border border-slate-300 p-3 dark:border-slate-600">
+            <fieldset className="space-y-2 rounded-xl border border-line p-3 ">
               <legend className="px-1 text-sm font-semibold">{t("challengeTitle")}</legend>
               <TurnstileWidget key={challenge.round} siteKey={challenge.siteKey} onToken={setToken} />
             </fieldset>
           )}
-          {error && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{error}</p>}
+          {error && <p role="alert" className="text-sm text-loss">{error}</p>}
           <button type="submit" className="btn-primary w-full" disabled={busy || (signup && !accepted)}>
             {busy ? t("working") : signup ? t("signup") : t("login")}
           </button>
           <p className="text-center text-sm">
             {signup ? t("haveAccount") : t("noAccount")}{" "}
-            <Link href={signup ? "/login" : "/signup"} className="font-semibold text-blue-800 underline dark:text-blue-300">
+            <Link href={signup ? "/login" : "/signup"} className="font-semibold text-brand-text underline">
               {signup ? t("login") : t("signup")}
             </Link>
           </p>

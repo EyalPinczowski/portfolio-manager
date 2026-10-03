@@ -14,5 +14,5 @@ export function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => { if (unauth) router.replace("/login"); }, [unauth, router]);
   if (data) return <>{children}</>;
   if (error && !unauth) return <p role="alert" className="p-6 text-center">{t("errorLoad")}</p>;
-  return <p className="p-6 text-center text-slate-500" role="status">{t("loading")}</p>;
+  return <p className="p-6 text-center text-muted" role="status">{t("loading")}</p>;
 }

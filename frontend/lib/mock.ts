@@ -310,6 +310,11 @@ function validateRows(rows: ImportRow[]): void {
   if (detail.length) throw new ApiError(422, "Validation error", undefined, { detail });
 }
 
+/** Dev/test switch: localStorage "pm.mock" = "empty" shows an account with no portfolio (first-run screens). */
+function mockScenario(): string | null {
+  try { return typeof window === "undefined" ? null : window.localStorage.getItem("pm.mock"); } catch { return null; }
+}
+
 const ME: Me = { id: 1, email: "demo@example.com", locale: "he", disclaimer_accepted: true, ocr_consent: false, csrf_token: "mock-csrf-token" };
 
 export function mockRequest(method: string, path: string, body?: unknown): unknown {
@@ -337,7 +342,7 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
   if (p === "/launch-gate") return LAUNCH_GATE;
   if (p === "/portfolios") {
     if (method === "POST") { const np = { id: PORTFOLIOS.length + 1, name: String(b.name), base_currency: (b.base_currency as "ILS") ?? "ILS", risk_filter: { ...PRESETS[2] }, tracking_started_at: null, created_at: AS_OF }; PORTFOLIOS.push(np); return np; }
-    return PORTFOLIOS;
+    return mockScenario() === "empty" ? [] : PORTFOLIOS;
   }
   if (p === "/portfolios/combined/summary") return summaryFor("combined");
   if ((m = p.match(/^\/portfolios\/(\d+)\/summary$/))) return summaryFor(Number(m[1]));

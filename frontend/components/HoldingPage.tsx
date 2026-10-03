@@ -46,38 +46,38 @@ function Body({ hid }: { hid: number }) {
   return (
     <>
       <div>
-        <Link href="/" className="text-sm text-blue-800 hover:underline dark:text-blue-300">← {c("back")}</Link>
+        <Link href="/" className="text-sm text-brand-text hover:underline">← {c("back")}</Link>
         <h1 className="text-2xl font-bold">{name}</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400" dir="ltr">{d.symbol}</p>
+        <p className="text-sm text-muted" dir="ltr">{d.symbol}</p>
       </div>
 
       <section className="card space-y-3" aria-label={t("scoreCard")}>
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-bold">{t("scoreCard")}</h2>
-          <span className="chip bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200">{t("notValidatedLabel")}</span>
+          <span className="chip bg-warn-bg text-warn-fg">{t("notValidatedLabel")}</span>
         </div>
-        <p className="text-sm text-slate-700 dark:text-slate-300">{t("notValidated")}</p>
-        {d.disclaimer && <p className="text-xs text-slate-600 dark:text-slate-400">{d.disclaimer}</p>}
+        <p className="text-sm text-muted">{t("notValidated")}</p>
+        {d.disclaimer && <p className="text-xs text-muted">{d.disclaimer}</p>}
         {d.available ? (
           <div className="flex items-baseline gap-3">
             <span className="text-4xl font-bold tabular-nums" dir="ltr">{d.total > 0 ? "+" : ""}{d.total}</span>
-            <span className="text-sm text-slate-600 dark:text-slate-400">{t("total")} · {t("confidence", { pct: formatWeight(d.confidence * 100, locale, 0) })}</span>
+            <span className="text-sm text-muted">{t("total")} · {t("confidence", { pct: formatWeight(d.confidence * 100, locale, 0) })}</span>
           </div>
         ) : (
-          <p role="status" className="rounded-xl bg-slate-100 p-3 font-medium dark:bg-slate-800">
+          <p role="status" className="rounded-xl bg-surface-2 p-3 font-medium ">
             <span className="text-2xl font-bold" aria-hidden="true">{DASH} </span>{t("noData")}
           </p>
         )}
         <ul className="space-y-2">
           {d.signals.map((s) => (
-            <li key={s.name} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+            <li key={s.name} className="rounded-xl border border-line p-3 ">
               <div className="flex items-center justify-between">
                 <span className="font-semibold">{t.has(`signal.${s.name}`) ? t(`signal.${s.name}`) : s.name}</span>
                 {s.confidence === 0
-                  ? <span className="text-sm text-slate-600 dark:text-slate-400">{t("signalNoData")}</span>
+                  ? <span className="text-sm text-muted">{t("signalNoData")}</span>
                   : <span className="tabular-nums" dir="ltr">{s.score > 0 ? "+" : ""}{s.score}</span>}
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
+              <p className="text-xs text-muted">
                 {t("confidence", { pct: formatWeight(s.confidence * 100, locale, 0) })} · {t("weight", { pct: formatWeight(s.weight, locale, 0) })}
                 {s.nominal_weight != null && Math.abs(s.nominal_weight - s.weight) >= 0.05 && ` · ${t("nominalWeight", { pct: formatWeight(s.nominal_weight, locale, 0) })}`}
               </p>
@@ -94,10 +94,10 @@ function Body({ hid }: { hid: number }) {
           {open ? t("whyHide") : t("why")}
         </button>
         {open && (
-          <div id="why-panel" className="space-y-4 rounded-xl bg-slate-100 p-3 dark:bg-slate-800">
+          <div id="why-panel" className="space-y-4 rounded-xl bg-surface-2 p-3 ">
             <ExplanationView e={d.explanation} currency={cur} />
             {d.signals.map((s) => (
-              <div key={s.name} className="border-t border-slate-300 pt-3 dark:border-slate-600">
+              <div key={s.name} className="border-t border-line pt-3 ">
                 <h3 className="mb-1 font-semibold">{t.has(`signal.${s.name}`) ? t(`signal.${s.name}`) : s.name}</h3>
                 <ExplanationView e={s.explanation} reasons={s.reasons} asOf={s.data_as_of} currency={cur} showContributions={false} />
               </div>
@@ -109,7 +109,7 @@ function Body({ hid }: { hid: number }) {
       <section className="card space-y-3" aria-label={t("horizonTitle")}>
         <h2 className="text-lg font-bold">{t("horizonTitle")}</h2>
         {d.horizon === null ? (
-          <p className="rounded-xl bg-amber-100 p-3 font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200" role="status">{t("horizonPrompt")}</p>
+          <p className="rounded-xl bg-warn-bg p-3 font-medium text-warn-fg" role="status">{t("horizonPrompt")}</p>
         ) : (
           <p className="text-sm">{t("horizonCurrent", { value: t(`horizons.${d.horizon}`) })}</p>
         )}
@@ -131,10 +131,10 @@ function Body({ hid }: { hid: number }) {
 
       <section className="card space-y-3" aria-label={t("alertsTitle")}>
         <h2 className="text-lg font-bold">{t("alertsTitle")}</h2>
-        {mine.length === 0 ? <p className="text-sm text-slate-600 dark:text-slate-400">{t("alertsNone")}</p> : (
+        {mine.length === 0 ? <p className="text-sm text-muted">{t("alertsNone")}</p> : (
           <ul className="space-y-2">
             {mine.map((a) => (
-              <li key={a.id} className="flex items-center justify-between rounded-xl border border-slate-200 p-2 dark:border-slate-700">
+              <li key={a.id} className="flex items-center justify-between rounded-xl border border-line p-2 ">
                 <span dir="auto">{t("alertSummary", { op: t(a.op), price: formatMoney(a.price, d.symbol.endsWith(".TA") ? "ILS" : "USD", locale) })}</span>
                 <button type="button" className="btn-secondary" onClick={async () => { await api.deleteAlert(a.id); await alerts.mutate(); }}>{t("alertDelete")}</button>
               </li>
@@ -155,12 +155,12 @@ function Body({ hid }: { hid: number }) {
           </div>
           <button type="submit" className="btn-primary" disabled={busy}>{t("alertAdd")}</button>
         </form>
-        {err && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{c("errorLoad")}</p>}
+        {err && <p role="alert" className="text-sm text-loss">{c("errorLoad")}</p>}
       </section>
 
       <section className="card space-y-1 border-dashed" aria-label={t("exitTitle")}>
         <h2 className="text-lg font-bold">{t("exitTitle")}</h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400">{t("exitSoon")}</p>
+        <p className="text-sm text-muted">{t("exitSoon")}</p>
       </section>
     </>
   );

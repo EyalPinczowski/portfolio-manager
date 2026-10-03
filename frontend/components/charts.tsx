@@ -4,15 +4,15 @@ import {
   createChart, HistogramSeries, LineSeries, ColorType, type IChartApi, type Time,
 } from "lightweight-charts";
 
-function palette() {
+export function palette() {
   const dark = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches;
   return {
     dark,
-    text: dark ? "#cbd5e1" : "#334155",
-    grid: dark ? "#1e293b" : "#e2e8f0",
-    up: dark ? "#34d399" : "#047857",
-    down: dark ? "#f87171" : "#b91c1c",
-    you: dark ? "#60a5fa" : "#1d4ed8",
+    text: dark ? "#a5b0c0" : "#475467",
+    grid: dark ? "#232d3c" : "#e4e8ef",
+    up: dark ? "#4cd9a0" : "#046c4e",
+    down: dark ? "#ff8a80" : "#b42318",
+    you: dark ? "#8fb0ff" : "#1d4ed8",
     sp: dark ? "#fbbf24" : "#b45309",
     ta: dark ? "#c084fc" : "#7e22ce",
   };
