@@ -34,7 +34,12 @@ from app.models import (
 from app.portfolio.heatmap import build_heatmap
 from app.portfolio.quotes import refresh_symbols
 from app.portfolio.summary import build_summary
-from app.portfolio.valuation import PortfolioValuation, ensure_tracking_started, value_portfolio
+from app.portfolio.valuation import (
+    PortfolioValuation,
+    ensure_tracking_started,
+    sync_pending_flows,
+    value_portfolio,
+)
 from app.portfolio.xray import build_xray
 from app.providers.fx_provider import get_usd_ils
 from app.providers.registry import get_providers
@@ -42,9 +47,10 @@ from app.repo import get_holding_in_portfolio, get_portfolio, list_portfolios
 from app.scoring.risk import resolve_risk_filter
 from app.scoring.scorecard import get_cached_scorecard, is_fresh, refresh_scorecard
 from app.securities import get_or_create_security
+from app.strictjson import StrictJsonRoute
 from app.timeutil import as_utc, local_today
 
-router = APIRouter(tags=["portfolios"])
+router = APIRouter(tags=["portfolios"], route_class=StrictJsonRoute)
 
 
 # ---------------------------------------------------------------- helpers
@@ -250,10 +256,31 @@ def _single(db: Session, p: Portfolio, holding_id: int, settings: Settings) -> H
     raise HTTPException(status.HTTP_404_NOT_FOUND, "Holding not found")
 
 
+def _valued(
+    db: Session, p: Portfolio, settings: Settings, holding_id: int | None
+) -> tuple[float, str]:
+    """(price, currency) the valuation uses for this holding. Never `Security.currency`.
+
+    A cost-basis price is in the holding's `cost_currency`, a quote in the quote's currency; the
+    flow must be recorded in whatever currency the price actually is (AAPL with an ILS cost of 700
+    is a 700 ILS price, not 700 USD). An unpriced holding gives (0, ...): no flow is recorded now,
+    `sync_pending_flows` records it when the first real price arrives.
+    """
+    val = value_portfolio(db, p, settings)
+    for v in val.holdings:
+        if v.holding.id == holding_id:
+            return v.price, v.currency
+    return 0.0, "USD"
+
+
 def _record_flow(
     db: Session, p: Portfolio, symbol: str, delta: float, price: float, currency: str
 ) -> None:
-    """Quantity change after tracking started is an external flow (buy in / sell out)."""
+    """Quantity change after tracking started is an external flow (buy in / sell out).
+
+    `price`/`currency` come from the valuation (`_valued`). With no price there is nothing to
+    record yet: see `sync_pending_flows` (deferred flow).
+    """
     assert p.id is not None
     if p.tracking_started_at is None or abs(delta) < 1e-12 or price <= 0:
         return
@@ -310,12 +337,12 @@ def add_holding(
     db.commit()
     db.refresh(h)
     refresh_symbols(db, [symbol], get_providers().quotes)  # best effort, bounded by the provider
-    val = value_portfolio(db, p, settings)
-    price = next((v.price for v in val.holdings if v.holding.id == h.id), body.avg_cost or 0.0)
+    price, currency = _valued(db, p, settings, h.id)
     if p.tracking_started_at is None:
         ensure_tracking_started(db, p)
     else:
-        _record_flow(db, p, symbol, body.quantity, price, sec.currency)
+        _record_flow(db, p, symbol, body.quantity, price, currency)
+        sync_pending_flows(db, p, settings=settings)  # unpriced: a marker, settled at first price
         db.commit()
     background.add_task(refresh_symbol_data, [symbol])
     assert h.id is not None
@@ -335,10 +362,8 @@ def patch_holding(
     h, p = get_holding_in_portfolio(db, user.id, portfolio_id, holding_id)
     fields = body.model_fields_set
     if body.quantity is not None and body.quantity != h.quantity:
-        val = value_portfolio(db, p, settings)
-        price = next((v.price for v in val.holdings if v.holding.id == h.id), h.avg_cost or 0.0)
-        sec = get_or_create_security(db, h.symbol)
-        _record_flow(db, p, h.symbol, body.quantity - h.quantity, price, sec.currency)
+        price, currency = _valued(db, p, settings, h.id)
+        _record_flow(db, p, h.symbol, body.quantity - h.quantity, price, currency)
         h.quantity = body.quantity
     if "avg_cost" in fields:
         h.avg_cost = body.avg_cost
@@ -350,6 +375,10 @@ def patch_holding(
         override = body.risk_override.model_dump(exclude_none=True) if body.risk_override else None
         h.risk_override = override or None
     db.add(h)
+    db.flush()
+    sync_pending_flows(
+        db, p, settings=settings
+    )  # e.g. an avg_cost gave an unpriced holding a price
     db.commit()
     assert h.id is not None
     return _single(db, p, h.id, settings)
@@ -363,10 +392,10 @@ def delete_holding(
 ) -> Response:
     assert user.id is not None
     h, p = get_holding_in_portfolio(db, user.id, portfolio_id, holding_id)
-    val = value_portfolio(db, p, settings)
-    price = next((v.price for v in val.holdings if v.holding.id == h.id), h.avg_cost or 0.0)
-    sec = get_or_create_security(db, h.symbol)
-    _record_flow(db, p, h.symbol, -h.quantity, price, sec.currency)
+    price, currency = _valued(db, p, settings, h.id)
+    _record_flow(db, p, h.symbol, -h.quantity, price, currency)
     db.delete(h)
+    db.flush()
+    sync_pending_flows(db, p, settings=settings)  # drops the marker of an unpriced holding
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

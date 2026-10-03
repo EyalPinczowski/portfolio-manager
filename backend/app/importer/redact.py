@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from PIL import Image, ImageFilter
 
 from app.config import Settings, get_settings
-from app.importer.imageio import open_checked, to_rgb_bounded
+from app.importer.imageio import decode_slot, open_checked, to_rgb_bounded
 from app.providers.ocr.tesseract import tesseract_available
 
 log = logging.getLogger(__name__)
@@ -74,6 +74,13 @@ def redact_image(
 ) -> tuple[bytes, RedactionReport]:
     """Return (redacted PNG bytes, report). `word_boxes` can be injected (tests / other OCR)."""
     s = settings or get_settings()
+    with decode_slot(s):  # one image in memory at a time
+        return _redact(image_bytes, s, word_boxes)
+
+
+def _redact(
+    image_bytes: bytes, s: Settings, word_boxes: list[WordBox] | None
+) -> tuple[bytes, RedactionReport]:
     src = open_checked(image_bytes, s)  # raises ImageRejectedError (413 / 400)
     try:
         img = to_rgb_bounded(src, s)  # may be `src` itself: the pixels are decoded only once

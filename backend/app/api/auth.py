@@ -23,9 +23,10 @@ from app.auth.ratelimit import (
 from app.auth.sessions import clear_session_cookie, create_session, set_session_cookie
 from app.config import Settings
 from app.models import AuthSession, Invite, User
+from app.strictjson import StrictJsonRoute
 from app.timeutil import as_utc, utcnow
 
-router = APIRouter(tags=["auth"])
+router = APIRouter(tags=["auth"], route_class=StrictJsonRoute)
 
 
 def _me(user: User, session: AuthSession) -> MeOut:

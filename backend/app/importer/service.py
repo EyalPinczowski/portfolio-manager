@@ -20,7 +20,14 @@ from app.config import Settings, get_settings
 from app.importer.diff import ProposedChange, diff_rows
 from app.importer.imageio import ImageRejectedError
 from app.importer.match import SecurityIndex, apply_match, match_row
-from app.importer.parse import ParsedRow, cost_native, parse_ocr_result, price_native, validate_row
+from app.importer.parse import (
+    ParsedRow,
+    cost_native,
+    parse_ocr_result,
+    price_native,
+    row_currency,
+    validate_row,
+)
 from app.importer.redact import redact_image
 from app.models import (
     Holding,
@@ -30,7 +37,7 @@ from app.models import (
     Security,
     Transaction,
 )
-from app.portfolio.valuation import ensure_tracking_started
+from app.portfolio.valuation import ensure_tracking_started, sync_pending_flows
 from app.providers.base import OcrProvider, OcrUnavailableError
 from app.providers.fx_provider import get_usd_ils
 from app.providers.ocr.tesseract import ON_DEVICE_MESSAGE
@@ -84,12 +91,28 @@ def last_snapshot_rows(db: Session, portfolio_id: int) -> list[dict[str, Any]] |
     ]
 
 
+def matchable_securities(db: Session, owner_id: int) -> list[Security]:
+    """The only securities a user's import may match: verified ones plus the symbols already in
+    this user's own portfolios. Another user's unverified ticker never matches or is suggested."""
+    own = select(Holding.symbol).join(Portfolio, col(Portfolio.id) == col(Holding.portfolio_id))
+    own = own.where(Portfolio.owner_id == owner_id)
+    return list(
+        db.exec(
+            select(Security).where(
+                col(Security.verified).is_(True) | col(Security.symbol).in_(own.scalar_subquery())
+            )
+        ).all()
+    )
+
+
 def finalize_rows(
-    db: Session, rows: list[ParsedRow], settings: Settings, rematch: bool = True
+    db: Session, rows: list[ParsedRow], settings: Settings, owner_id: int, rematch: bool = True
 ) -> list[ParsedRow]:
-    """Validate and (re)match rows. A row that already has a known symbol keeps it."""
-    securities = list(db.exec(select(Security)).all())
-    index = SecurityIndex(securities)
+    """Validate and (re)match rows. A row that already has a known symbol keeps it.
+
+    `owner_id` scopes the match index (`matchable_securities`).
+    """
+    index = SecurityIndex(matchable_securities(db, owner_id))
     for i, row in enumerate(rows):
         row.index = i
         validate_row(row, settings)
@@ -110,7 +133,7 @@ def _diff_input(rows: list[ParsedRow]) -> list[dict[str, Any]]:
             "symbol": r.symbol,
             "quantity": r.quantity,
             "price_native": price_native(r),
-            "currency": r.currency,
+            "currency": row_currency(r),
         }
         for r in rows
     ]
@@ -196,7 +219,7 @@ def build_draft(
     del result  # raw OCR text goes out of scope here and is never stored
     if not rows:
         raise HTTPException(422, "No holdings could be read from the image")
-    finalize_rows(db, rows, s)
+    finalize_rows(db, rows, s, portfolio.owner_id)
     return _save_draft(db, portfolio, keep_stock_rows(rows))
 
 
@@ -207,8 +230,7 @@ def build_draft_from_rows(
     s = settings or get_settings()
     for r in rows:  # the server decides flags / candidates / matches, never the client
         r.flags, r.candidates, r.matched_name = [], [], None
-        r.name = r.name[: s.import_name_max_chars]
-    finalize_rows(db, rows, s)
+    finalize_rows(db, rows, s, portfolio.owner_id)
     return _save_draft(db, portfolio, keep_stock_rows(rows))
 
 
@@ -273,7 +295,7 @@ def confirm_draft(
         assert sec is not None
         keep.add(r.symbol)
         cost = cost_native(r)
-        cur = "ILS" if r.unit in ("agorot", "ILS") else "USD"
+        cur = row_currency(r)
         h = existing.get(r.symbol)
         if h is None:
             h = Holding(portfolio_id=portfolio.id, symbol=r.symbol, quantity=r.quantity)
@@ -316,6 +338,8 @@ def confirm_draft(
     draft.proposed_changes = []
     db.add(draft)
     db.commit()
-    ensure_tracking_started(db, portfolio, today)
+    if not ensure_tracking_started(db, portfolio, today):
+        sync_pending_flows(db, portfolio, settings=s, today=today)  # unpriced new holdings
+        db.commit()
     db.refresh(draft)
     return draft

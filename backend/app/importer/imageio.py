@@ -10,7 +10,10 @@
 from __future__ import annotations
 
 import io
+import threading
 import warnings
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 from PIL import Image
@@ -24,7 +27,31 @@ CONTENT_TYPES = {"image/png", "image/jpeg", "image/webp"}
 Image.MAX_IMAGE_PIXELS = 25_000_000
 
 
-@dataclass(frozen=True)
+# One image is decoded and redacted at a time per process: three concurrent 25 MP RGBA uploads
+# reached a 718 MB peak on a 512 MB host. The others wait (bounded, then 503).
+DECODE_SLOT = threading.Semaphore(1)
+
+
+@contextmanager
+def decode_slot(settings: Settings | None = None) -> Iterator[None]:
+    s = settings or get_settings()
+    if not DECODE_SLOT.acquire(timeout=s.image_decode_wait_seconds):
+        raise ImageRejectedError(503, "The server is busy reading another image; try again")
+    try:
+        yield
+    finally:
+        DECODE_SLOT.release()
+
+
+def decode_peak_bytes(mode: str, bands: int, pixels: int) -> int:
+    """Peak bytes to turn the image into RGB: the decoded bands, plus an RGB copy unless it is RGB.
+
+    A pixel cap alone ignores this: 25 MP is 75 MB as RGB but 175 MB as RGBA or CMYK.
+    """
+    return pixels * (3 if mode == "RGB" else bands + 3)
+
+
+@dataclass(eq=False)  # not frozen: contextlib and traceback code assign exception attributes
 class ImageRejectedError(Exception):
     """The upload cannot be used. `status` is the HTTP status the API should answer with."""
 
@@ -61,7 +88,13 @@ def open_checked(data: bytes, settings: Settings | None = None) -> Image.Image:
     except Exception as exc:  # corrupt / truncated / unsupported
         raise ImageRejectedError(400, "The file is not a readable image") from exc
     width, height = img.size
-    if width <= 0 or height <= 0 or width * height > s.max_image_pixels:
+    if (
+        width <= 0
+        or height <= 0
+        or width * height > s.max_image_pixels
+        or decode_peak_bytes(img.mode, len(img.getbands()), width * height)
+        > s.max_image_decode_bytes
+    ):
         img.close()
         raise too_big
     return img

@@ -7,7 +7,7 @@ from fastapi.concurrency import run_in_threadpool
 
 from app.api.schemas import ImportDraftOut, ImportPatch, ImportRowModel, ImportRowsBody
 from app.auth.deps import DbDep, SettingsDep, UserDep
-from app.auth.ratelimit import enforce_limit, upload_limiter
+from app.auth.ratelimit import enforce_limit, import_edit_limiter, upload_limiter
 from app.config import Settings, get_settings
 from app.importer import service
 from app.importer.diff import ProposedChange
@@ -17,9 +17,10 @@ from app.importer.service import draft_expires_at
 from app.models import ImportDraft, Portfolio, User
 from app.providers.registry import get_providers
 from app.repo import get_draft, get_portfolio
+from app.strictjson import StrictJsonRoute
 from app.timeutil import as_utc, utcnow
 
-router = APIRouter(tags=["imports"])
+router = APIRouter(tags=["imports"], route_class=StrictJsonRoute)
 
 
 def _out(d: ImportDraft, settings: Settings | None = None) -> ImportDraftOut:
@@ -149,12 +150,15 @@ def patch_import(
     draft_id: int, body: ImportPatch, user: UserDep, db: DbDep, settings: SettingsDep
 ) -> ImportDraftOut:
     assert user.id is not None
+    enforce_limit(
+        import_edit_limiter, f"user:{user.id}", settings.import_edit_rate_limit_per_hour, 3600.0
+    )
     d, p = _live_draft(db, user.id, draft_id, settings)
     if d.status != "draft":
         raise HTTPException(status.HTTP_409_CONFLICT, "This import can no longer be edited")
     if body.rows is not None:
         rows = [ParsedRow.model_validate(r.model_dump()) for r in body.rows]
-        service.finalize_rows(db, rows, settings, rematch=False)
+        service.finalize_rows(db, rows, settings, p.owner_id, rematch=False)
         d.rows = [r.model_dump() for r in rows]
         if body.proposed_changes is None:
             assert p.id is not None

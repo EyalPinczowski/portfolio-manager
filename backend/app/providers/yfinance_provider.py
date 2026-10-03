@@ -18,6 +18,8 @@ from app.timeutil import utcnow
 log = logging.getLogger(__name__)
 
 CurrencyHint = Callable[[str], str | None]
+StoredCurrency = Callable[[str], str | None]  # symbol -> the raw currency Yahoo last reported
+StoreCurrency = Callable[[str, str], None]  # (symbol, raw currency) after a successful lookup
 
 
 def is_index_symbol(symbol: str) -> bool:
@@ -61,6 +63,11 @@ class YFinanceProvider:
         )
         self._failures: TTLCache[bool] = TTLCache(self.settings.history_failure_ttl_seconds)
         self.currency_hint: CurrencyHint | None = None  # e.g. Security.currency from the DB
+        # Persistence of Yahoo's own (raw) currency, e.g. `Security.yahoo_currency`. Never raises.
+        self.stored_currency: StoredCurrency | None = None
+        self.store_currency: StoreCurrency | None = None
+        self._retry_tick = 0
+        self._retry_last: dict[str, int] = {}  # symbol -> tick of its last single-ticker retry
         self._empty_fetches = 0
         self._breaker_until = 0.0
 
@@ -68,8 +75,9 @@ class YFinanceProvider:
     def raw_currency(self, symbol: str) -> str | None:
         """The currency Yahoo reports for the symbol (e.g. ILA for TASE stocks).
 
-        None when unknown. If the live lookup fails (rate limits), the last known value is used
-        even if it has expired.
+        None when unknown. A successful lookup is persisted (`store_currency`). If the live lookup
+        fails (rate limits), the persisted value is used first (it survives a restart), then the
+        in-memory value even if it has expired.
         """
         cached = self._currency.get(symbol)
         if cached is not None:
@@ -81,9 +89,28 @@ class YFinanceProvider:
             cur = info.get("currency") if hasattr(info, "get") else info["currency"]
         except Exception as exc:
             log.warning("currency lookup failed for %s: %s", symbol, exc)
+            stored = self._stored(symbol)
+            if stored:
+                self._currency.set(symbol, stored)
+                return stored
             return self._currency.get_stale(symbol) or None
         self._currency.set(symbol, cur or "")
+        if cur and self.store_currency is not None:
+            try:
+                if self._stored(symbol) != str(cur):
+                    self.store_currency(symbol, str(cur))
+            except Exception as exc:  # persistence must never break a quote cycle
+                log.warning("could not persist the currency of %s: %s", symbol, exc)
         return str(cur) if cur else None
+
+    def _stored(self, symbol: str) -> str | None:
+        if self.stored_currency is None:
+            return None
+        try:
+            return self.stored_currency(symbol) or None
+        except Exception as exc:
+            log.warning("could not read the stored currency of %s: %s", symbol, exc)
+            return None
 
     def resolve_currency(self, symbol: str) -> str | None:
         """Currency used to normalise raw prices, or None when it cannot be determined safely.
@@ -162,7 +189,7 @@ class YFinanceProvider:
             log.warning("batch quote download failed: %s", exc)
         missing = [x for x in symbols if x not in out]
         if missing:
-            for sym in missing[: s.provider_single_retry_max]:
+            for sym in self._retry_order(missing)[: s.provider_single_retry_max]:
                 try:
                     self._collect(self._download([sym]), [sym], now, out)
                 except Exception as exc:
@@ -176,6 +203,19 @@ class YFinanceProvider:
                 self._empty_fetches = 0
                 log.warning("no quotes returned repeatedly; pausing for the cool-down")
         return out
+
+    def _retry_order(self, missing: list[str]) -> list[str]:
+        """Least recently retried first, so symbols Yahoo never answers (junk alert tickers) cannot
+        take every single-retry slot cycle after cycle. Never-tried symbols come first."""
+        order = sorted(missing, key=lambda x: (self._retry_last.get(x, -1), x))
+        picks = order[: self.settings.provider_single_retry_max]
+        self._retry_tick += 1
+        for sym in picks:
+            self._retry_last[sym] = self._retry_tick
+        # forget symbols that are not missing any more (they resolved or left the cycle)
+        wanted = set(missing)
+        self._retry_last = {k: v for k, v in self._retry_last.items() if k in wanted}
+        return order
 
     def _quote_from_frame(self, sym: str, frame: pd.DataFrame, now: datetime) -> Quote | None:
         closes = frame["Close"].dropna()

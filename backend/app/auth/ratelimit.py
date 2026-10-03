@@ -133,12 +133,14 @@ class CountLimiter:
 login_limiter = BackoffLimiter()
 signup_limiter = CountLimiter()
 upload_limiter = CountLimiter()
+import_edit_limiter = CountLimiter()
 
 
 def clear_all_limiters() -> None:
     login_limiter.clear()
     signup_limiter.clear()
     upload_limiter.clear()
+    import_edit_limiter.clear()
 
 
 def too_many(retry_after: int, what: str = "Too many requests. Try again later.") -> HTTPException:

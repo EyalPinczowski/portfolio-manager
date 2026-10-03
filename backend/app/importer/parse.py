@@ -3,15 +3,46 @@
 from __future__ import annotations
 
 import itertools
+import math
 import re
-from typing import Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
 from app.config import Settings, get_settings
 from app.providers.base import OcrResult, OcrRow
 
 Unit = Literal["ILS", "agorot", "USD"]
+Currency = Literal["ILS", "USD"]
+
+SYMBOL_PATTERN = r"^[A-Z0-9.^=\-]{1,20}$"
+TASE_NUMBER_PATTERN = r"^\d{5,9}$"
+NAME_MAX_CHARS = 200
+QTY_MAX = 1e12  # sanity ceilings: one malformed row must not break the dashboard
+MONEY_MAX = 1e15
+DIGIT_RUN_RE = re.compile(r"\d{6,}")  # an account / ID number, never part of a security name
+
+
+def norm_symbol(v: Any) -> Any:
+    """Trim and upper-case; an empty string means "no symbol"."""
+    if isinstance(v, str):
+        v = v.strip().upper()
+        return v or None
+    return v
+
+
+def mask_digit_runs(v: Any) -> Any:
+    """Names are a few words: cap them and mask runs of 6+ digits (account numbers) server-side."""
+    if isinstance(v, str):
+        return DIGIT_RUN_RE.sub("***", v[:NAME_MAX_CHARS])[:NAME_MAX_CHARS]
+    return v
+
+
+RowSymbol = Annotated[
+    Annotated[str, Field(pattern=SYMBOL_PATTERN)] | None, BeforeValidator(norm_symbol)
+]
+RowQuantity = Annotated[float, Field(ge=0, le=QTY_MAX, allow_inf_nan=False)]
+RowMoney = Annotated[float, Field(ge=0, le=MONEY_MAX, allow_inf_nan=False)]
 
 NUMBER_RE = re.compile(r"(?<![\w.])[-+]?\(?\d[\d,]*(?:\.\d+)?\)?%?")
 SYMBOL_RE = re.compile(r"(?<![\w.$])[A-Z]{1,5}(?:[.-][A-Z]{1,3})?(?![\w])")
@@ -56,27 +87,47 @@ SYMBOL_STOPWORDS = {
 class MatchCandidate(BaseModel):
     """A possible security for a row whose name match was too weak to accept automatically."""
 
-    symbol: str
-    name: str
-    score: float  # 0-100 name similarity
+    model_config = ConfigDict(extra="forbid")
+
+    symbol: str = Field(max_length=20)
+    name: str = Field(max_length=NAME_MAX_CHARS)
+    score: float = Field(ge=0, le=100, allow_inf_nan=False)  # 0-100 name similarity
 
 
 class ParsedRow(BaseModel):
-    index: int = 0
-    name: str = ""
-    symbol: str | None = None
-    tase_number: str | None = None
-    quantity: float | None = None
-    price: float | None = None  # as displayed (agorot when unit == "agorot")
-    value: float | None = None  # total market value as displayed
-    cost: float | None = None  # average cost per unit as displayed (same unit as price)
-    currency: str = "ILS"
+    """One broker row. Bounded and strict: it is also the request schema of the review screen.
+
+    `unit` is the single source of truth for the money fields: `agorot` and `ILS` mean the
+    currency is ILS, `USD` means USD (`row_currency`). `currency` must agree (validated).
+    """
+
+    index: int = Field(default=0, ge=0, le=10_000)
+    name: Annotated[str, BeforeValidator(mask_digit_runs)] = Field(default="", max_length=200)
+    symbol: RowSymbol = None
+    tase_number: str | None = Field(default=None, pattern=TASE_NUMBER_PATTERN)
+    quantity: RowQuantity | None = None
+    price: RowMoney | None = None  # as displayed (agorot when unit == "agorot")
+    value: RowMoney | None = None  # total market value as displayed
+    cost: RowMoney | None = None  # average cost per unit as displayed (same unit as price)
+    currency: Currency = "ILS"
     unit: Unit = "ILS"
-    matched_name: str | None = None
+    matched_name: str | None = Field(default=None, max_length=NAME_MAX_CHARS)
     # Weak name matches are never picked silently: `symbol` stays None, `flags` contains
     # "low_confidence_match" and the best guesses are listed here (best first) for the user.
-    candidates: list[MatchCandidate] = Field(default_factory=list)
-    flags: list[str] = Field(default_factory=list)
+    candidates: list[MatchCandidate] = Field(default_factory=list, max_length=20)
+    flags: list[str] = Field(default_factory=list, max_length=10)
+
+    @model_validator(mode="after")
+    def _unit_agrees_with_currency(self) -> ParsedRow:
+        if row_currency(self) != self.currency:
+            raise ValueError(f"unit {self.unit} does not agree with currency {self.currency}")
+        return self
+
+
+def row_currency(row: ParsedRow) -> Currency:
+    """The currency of the row's money fields, from `unit` (agorot is ILS). Used by matching,
+    the diff and confirm alike, so they can never disagree about what is stored."""
+    return "USD" if row.unit == "USD" else "ILS"
 
 
 def price_native(row: ParsedRow) -> float | None:
@@ -90,6 +141,13 @@ def cost_native(row: ParsedRow) -> float | None:
     if row.cost is None:
         return None
     return row.cost / 100.0 if row.unit == "agorot" else row.cost
+
+
+def clean_number(x: float | None, ceiling: float = MONEY_MAX) -> float | None:
+    """A displayed number the row model accepts, else None (so the row is flagged, not crashed)."""
+    if x is None or not math.isfinite(x) or x < 0 or x > ceiling:
+        return None
+    return x
 
 
 def _to_number(token: str) -> float | None:
@@ -199,7 +257,9 @@ def parse_line(line: str, agorot_global: bool, settings: Settings) -> ParsedRow 
             row.symbol = sym
             break
     name = re.sub(r"\s+", " ", clean).strip(" -:,.")
-    row.name = name
+    row.name = mask_digit_runs(name)
+    row.quantity = clean_number(row.quantity, QTY_MAX)
+    row.price, row.value, row.cost = (clean_number(x) for x in (row.price, row.value, row.cost))
     return row
 
 
@@ -229,16 +289,23 @@ def _from_ocr_row(r: OcrRow, index: int) -> ParsedRow:
         unit, cur = "USD", "USD"
     else:
         unit, cur = "ILS", cur or "ILS"
+    if cur not in ("ILS", "USD"):
+        cur, unit = "ILS", "ILS"  # an unsupported currency is never guessed: no usable numbers
+        r = r.model_copy(update={"price": None, "value": None, "cost": None})
+    symbol = norm_symbol(r.symbol)
+    if not isinstance(symbol, str) or not re.fullmatch(SYMBOL_PATTERN, symbol):
+        symbol = None
+    tase = re.sub(r"\D", "", r.tase_number or "")
     return ParsedRow(
         index=index,
-        name=r.name,
-        symbol=(r.symbol or None),
-        tase_number=r.tase_number,
-        quantity=r.quantity,
-        price=r.price,
-        value=r.value,
-        cost=r.cost,
-        currency=cur,
+        name=mask_digit_runs(r.name),
+        symbol=symbol,
+        tase_number=tase if re.fullmatch(TASE_NUMBER_PATTERN, tase) else None,
+        quantity=clean_number(r.quantity, QTY_MAX),
+        price=clean_number(r.price),
+        value=clean_number(r.value),
+        cost=clean_number(r.cost),
+        currency=cur,  # type: ignore[arg-type]
         unit=unit,
     )
 

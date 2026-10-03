@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.importer.parse import MONEY_MAX, QTY_MAX, Currency, RowSymbol
+
 ChangeType = Literal["buy", "sell", "deposit", "withdrawal"]
 EPS = 1e-9
 
@@ -13,12 +15,12 @@ EPS = 1e-9
 class ProposedChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    row_index: int  # -1 when the holding vanished from the screenshot
-    symbol: str | None
+    row_index: int = Field(ge=-1, le=10_000)  # -1 when the holding vanished from the screenshot
+    symbol: RowSymbol
     type: ChangeType
-    quantity: float | None = Field(ge=0, allow_inf_nan=False)
-    amount: float | None = Field(ge=0, allow_inf_nan=False)  # in `currency`
-    currency: str
+    quantity: float | None = Field(ge=0, le=QTY_MAX, allow_inf_nan=False)
+    amount: float | None = Field(ge=0, le=MONEY_MAX, allow_inf_nan=False)  # in `currency`
+    currency: Currency
 
 
 def diff_rows(
@@ -53,7 +55,7 @@ def diff_rows(
                 type="buy" if delta > 0 else "sell",
                 quantity=abs(delta),
                 amount=round(abs(delta) * float(price), 4) if price is not None else None,
-                currency=str(row.get("currency", "ILS")),
+                currency="USD" if row.get("currency") == "USD" else "ILS",
             )
         )
     for sym, row in old.items():
@@ -68,7 +70,7 @@ def diff_rows(
                 type="sell",
                 quantity=qty,
                 amount=round(qty * float(price), 4) if price is not None else None,
-                currency=str(row.get("currency", "ILS")),
+                currency="USD" if row.get("currency") == "USD" else "ILS",
             )
         )
     return changes

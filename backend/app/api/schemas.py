@@ -15,7 +15,7 @@ from pydantic import (
 )
 
 from app.importer.diff import ProposedChange
-from app.importer.parse import ParsedRow
+from app.importer.parse import SYMBOL_PATTERN, ParsedRow, norm_symbol
 from app.scoring.risk import PresetName, StopType
 
 Horizon = Literal["1w", "1m", "3m", "6m", "1y"]
@@ -23,16 +23,10 @@ MarketKey = Literal["US", "TASE", "CRYPTO"]
 AssetType = Literal["stock", "etf", "crypto", "fund", "bond", "cash"]
 Locale = Literal["he", "en"]
 
-SYMBOL_PATTERN = r"^[A-Z0-9.^=\-]{1,20}$"
 BIG = 1e12  # sanity ceiling for quantities, prices and costs
 
-
-def _norm_symbol(v: Any) -> Any:
-    return v.strip().upper() if isinstance(v, str) else v
-
-
 # A ticker as Yahoo spells it (AAPL, TEVA.TA, BRK-B, ^GSPC, ILS=X); trimmed and upper-cased first.
-Symbol = Annotated[str, BeforeValidator(_norm_symbol), Field(pattern=SYMBOL_PATTERN)]
+Symbol = Annotated[str, BeforeValidator(norm_symbol), Field(pattern=SYMBOL_PATTERN)]
 Pct = Annotated[float, Field(gt=0, le=100, allow_inf_nan=False, strict=True)]
 Positive = Annotated[float, Field(gt=0, le=BIG, allow_inf_nan=False, strict=True)]
 NonNegative = Annotated[float, Field(ge=0, le=BIG, allow_inf_nan=False, strict=True)]
@@ -288,12 +282,7 @@ ImportFlag = Literal[
 
 class ImportRowModel(ParsedRow):
     model_config = ConfigDict(extra="forbid")
-    flags: list[ImportFlag] = Field(default_factory=list)  # type: ignore[assignment]
-
-    @field_validator("name", mode="before")
-    @classmethod
-    def _cap_name(cls, v: Any) -> Any:
-        return v[:200] if isinstance(v, str) else v  # a name is a few words, never a text dump
+    flags: list[ImportFlag] = Field(default_factory=list, max_length=10)  # type: ignore[assignment]
 
 
 class ImportDraftOut(BaseModel):
@@ -312,8 +301,8 @@ class ImportRowsBody(Body):
 
 
 class ImportPatch(Body):
-    rows: list[ImportRowModel] | None = None
-    proposed_changes: list[ProposedChange] | None = None
+    rows: list[ImportRowModel] | None = Field(default=None, max_length=200)
+    proposed_changes: list[ProposedChange] | None = Field(default=None, max_length=400)
 
 
 class LaunchGateOut(BaseModel):

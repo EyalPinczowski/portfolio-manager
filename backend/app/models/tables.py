@@ -57,6 +57,10 @@ class Security(SQLModel, table=True):
     asset_type: str = "stock"  # stock|etf|crypto|fund|bond|cash
     market: str = "US"  # US|TASE|CRYPTO
     currency: str = "USD"  # normalised (TASE stocks are ILS, never ILA)
+    # The currency Yahoo last reported for this symbol, raw (TASE stocks: "ILA" = agorot). Written
+    # after every successful lookup and read as the fallback when the lookup is rate limited, so a
+    # restart under a 429 does not blank TASE quotes. Unlike `currency` it can say agorot.
+    yahoo_currency: str | None = None
     sector: str = "Unknown"
     country: str = "Unknown"
     dual_listing_group: str | None = Field(default=None, index=True)

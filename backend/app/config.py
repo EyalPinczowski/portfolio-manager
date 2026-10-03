@@ -88,6 +88,7 @@ class Settings(BaseSettings):
     login_backoff_base_seconds: float = 15.0  # first block; doubles with every further failure
     signup_rate_limit_per_hour: int = 10  # per IP, every attempt counts
     upload_rate_limit_per_hour: int = 30  # per user, screenshot and on-device rows imports
+    import_edit_rate_limit_per_hour: int = 300  # per user, PATCH of an import draft (review edits)
     trusted_proxy_header: str | None = None  # e.g. "CF-Connecting-IP"; off by default
     trusted_proxy_cidrs: list[str] = Field(default_factory=list)  # restrict who may set it
     argon2_memory_kib: int = 19 * 1024  # OWASP: m=19 MiB, t=2, p=1
@@ -189,6 +190,10 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 8 * 1024 * 1024  # raw image body on the server-OCR import route
     max_body_bytes: int = 1024 * 1024  # every other /api request body
     max_image_pixels: int = 25_000_000  # decompression-bomb guard (width x height)
+    # Peak decode memory (bands x pixels, plus an RGB copy for non-RGB modes): 12 MP of RGBA/CMYK,
+    # 21 MP of gray/palette, or the full 25 MP as RGB.
+    max_image_decode_bytes: int = 84_000_000
+    image_decode_wait_seconds: float = 30.0  # waiting for the one decode slot, then 503
     import_max_side_px: int = 5000  # taller/wider images are downscaled (in strips) before OCR
     import_strip_rows: int = 256
     import_draft_ttl_hours: int = 24  # unconfirmed drafts are purged after this long

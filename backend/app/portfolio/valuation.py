@@ -22,6 +22,10 @@ from app.timeutil import local_today
 
 FLOW_SIGN = {"buy": 1.0, "deposit": 1.0, "sell": -1.0, "withdrawal": -1.0}
 
+# A marker (not a flow: `FLOW_SIGN` has no entry for it) for a holding that was added while it had
+# no price at all (no quote, no screenshot price, no cost). See `sync_pending_flows`.
+PENDING_BUY = "pending_buy"
+
 
 @dataclass
 class ValuedHolding:
@@ -152,6 +156,73 @@ def value_portfolio(
     return out
 
 
+def sync_pending_flows(
+    db: Session,
+    portfolio: Portfolio,
+    valuation: PortfolioValuation | None = None,
+    settings: Settings | None = None,
+    today: date | None = None,
+) -> int:
+    """Deferred flows for holdings that had no price when they were added.
+
+    Policy ("deferred flow"): an unpriced holding is worth 0 in `value_portfolio` (so it is out of
+    the value and out of the flows while it has no price). It gets a `pending_buy` marker, which
+    carries no flow. The first time the holding has a real price (quote, screenshot or cost), the
+    marker becomes a normal `buy` flow of quantity x price in the *valuation's* currency, dated
+    that day, so the value that appears is a deposit and never profit. A marker whose holding is
+    gone is deleted. Returns the number of markers created or settled. The caller commits.
+    """
+    if portfolio.id is None:
+        return 0
+    val = valuation or value_portfolio(db, portfolio, settings)
+    day = today or local_today()
+    markers = {
+        t.symbol: t
+        for t in db.exec(
+            select(Transaction).where(
+                Transaction.portfolio_id == portfolio.id, Transaction.type == PENDING_BUY
+            )
+        ).all()
+        if t.symbol
+    }
+    live = {v.holding.symbol for v in val.holdings}
+    n = 0
+    for sym, t in markers.items():
+        if sym not in live:
+            db.delete(t)
+    for v in val.holdings:
+        sym = v.holding.symbol
+        marker = markers.get(sym)
+        if v.price <= 0:
+            if marker is None:
+                db.add(
+                    Transaction(
+                        portfolio_id=portfolio.id,
+                        symbol=sym,
+                        type=PENDING_BUY,
+                        quantity=v.holding.quantity,
+                        amount=0.0,
+                        currency="ILS",  # never "USD" with fx 1.0: the FX fallback reads those
+                        date=day,
+                        inferred=True,
+                    )
+                )
+                n += 1
+        elif marker is not None:
+            marker.type = "buy"
+            marker.quantity = v.holding.quantity
+            marker.price = v.price
+            marker.amount = v.holding.quantity * v.price
+            marker.currency = v.currency
+            marker.fx_to_ils = val.usd_ils if v.currency.upper() == "USD" else 1.0
+            marker.date = day
+            marker.inferred = True
+            db.add(marker)
+            n += 1
+    db.flush()
+    return n
+
+
 def flow_ils(tx: Transaction) -> float:
     """Signed external flow in ILS (buy/deposit in, sell/withdrawal out) using the stored FX."""
     return FLOW_SIGN.get(tx.type, 0.0) * tx.amount * tx.fx_to_ils
@@ -199,6 +270,7 @@ def take_snapshot(
         return None
     assert portfolio.id is not None
     val = value_portfolio(db, portfolio, settings)
+    sync_pending_flows(db, portfolio, val, settings, day)
     prev = db.exec(
         select(PortfolioSnapshot)
         .where(PortfolioSnapshot.portfolio_id == portfolio.id, PortfolioSnapshot.date < day)
@@ -284,6 +356,7 @@ __all__ = [
     "flows_since_previous_point",
     "net_flow_between",
     "net_flow_for_date",
+    "sync_pending_flows",
     "take_catchup_snapshots",
     "take_snapshot",
     "value_portfolio",

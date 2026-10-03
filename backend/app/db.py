@@ -99,9 +99,10 @@ def current_revision(engine: Engine) -> str | None:
 
 def _run_alembic(engine: Engine, action: str, revision: str) -> None:
     cfg = alembic_config()
-    with engine.begin() as conn:
+    with engine.connect() as conn:  # env.py commits (and, on SQLite, handles the FK pragma)
         cfg.attributes["connection"] = conn
         getattr(command, action)(cfg, revision)
+        conn.commit()
 
 
 def run_migrations(engine: Engine | None = None, revision: str = "head") -> None:

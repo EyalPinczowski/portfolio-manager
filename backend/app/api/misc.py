@@ -30,9 +30,10 @@ from app.repo import (
 from app.scoring.risk import list_presets
 from app.scoring.scorecard import get_cached_scorecard, is_fresh, refresh_scorecard
 from app.securities import get_or_create_security, search_securities
+from app.strictjson import StrictJsonRoute
 from app.timeutil import as_utc
 
-router = APIRouter(tags=["misc"])
+router = APIRouter(tags=["misc"], route_class=StrictJsonRoute)
 
 
 @router.get("/launch-gate", response_model=LaunchGateOut)

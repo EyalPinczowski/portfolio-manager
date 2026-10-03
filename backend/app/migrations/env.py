@@ -1,7 +1,8 @@
 """Alembic environment.
 
 The connection comes from, in order: a connection handed in by `app.db.run_migrations`
-(`config.attributes["connection"]`), then `sqlalchemy.url` if set, then `Settings.database_url`.
+(`config.attributes["connection"]`; it must come from `engine.connect()`, not from an
+`engine.begin()` block, because this file commits it), then `sqlalchemy.url` if set, then `Settings.database_url`.
 """
 
 from __future__ import annotations
@@ -31,11 +32,42 @@ def _configure(connection: Connection) -> None:
 
 
 def _run(connection: Connection) -> None:
-    _configure(connection)
-    with context.begin_transaction():
-        if connection.dialect.name == "postgresql":
-            connection.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": _MIGRATION_LOCK_ID})
-        context.run_migrations()
+    """Run the migrations on `connection`.
+
+    SQLite: a batch migration rebuilds a table with DROP TABLE, and with `PRAGMA foreign_keys=ON`
+    (the app's setting) that cascades into every child table (users 1 -> portfolios 0). So the
+    pragma is switched off before the migration, `PRAGMA foreign_key_check` must come back empty
+    before it commits, and the pragma is switched back on afterwards (the connection goes back
+    to the pool). The pragma is a no-op inside a transaction, hence the commit first. Postgres is
+    untouched.
+    """
+    sqlite = connection.dialect.name == "sqlite"
+    if sqlite:
+        connection.commit()  # end any open transaction: PRAGMA foreign_keys is ignored in one
+        connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+    try:
+        _configure(connection)
+        with context.begin_transaction():
+            if connection.dialect.name == "postgresql":
+                connection.execute(
+                    text("SELECT pg_advisory_xact_lock(:k)"), {"k": _MIGRATION_LOCK_ID}
+                )
+            context.run_migrations()
+            if sqlite:
+                broken = connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall()
+                if broken:
+                    raise RuntimeError(
+                        f"PRAGMA foreign_key_check found {len(broken)} dangling reference(s) "
+                        f"after the migration (first: {tuple(broken[0])}); rolled back"
+                    )
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        if sqlite:
+            connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+            connection.commit()
 
 
 def run_migrations_offline() -> None:

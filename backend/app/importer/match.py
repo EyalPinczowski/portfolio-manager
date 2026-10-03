@@ -9,11 +9,12 @@ from dataclasses import dataclass, field
 from rapidfuzz import fuzz
 
 from app.config import Settings, get_settings
-from app.importer.parse import MatchCandidate, ParsedRow
+from app.importer.parse import MatchCandidate, ParsedRow, row_currency
 from app.models import Security
 
 QUOTES_RE = re.compile(r"[\"'`׳״’‘“”.,]")
 SEPARATORS_RE = re.compile(r"[()\-/]")
+CLASS_RE = re.compile(r"\b(?:class|series)\s+[a-z0-9]\b")
 STOPWORDS = {
     "בעמ",
     "ltd",
@@ -37,6 +38,15 @@ def normalize_name(name: str) -> str:
     return " ".join(words)
 
 
+def family_key(name_en: str) -> str:
+    """The company name without a share-class designator ("Alphabet Class A" -> "alphabet")."""
+    return " ".join(CLASS_RE.sub(" ", normalize_name(name_en)).split())
+
+
+def has_class_designator(normalized: str) -> bool:
+    return CLASS_RE.search(normalized) is not None
+
+
 @dataclass
 class MatchResult:
     security: Security | None
@@ -54,6 +64,13 @@ class SecurityIndex:
         for s in securities:
             if s.dual_listing_group:
                 self.groups.setdefault(s.dual_listing_group, []).append(s)
+        # Share classes of one company (GOOG / GOOGL): a name that does not say which class is
+        # ambiguous even when it equals one security's name exactly (Hebrew "אלפבית").
+        self.families: dict[str, list[Security]] = {}
+        for s in securities:
+            key = family_key(s.name_en)
+            if key:
+                self.families.setdefault(key, []).append(s)
         self.choices: dict[tuple[str, str], str] = {}
         for s in securities:
             en = normalize_name(s.name_en)
@@ -67,7 +84,7 @@ class SecurityIndex:
         """For dual listings choose the TASE line for shekel rows, the US line for dollar rows."""
         if not sec.dual_listing_group:
             return sec
-        want = "TASE" if row.currency == "ILS" else "US"
+        want = "TASE" if row_currency(row) == "ILS" else "US"
         for sibling in self.groups.get(sec.dual_listing_group, []):
             if sibling.market == want:
                 return sibling
@@ -88,7 +105,7 @@ def match_row(
     s = settings or get_settings()
     if row.symbol:
         sym = row.symbol.upper()
-        variants = [f"{sym}.TA", sym] if row.currency == "ILS" else [sym, f"{sym}.TA"]
+        variants = [f"{sym}.TA", sym] if row_currency(row) == "ILS" else [sym, f"{sym}.TA"]
         for v in variants:
             sec = index.by_symbol.get(v)
             if sec is not None:
@@ -105,6 +122,18 @@ def match_row(
         secs = [index.by_symbol[sym.upper()] for sym in sorted(exact)]
         groups = {x.dual_listing_group or x.symbol for x in secs}
         if len(groups) == 1:
+            siblings = index.families.get(family_key(secs[0].name_en), [])
+            sib_groups = {x.dual_listing_group or x.symbol for x in siblings}
+            if len(sib_groups) > 1 and not has_class_designator(query):
+                # several share classes and the name does not pick one: the user chooses
+                ranked_sibs = sorted(siblings, key=lambda x: x.symbol)
+                return MatchResult(
+                    None,
+                    "none",
+                    100.0,
+                    [(x.symbol, 100.0) for x in ranked_sibs][: s.match_max_candidates],
+                    low_confidence=True,
+                )
             return MatchResult(index.prefer_listing(secs[0], row), "name", 100.0)
     scored: dict[str, float] = {}
     for (symbol, _lang), text in index.choices.items():
@@ -120,7 +149,7 @@ def match_row(
             score = max(score, s.match_containment_score)
         if score:
             scored[symbol] = max(score, scored.get(symbol, 0.0))
-    want = "TASE" if row.currency == "ILS" else "US"
+    want = "TASE" if row_currency(row) == "ILS" else "US"
 
     def order(kv: tuple[str, float]) -> tuple[float, int, str]:
         market_ok = index.by_symbol[kv[0].upper()].market == want
@@ -159,7 +188,9 @@ def apply_match(
         sec = result.security
         row.symbol = sec.symbol
         row.matched_name = sec.name_en
-        if row.unit != "agorot" and sec.currency != row.currency and sec.currency in ("ILS", "USD"):
+        # Compare what confirm stores (`row_currency`, from the unit), never a second field.
+        shown = row_currency(row)
+        if row.unit != "agorot" and sec.currency != shown and sec.currency in ("ILS", "USD"):
             # Do NOT overwrite the displayed currency: a broker may legitimately show a US stock in
             # shekels. The user must confirm (the flag blocks confirming the import).
             flags.append("currency_changed")

@@ -5,8 +5,11 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api import auth, imports, misc, portfolios
 from app.config import get_settings, validate_production
@@ -14,6 +17,7 @@ from app.db import get_engine, new_session, prepare_database
 from app.logging_setup import configure_logging
 from app.middleware import BodySizeLimitMiddleware, SecurityHeadersMiddleware
 from app.securities import seed_securities
+from app.strictjson import StrictJsonRoute
 
 
 @asynccontextmanager
@@ -38,6 +42,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             runner.shutdown()
 
 
+async def _validation_error(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    """422 without echoing the offending input back (it can be a 100 KB string or an account
+    number); location, type and message are enough for the UI."""
+    errors = [{k: v for k, v in e.items() if k in ("type", "loc", "msg")} for e in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": jsonable_encoder(errors)})
+
+
 def create_app() -> FastAPI:
     configure_logging()
     settings = get_settings()
@@ -51,6 +62,7 @@ def create_app() -> FastAPI:
         redoc_url=None,
         lifespan=lifespan,
     )
+    app.add_exception_handler(RequestValidationError, _validation_error)  # type: ignore[arg-type]
     app.add_middleware(BodySizeLimitMiddleware, settings_factory=get_settings)
     app.add_middleware(SecurityHeadersMiddleware, settings_factory=get_settings)
     if settings.cors_origins:
@@ -61,7 +73,7 @@ def create_app() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
-    api = APIRouter(prefix="/api")
+    api = APIRouter(prefix="/api", route_class=StrictJsonRoute)
     for module in (auth, portfolios, imports, misc):
         api.include_router(module.router)
 

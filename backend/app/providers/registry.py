@@ -39,10 +39,34 @@ def _security_currency(symbol: str) -> str | None:
         return None
 
 
+def _stored_yahoo_currency(symbol: str) -> str | None:
+    from app.db import new_session
+    from app.models import Security
+
+    with new_session() as db:
+        sec = db.get(Security, symbol)
+        return sec.yahoo_currency if sec is not None else None
+
+
+def _store_yahoo_currency(symbol: str, currency: str) -> None:
+    """Remember what Yahoo reported (only for securities we know: no rows are created here)."""
+    from app.db import new_session
+    from app.models import Security
+
+    with new_session() as db:
+        sec = db.get(Security, symbol)
+        if sec is not None and sec.yahoo_currency != currency:
+            sec.yahoo_currency = currency
+            db.add(sec)
+            db.commit()
+
+
 @lru_cache
 def _default() -> Providers:
     yf = YFinanceProvider()
     yf.currency_hint = _security_currency
+    yf.stored_currency = _stored_yahoo_currency
+    yf.store_currency = _store_yahoo_currency
     return Providers(quotes=yf, history=yf)
 
 

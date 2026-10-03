@@ -103,10 +103,11 @@ def test_production_starts_with_safe_settings(env: None, monkeypatch: pytest.Mon
     monkeypatch.setenv("SECRET_KEY", GOOD_SECRET)
     get_settings.cache_clear()
     # Production never calls create_all: the schema must already be migrated (here: stamped).
-    with get_engine().begin() as conn:
+    with get_engine().connect() as conn:  # env.py commits the connection it is handed
         cfg = alembic_config()
         cfg.attributes["connection"] = conn
         command.stamp(cfg, "head")
+        conn.commit()
     with TestClient(create_app()) as c:
         assert c.get("/api/health").status_code == 200
 

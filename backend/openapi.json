@@ -1924,7 +1924,8 @@
                 "items": {
                   "$ref": "#/components/schemas/ImportRowModel"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 200
               },
               {
                 "type": "null"
@@ -1938,7 +1939,8 @@
                 "items": {
                   "$ref": "#/components/schemas/ProposedChange"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 400
               },
               {
                 "type": "null"
@@ -1955,18 +1957,22 @@
         "properties": {
           "index": {
             "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
             "title": "Index",
             "default": 0
           },
           "name": {
             "type": "string",
+            "maxLength": 200,
             "title": "Name",
             "default": ""
           },
           "symbol": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[A-Z0-9.^=\\-]{1,20}$"
               },
               {
                 "type": "null"
@@ -1977,7 +1983,8 @@
           "tase_number": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^\\d{5,9}$"
               },
               {
                 "type": "null"
@@ -1988,7 +1995,9 @@
           "quantity": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "maximum": 1000000000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -1999,7 +2008,9 @@
           "price": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -2010,7 +2021,9 @@
           "value": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -2021,7 +2034,9 @@
           "cost": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -2031,6 +2046,10 @@
           },
           "currency": {
             "type": "string",
+            "enum": [
+              "ILS",
+              "USD"
+            ],
             "title": "Currency",
             "default": "ILS"
           },
@@ -2047,7 +2066,8 @@
           "matched_name": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 200
               },
               {
                 "type": "null"
@@ -2060,6 +2080,7 @@
               "$ref": "#/components/schemas/MatchCandidate"
             },
             "type": "array",
+            "maxItems": 20,
             "title": "Candidates"
           },
           "flags": {
@@ -2075,6 +2096,7 @@
               ]
             },
             "type": "array",
+            "maxItems": 10,
             "title": "Flags"
           }
         },
@@ -2180,17 +2202,22 @@
         "properties": {
           "symbol": {
             "type": "string",
+            "maxLength": 20,
             "title": "Symbol"
           },
           "name": {
             "type": "string",
+            "maxLength": 200,
             "title": "Name"
           },
           "score": {
             "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
             "title": "Score"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "symbol",
@@ -2482,12 +2509,15 @@
         "properties": {
           "row_index": {
             "type": "integer",
+            "maximum": 10000.0,
+            "minimum": -1.0,
             "title": "Row Index"
           },
           "symbol": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[A-Z0-9.^=\\-]{1,20}$"
               },
               {
                 "type": "null"
@@ -2509,6 +2539,7 @@
             "anyOf": [
               {
                 "type": "number",
+                "maximum": 1000000000000.0,
                 "minimum": 0.0
               },
               {
@@ -2521,6 +2552,7 @@
             "anyOf": [
               {
                 "type": "number",
+                "maximum": 1000000000000000.0,
                 "minimum": 0.0
               },
               {
@@ -2531,6 +2563,10 @@
           },
           "currency": {
             "type": "string",
+            "enum": [
+              "ILS",
+              "USD"
+            ],
             "title": "Currency"
           }
         },

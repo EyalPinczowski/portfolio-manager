@@ -143,7 +143,7 @@ def test_match_hebrew_exact_names_accepted_partial_names_become_candidates(
 def test_match_english_name_and_unmatched(index: SecurityIndex) -> None:
     res = match_row(ParsedRow(name="Microsoft Corp", currency="USD", unit="USD"), index, S)
     assert res.security and res.security.symbol == "MSFT"  # exact after stripping "Corp"
-    none = match_row(ParsedRow(name="zzzzqqq xxyy", currency="USD"), index, S)
+    none = match_row(ParsedRow(name="zzzzqqq xxyy", currency="USD", unit="USD"), index, S)
     assert none.security is None
     row = apply_match(ParsedRow(name="zzzzqqq xxyy"), none)
     assert "unmatched" in row.flags and row.symbol is None
