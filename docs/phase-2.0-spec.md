@@ -39,3 +39,10 @@ Turnstile widget on the login form (loaded lazily, `turnstile_required` flow, no
 
 ## Verification for the phase
 Every verified failure in the re-review becomes a regression test; backend pytest on SQLite and Postgres (`TEST_POSTGRES_URL`, via `pgserver` in a scratch venv, data dir under `/tmp`), ruff, mypy strict; frontend lint, tsc, vitest, build; `scripts/memprobe.py` stays under 400 MB; a real-backend browser pass (Playwright, as in `frontend-B`) for login with a mock Turnstile verifier, import and null-price flows; then a short Opus diff review before Phase 2 features.
+
+
+## Block 2.0-E (added 2026-10-03): fixes from the Phase 2.0 diff review and the Meitav Trade layout
+Run **after** the Opus diff review finishes (it reads the working tree). Contents:
+1. Everything the Opus review (`docs/reviews/phase-2.0-diff-*.md`) rates as a problem.
+2. **Meitav Trade import layout** per `docs/import-formats.md`: a `meitav_trade` parser in both `backend/app/importer/` and the frontend on-device parser (shared fixtures, identical results): quantity inferred from value / price (TASE funds: agorot price, ILS value), cost inferred from P&L % (`cost_inferred` flag), `quantity_uncertain` for tiny values, explicit exchange + ticker matching with user-scoped unverified securities verified by the quote provider, TASE security numbers, Hebrew reversed-token matching, per-layout header fraction, de-duplication (not summing) of overlapping screenshots.
+3. A holdings **create endpoint** for manual entry (the frontend currently can only add holdings through import).
