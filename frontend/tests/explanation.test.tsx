@@ -76,4 +76,43 @@ describe("ExplanationView", () => {
     expect(screen.getByText(he.holding.whyInvalidation)).toBeInTheDocument();
     expect(screen.getAllByText(he.holding.annotationKinds.support).length).toBeGreaterThan(0);
   });
+
+  it("wraps free text in bdi with dir=auto, including Hebrew mixed with numbers", () => {
+    const he1 = "הציון 42 מתוך 100 עבור NICE.TA";
+    wrap({
+      version: 1, summary: he1, inputs: { "מחזור": "1,250 אלף", rsi: 58 }, rules_applied: ["כלל 3: מקסימום 12%"],
+      risk_rules_applied: ["מגבלה 5%"], invalidation_risks: ["סגירה מתחת ל-50"],
+      sources: [{ name: "בורסה", detail: "נתוני 2026", as_of: null }],
+    });
+    const root = screen.getByTestId("explanation");
+    const bdis = root.querySelectorAll("bdi");
+    expect(bdis.length).toBeGreaterThanOrEqual(8);
+    bdis.forEach((b) => expect(b).toHaveAttribute("dir", "auto"));
+    expect(screen.getByText(he1).tagName).toBe("BDI");
+    expect(screen.getByText("1,250 אלף").tagName).toBe("BDI");
+    expect(screen.getByText("כלל 3: מקסימום 12%").tagName).toBe("BDI");
+  });
+
+  it("never prints null or NaN for score, weight or confidence, and bars are neutral", () => {
+    wrap({
+      version: 1, summary: "x",
+      inputs: { a: null as unknown as string, b: Number.NaN as unknown as number },
+      contributions: [
+        { name: "technical", score: Number.NaN, weight: Number.NaN, confidence: 0.5, raw: {} },
+        { name: "patterns", score: null as unknown as number, weight: null as unknown as number, confidence: null as unknown as number, raw: {} },
+        { name: "analysts", score: -40, weight: 10, confidence: 1, raw: {} },
+        { name: "news", score: 40, weight: 10, confidence: 1, raw: {} },
+      ],
+    });
+    const text = screen.getByTestId("explanation").textContent ?? "";
+    expect(text).not.toMatch(/null|NaN|undefined/);
+    const bars = screen.getAllByTestId("contribution-bar");
+    expect(bars).toHaveLength(2);
+    for (const b of bars) expect(b.className).not.toMatch(/emerald|green|red/);
+  });
+
+  it("uses no verdict wording", () => {
+    wrap(full);
+    expect(screen.getByTestId("explanation").textContent).not.toMatch(/\b(buy|sell|hold)\b/i);
+  });
 });

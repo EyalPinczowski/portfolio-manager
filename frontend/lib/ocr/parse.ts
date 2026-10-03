@@ -129,7 +129,16 @@ export function scrubIdentifiers(text: string): string {
   return text
     .split(/\r?\n/)
     .filter((l) => !ACCOUNT_LINE_RE.test(l))
-    .map((l) => l.replace(longRun, " "))
+    .map((l) => {
+      // The 7-digit security number of a `TLV • 1234567` card is needed for matching and is not an account number:
+      // set it aside so no digit-run rule (now or later) can touch it.
+      const kept: string[] = [];
+      const hold = (_: string, a: string, n: string, b = "") => `${a}\u0001${kept.push(n) - 1}\u0001${b}`;
+      const guarded = l
+        .replace(/(TLV\s*[•·●∙▪*|:+–—-]?\s*)(\d{6,8})(?!\d)/g, (m, a, n) => hold(m, a, n))
+        .replace(/(?<!\d)(\d{6,8})(\s*[•·●∙▪*|]\s*TLV)/g, (m, n, b) => hold(m, "", n, b));
+      return guarded.replace(longRun, " ").replace(/\u0001(\d+)\u0001/g, (_, i) => kept[Number(i)]);
+    })
     .join("\n");
 }
 

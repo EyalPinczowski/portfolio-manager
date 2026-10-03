@@ -11,9 +11,10 @@ vi.stubEnv("NEXT_PUBLIC_API_MOCK", "1");
 const parsed: ImportRow[] = [
   { index: 0, name: "טבע", symbol: null, tase_number: "629014", quantity: 1000, price: 6500, value: 65000, cost: null, currency: "ILS", unit: "agorot", flags: [] },
 ];
+const wrapRows = (rows: ImportRow[]) => ({ layout: "generic" as const, rows, meta: rows.map(() => ({})) });
 const pngOut = new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" });
 vi.mock("@/lib/ocr/engine", () => ({
-  readScreenshotOnDevice: vi.fn(async () => parsed),
+  readScreenshotsOnDevice: vi.fn(async () => ({ layout: "generic", rows: parsed, meta: parsed.map(() => ({})) })),
   prepareForServer: vi.fn(async () => pngOut),
 }));
 vi.mock("@/i18n/navigation", () => ({
@@ -23,7 +24,7 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 
 import { api, ApiError } from "@/lib/api";
-import { prepareForServer, readScreenshotOnDevice } from "@/lib/ocr/engine";
+import { prepareForServer, readScreenshotsOnDevice } from "@/lib/ocr/engine";
 import { ImportPage } from "@/components/ImportPage";
 
 const renderPage = () =>
@@ -56,7 +57,7 @@ describe("import page", () => {
     clickRead();
     await screen.findByRole("region", { name: "Review the rows" });
 
-    expect(readScreenshotOnDevice).toHaveBeenCalledTimes(1);
+    expect(readScreenshotsOnDevice).toHaveBeenCalledTimes(1);
     expect(importRows).toHaveBeenCalledWith(1, parsed);
     expect(upload).not.toHaveBeenCalled(); // the image never goes to the server
     expect(createUrl).not.toHaveBeenCalled(); // no blob URL for the screenshot
@@ -121,7 +122,7 @@ describe("import page", () => {
   });
 
   it("shows weak-match candidates and lets the user pick one", async () => {
-    vi.mocked(readScreenshotOnDevice).mockResolvedValueOnce([{ ...parsed[0], tase_number: null, name: "Monday" }]);
+    vi.mocked(readScreenshotsOnDevice).mockResolvedValueOnce(wrapRows([{ ...parsed[0], tase_number: null, name: "Monday" }]));
     renderPage();
     await pick();
     clickRead();
@@ -132,7 +133,7 @@ describe("import page", () => {
   });
 
   it("blocks confirming while a row has no symbol; picking a candidate re-syncs the draft and unblocks it", async () => {
-    vi.mocked(readScreenshotOnDevice).mockResolvedValueOnce([{ ...parsed[0], tase_number: null, name: "Monday" }]);
+    vi.mocked(readScreenshotsOnDevice).mockResolvedValueOnce(wrapRows([{ ...parsed[0], tase_number: null, name: "Monday" }]));
     const patch = vi.spyOn(api, "patchImport");
     renderPage();
     await pick();
@@ -192,7 +193,7 @@ describe("import page", () => {
   });
 
   it("says so when nothing could be read", async () => {
-    vi.mocked(readScreenshotOnDevice).mockResolvedValueOnce([]);
+    vi.mocked(readScreenshotsOnDevice).mockResolvedValueOnce(wrapRows([]));
     renderPage();
     await pick();
     clickRead();
@@ -200,7 +201,7 @@ describe("import page", () => {
   });
 
   it("sends ILS (not USD) for a row parsed as USD with unit ILS", async () => {
-    vi.mocked(readScreenshotOnDevice).mockResolvedValueOnce([{ ...parsed[0], currency: "USD", unit: "ILS", price: 65, value: 65000 }]);
+    vi.mocked(readScreenshotsOnDevice).mockResolvedValueOnce(wrapRows([{ ...parsed[0], currency: "USD", unit: "ILS", price: 65, value: 65000 }]));
     renderPage();
     await pick();
     clickRead();
@@ -218,5 +219,31 @@ describe("import page", () => {
     expect(await screen.findByText("The server rejected these rows. Fix them and try again.")).toBeInTheDocument();
     expect(screen.getByText(/Row 1 \(טבע\): quantity Input should be less than/)).toBeInTheDocument();
     expect(screen.queryByText("Could not read the screenshot. Try again.")).toBeNull();
+  });
+
+  it("Meitav rows: a required quantity blocks confirm until entered; inferred cost and duplicates get notes", async () => {
+    const row = (i: number, symbol: string, over: Partial<ImportRow> = {}): ImportRow => ({
+      index: i, name: symbol, symbol, tase_number: null, quantity: 10, price: 10, value: 100, cost: 9, currency: "USD", unit: "USD", matched_name: null, flags: [], ...over,
+    });
+    vi.mocked(readScreenshotsOnDevice).mockResolvedValueOnce({
+      layout: "meitav_trade",
+      rows: [row(0, "ACME"), row(1, "ZZZW", { quantity: null, price: 0.0107, value: 0.03 }), row(2, "QQQX", { cost: null })],
+      meta: [{ cost_inferred: true, pnl_pct: -8.37 }, { quantity_uncertain: true, cost_inferred: true, pnl_pct: -91.2 }, { duplicate_removed: true }],
+    });
+    renderPage();
+    await pick();
+    clickRead();
+    await screen.findByRole("region", { name: "Review the rows" });
+    expect(screen.getAllByTestId("note-cost-inferred")[0]).toHaveTextContent("Cost estimated from the broker's P&L % (-8.37%).");
+    expect(screen.getByTestId("note-duplicate")).toHaveTextContent("duplicate removed");
+    const qty = screen.getByLabelText("Quantity 2");
+    expect(qty).toHaveAttribute("aria-required", "true");
+    expect(screen.getByText(/The quantity cannot be read from the screenshot. Enter it yourself./)).toBeInTheDocument();
+    const confirm = screen.getByRole("button", { name: "Confirm import" });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(qty, { target: { value: "3" } });
+    expect(screen.getByLabelText("Quantity 2")).not.toHaveAttribute("aria-required");
+    expect(screen.getByRole("button", { name: "Confirm import" })).toBeEnabled();
+    expect(screen.getByLabelText("Quantity 1")).not.toHaveAttribute("aria-required");
   });
 });

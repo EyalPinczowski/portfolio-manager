@@ -259,7 +259,8 @@
       "type": {
         "sell": "Sold",
         "withdrawal": "Moved out (withdrawal)"
-      }
+      },
+      "titleMany": "Not in these screenshots"
     },
     "rowError": "Row {row}{name}: {field} {msg}",
     "rowErrorsTitle": "The server rejected these rows. Fix them and try again.",
@@ -276,6 +277,18 @@
       "index": "row number",
       "candidates": "suggestions",
       "flags": "flags"
+    },
+    "manyFilesHint": "You can pick several screenshots of the same list (up to {max}). Cards that appear in two screenshots are counted once.",
+    "layout": "Screenshot type",
+    "layoutAuto": "Detect automatically",
+    "layoutMeitav": "Meitav Trade (cards with exchange • ticker)",
+    "notes": {
+      "quantityUncertain": "The quantity cannot be read from the screenshot. Enter it yourself.",
+      "quantityRequiredHint": "Enter the quantity for the highlighted rows before you confirm.",
+      "quantityFractional": "Value ÷ price is not a whole number. Check the price and the value.",
+      "costInferred": "Cost estimated from the broker's P&L % ({pnl}).",
+      "duplicateRemoved": "This card was in more than one screenshot: duplicate removed, counted once.",
+      "conflict": "In several screenshots with different numbers (the other one: value {value}, price {price}). Check which is right."
     }
   },
   "xray": {

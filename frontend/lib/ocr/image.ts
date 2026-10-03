@@ -31,8 +31,8 @@ async function decode(file: Blob): Promise<{ source: CanvasImageSource; width: n
   }
 }
 
-/** Decode into a canvas (downscaled to OCR_MAX_SIDE_PX) with the top OCR_TOP_MASK_FRACTION painted over. */
-export async function toMaskedCanvas(file: Blob): Promise<HTMLCanvasElement> {
+/** Decode into a canvas (downscaled to OCR_MAX_SIDE_PX) with the top `fraction` (per layout, see OCR_LAYOUTS) painted over. */
+export async function toMaskedCanvas(file: Blob, fraction: number = OCR_TOP_MASK_FRACTION): Promise<HTMLCanvasElement> {
   const img = await decode(file);
   try {
     const { width, height } = fitSize(img.width, img.height);
@@ -43,7 +43,7 @@ export async function toMaskedCanvas(file: Blob): Promise<HTMLCanvasElement> {
     if (!ctx) throw new Error("canvas unavailable");
     ctx.drawImage(img.source, 0, 0, width, height);
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, width, topMaskHeight(height));
+    ctx.fillRect(0, 0, width, topMaskHeight(height, fraction));
     return canvas;
   } finally {
     img.close();

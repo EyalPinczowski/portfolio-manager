@@ -6,8 +6,9 @@
  * language files instead).
  */
 import { canvasToPng, disposeCanvas, toMaskedCanvas } from "./image";
-import { parseOcrText, scrubIdentifiers } from "./parse";
-import type { ImportRow } from "../api";
+import { headerFractionFor, mergeScreenshots, parseScreenshotText, type LayoutChoice } from "./layouts";
+import { scrubIdentifiers } from "./parse";
+import type { ParsedRows } from "./types";
 
 export interface OcrProgress { status: string; progress: number }
 
@@ -34,26 +35,36 @@ async function recognize(canvas: HTMLCanvasElement, onProgress?: (p: OcrProgress
 }
 
 /**
- * Read a screenshot entirely in the browser and return parsed rows. The image is decoded to a canvas, its top
- * is blanked, OCR runs, the canvas is zeroed, and only the parsed stock rows are returned. The raw OCR text is
- * scrubbed of identifier digit runs and never leaves this function.
+ * Read screenshots entirely in the browser and return parsed rows. Each image is decoded to a canvas, its top
+ * (the layout's header fraction) is blanked, OCR runs, the canvas is zeroed, and only the parsed stock rows are
+ * kept. The raw OCR text is scrubbed of identifier digit runs and never leaves this function. Several images of
+ * one list are merged: a card in two screenshots is counted once (see mergeScreenshots).
+ * With `auto` the generic header fraction is used for the pixels (the layout is only known after OCR); pick the
+ * layout explicitly to get its own fraction.
  */
-export async function readScreenshotOnDevice(file: Blob, onProgress?: (p: OcrProgress) => void): Promise<ImportRow[]> {
-  const canvas = await toMaskedCanvas(file);
-  try {
-    const text = await recognize(canvas, onProgress);
-    return parseOcrText(scrubIdentifiers(text));
-  } finally {
-    disposeCanvas(canvas);
+export async function readScreenshotsOnDevice(
+  files: Blob[], opts: { layout?: LayoutChoice; onProgress?: (p: OcrProgress) => void } = {},
+): Promise<ParsedRows> {
+  const layout = opts.layout ?? "auto";
+  const parts: ParsedRows[] = [];
+  for (const file of files) {
+    const canvas = await toMaskedCanvas(file, headerFractionFor(layout));
+    try {
+      const text = await recognize(canvas, opts.onProgress);
+      parts.push(parseScreenshotText(scrubIdentifiers(text), layout));
+    } finally {
+      disposeCanvas(canvas);
+    }
   }
+  return mergeScreenshots(parts);
 }
 
 /**
  * For the explicit "server reading" fallback: a PNG re-encoded from the masked canvas (no EXIF, header blanked,
  * oversized images downscaled). Sent as the raw request body.
  */
-export async function prepareForServer(file: Blob): Promise<Blob> {
-  const canvas = await toMaskedCanvas(file);
+export async function prepareForServer(file: Blob, layout: LayoutChoice = "auto"): Promise<Blob> {
+  const canvas = await toMaskedCanvas(file, headerFractionFor(layout));
   try {
     return await canvasToPng(canvas);
   } finally {

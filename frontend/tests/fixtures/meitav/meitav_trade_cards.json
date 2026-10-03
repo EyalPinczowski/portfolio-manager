@@ -1,0 +1,284 @@
+{
+  "schema_version": 1,
+  "invented_data": true,
+  "cost_rel_tol": 0.0006,
+  "number_abs_tol": 1e-09,
+  "cases": [
+    {
+      "id": "full_list",
+      "description": "Six cards: US stocks, an ETF named like its ticker, a warrant worth 3 cents, a truncated name, a section header, two TASE funds in agorot, a card without P&L %, and a bottom nav bar glued to the last card.",
+      "images": {
+        "in_order": [
+          "12:41\n85%\n♪ Some Song - Some Artist\nתיק ההשקעות שלי\nNASDAQ • ACME 257.49\nAcme Energy Corp -0.55%\n-8.37% ↓ @ $3,089.88\nNYSE • SPYX\n112.40\nSPYX\n0%\n+12.40% ↑ @ $5,620.00\nNASDAQ • ZZZW 0.0107\nZeta Zed Warrant\n-3.10%\n-91.20% ↓ @ $0.03\nNYSE • QQQX\n98.10\n…Invesco Example Tracking Trust 0.12%\n@ $1,962.00\nקרן סל\nTLV • 1234567 6,272\nמחקה מדד דמה 125\n-0.31%\n+4.19% ↑ @ ₪30,670.08\nTLV • 7654321\n1,085\nקרן מנוטרלת דמה\n0%\n-2.08% ↓ @ ₪5,425.00\nבית    תיק    שוק    עוד"
+        ],
+        "shuffled_columns": [
+          "12:41\n85%\n♪ Some Song - Some Artist\nתיק ההשקעות שלי\nNASDAQ • ACME\n↓ -8.37% $3,089.88\n-0.55%\n257.49\nAcme Energy Corp\nNYSE • SPYX\n↑ +12.40%\nSPYX\n5,620.00$\n112.40\n0%\nNASDAQ • ZZZW\nZeta Zed Warrant\n-3.10%\n↓ -91.20% $0.03\n0.0107\nNYSE • QQQX\n98.10\n0.12%\n…Invesco Example Tracking Trust\n1,962.00$\nקרן סל\nTLV • 1234567\n-0.31%\n↑ +4.19% ₪30,670.08\n6,272\nמחקה מדד דמה 125\nTLV • 7654321\n↓ -2.08%\nקרן מנוטרלת דמה\n5,425.00₪\n1,085\n0%\nבית    תיק    שוק    עוד"
+        ],
+        "hebrew_reversed": [
+          "12:41\n85%\n♪ Some Song - Some Artist\nילש תועקשהה קית\nACME • NASDAQ\nAcme Energy Corp\n257.49\n%0.55-\n3,089.88$ @ %8.37-\nSPYX • NYSE\nSPYX\n112.40\n%0\n5,620.00$ @ %12.40\nZZZW • NASDAQ\nZeta Zed Warrant\n0.0107\n%3.10-\n0.03$ @ %91.20-\nQQQX • NYSE\n…Invesco Example Tracking Trust\n98.10\n%0.12\n1,962.00$ @\nלס ןרק\n1234567 • TLV\n125 המד דדמ הקחמ\n6,272\n%0.31-\n30,670.08₪ @ %4.19\n7654321 • TLV\nהמד תלרטונמ ןרק\n1,085\n%0\n5,425.00₪ @ %2.08-\nבית    תיק    שוק    עוד"
+        ]
+      },
+      "expected": {
+        "layout": "meitav_trade",
+        "rows": [
+          {
+            "name": "Acme Energy Corp",
+            "symbol": "ACME",
+            "tase_number": null,
+            "quantity": 12,
+            "price": 257.49,
+            "value": 3089.88,
+            "cost": 281.0,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "SPYX",
+            "symbol": "SPYX",
+            "tase_number": null,
+            "quantity": 50,
+            "price": 112.4,
+            "value": 5620.0,
+            "cost": 100.0,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "Zeta Zed Warrant",
+            "symbol": "ZZZW",
+            "tase_number": null,
+            "quantity": null,
+            "price": 0.0107,
+            "value": 0.03,
+            "cost": 0.1216,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "quantity_uncertain",
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "Invesco Example Tracking Trust",
+            "symbol": "QQQX",
+            "tase_number": null,
+            "quantity": 20,
+            "price": 98.1,
+            "value": 1962.0,
+            "cost": null,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": []
+          },
+          {
+            "name": "מחקה מדד דמה 125",
+            "symbol": null,
+            "tase_number": "1234567",
+            "quantity": 489,
+            "price": 6272,
+            "value": 30670.08,
+            "cost": 6020.0,
+            "currency": "ILS",
+            "unit": "agorot",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "קרן מנוטרלת דמה",
+            "symbol": null,
+            "tase_number": "7654321",
+            "quantity": 500,
+            "price": 1085,
+            "value": 5425.0,
+            "cost": 1108.0,
+            "currency": "ILS",
+            "unit": "agorot",
+            "flags": [
+              "cost_inferred"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "overlap_identical",
+      "description": "Two screenshots of one list; the last card of the first (QQQX) is the first card of the second. It must be merged, not summed.",
+      "images": {
+        "in_order": [
+          "12:41\n85%\n♪ Some Song - Some Artist\nתיק ההשקעות שלי\nNASDAQ • ACME 257.49\nAcme Energy Corp -0.55%\n-8.37% ↓ @ $3,089.88\nNYSE • SPYX\n112.40\nSPYX\n0%\n+12.40% ↑ @ $5,620.00\nNYSE • QQQX 98.10\n…Invesco Example Tracking Trust\n0.12%\n@ $1,962.00",
+          "12:41\n85%\n♪ Some Song - Some Artist\nתיק ההשקעות שלי\nNYSE • QQQX 98.10\n…Invesco Example Tracking Trust 0.12%\n@ $1,962.00\nקרן סל\nTLV • 1234567\n6,272\nמחקה מדד דמה 125\n-0.31%\n+4.19% ↑ @ ₪30,670.08\nTLV • 7654321 1,085\nקרן מנוטרלת דמה\n0%\n-2.08% ↓ @ ₪5,425.00\nבית    תיק    שוק    עוד"
+        ],
+        "shuffled_columns": [
+          "12:41\n85%\n♪ Some Song - Some Artist\nתיק ההשקעות שלי\nNASDAQ • ACME\n↓ -8.37% $3,089.88\n-0.55%\n257.49\nAcme Energy Corp\nNYSE • SPYX\n↑ +12.40%\nSPYX\n5,620.00$\n112.40\n0%\nNYSE • QQQX\n…Invesco Example Tracking Trust\n$1,962.00\n0.12%\n98.10",
+          "12:41\n85%\n♪ Some Song - Some Artist\nתיק ההשקעות שלי\nNYSE • QQQX\n0.12%\n98.10\n$1,962.00\n…Invesco Example Tracking Trust\nקרן סל\nTLV • 1234567\n↑ +4.19%\nמחקה מדד דמה 125\n30,670.08₪\n6,272\n-0.31%\nTLV • 7654321\nקרן מנוטרלת דמה\n0%\n↓ -2.08% ₪5,425.00\n1,085\nבית    תיק    שוק    עוד"
+        ],
+        "hebrew_reversed": [
+          "12:41\n85%\n♪ Some Song - Some Artist\nילש תועקשהה קית\nACME • NASDAQ\nAcme Energy Corp\n257.49\n%0.55-\n3,089.88$ @ %8.37-\nSPYX • NYSE\nSPYX\n112.40\n%0\n5,620.00$ @ %12.40\nQQQX • NYSE\n…Invesco Example Tracking Trust\n98.10\n%0.12\n1,962.00$ @",
+          "12:41\n85%\n♪ Some Song - Some Artist\nילש תועקשהה קית\nQQQX • NYSE\n…Invesco Example Tracking Trust\n98.10\n%0.12\n1,962.00$ @\nלס ןרק\n1234567 • TLV\n125 המד דדמ הקחמ\n6,272\n%0.31-\n30,670.08₪ @ %4.19\n7654321 • TLV\nהמד תלרטונמ ןרק\n1,085\n%0\n5,425.00₪ @ %2.08-\nבית    תיק    שוק    עוד"
+        ]
+      },
+      "expected": {
+        "layout": "meitav_trade",
+        "rows": [
+          {
+            "name": "Acme Energy Corp",
+            "symbol": "ACME",
+            "tase_number": null,
+            "quantity": 12,
+            "price": 257.49,
+            "value": 3089.88,
+            "cost": 281.0,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "SPYX",
+            "symbol": "SPYX",
+            "tase_number": null,
+            "quantity": 50,
+            "price": 112.4,
+            "value": 5620.0,
+            "cost": 100.0,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "Invesco Example Tracking Trust",
+            "symbol": "QQQX",
+            "tase_number": null,
+            "quantity": 20,
+            "price": 98.1,
+            "value": 1962.0,
+            "cost": null,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "duplicate_removed"
+            ]
+          },
+          {
+            "name": "מחקה מדד דמה 125",
+            "symbol": null,
+            "tase_number": "1234567",
+            "quantity": 489,
+            "price": 6272,
+            "value": 30670.08,
+            "cost": 6020.0,
+            "currency": "ILS",
+            "unit": "agorot",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "קרן מנוטרלת דמה",
+            "symbol": null,
+            "tase_number": "7654321",
+            "quantity": 500,
+            "price": 1085,
+            "value": 5425.0,
+            "cost": 1108.0,
+            "currency": "ILS",
+            "unit": "agorot",
+            "flags": [
+              "cost_inferred"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "overlap_truncated_and_conflict",
+      "description": "QQQX is cut off by the nav bar in the first screenshot (no value, no P&L) and complete in the second: the complete copy wins. SPYX is in both with different price and value: one row (the later screenshot), flagged conflict.",
+      "images": {
+        "in_order": [
+          "12:41\n85%\n♪ Some Song - Some Artist\nתיק ההשקעות שלי\nNASDAQ • ACME 257.49\nAcme Energy Corp -0.55%\n-8.37% ↓ @ $3,089.88\nNYSE • SPYX\n112.40\nSPYX\n0%\n+12.40% ↑ @ $5,620.00\nNYSE • QQQX 98.10\n…Invesco Example Tracking Trust\nבית    תיק    שוק    עוד",
+          "12:41\n85%\n♪ Some Song - Some Artist\nתיק ההשקעות שלי\nNYSE • SPYX 113.00\nSPYX 0%\n+13.00% ↑ @ $5,650.00\nNYSE • QQQX\n98.10\n…Invesco Example Tracking Trust\n0.12%\n@ $1,962.00\nקרן סל\nTLV • 1234567 6,272\nמחקה מדד דמה 125\n-0.31%\n+4.19% ↑ @ ₪30,670.08"
+        ],
+        "shuffled_columns": [
+          "12:41\n85%\n♪ Some Song - Some Artist\nתיק ההשקעות שלי\nNASDAQ • ACME\n↓ -8.37% $3,089.88\n-0.55%\n257.49\nAcme Energy Corp\nNYSE • SPYX\n↑ +12.40%\nSPYX\n5,620.00$\n112.40\n0%\nNYSE • QQQX\n…Invesco Example Tracking Trust\n0.12%\n98.10\nבית    תיק    שוק    עוד",
+          "12:41\n85%\n♪ Some Song - Some Artist\nתיק ההשקעות שלי\nNYSE • SPYX\n↑ +13.00% $5,650.00\n0%\n113.00\nSPYX\nNYSE • QQQX\n…Invesco Example Tracking Trust\n1,962.00$\n98.10\n0.12%\nקרן סל\nTLV • 1234567\nמחקה מדד דמה 125\n-0.31%\n↑ +4.19% ₪30,670.08\n6,272"
+        ],
+        "hebrew_reversed": [
+          "12:41\n85%\n♪ Some Song - Some Artist\nילש תועקשהה קית\nACME • NASDAQ\nAcme Energy Corp\n257.49\n%0.55-\n3,089.88$ @ %8.37-\nSPYX • NYSE\nSPYX\n112.40\n%0\n5,620.00$ @ %12.40\nQQQX • NYSE\n…Invesco Example Tracking Trust\n98.10\nבית    תיק    שוק    עוד",
+          "12:41\n85%\n♪ Some Song - Some Artist\nילש תועקשהה קית\nSPYX • NYSE\nSPYX\n113.00\n%0\n5,650.00$ @ %13.00\nQQQX • NYSE\n…Invesco Example Tracking Trust\n98.10\n%0.12\n1,962.00$ @\nלס ןרק\n1234567 • TLV\n125 המד דדמ הקחמ\n6,272\n%0.31-\n30,670.08₪ @ %4.19"
+        ]
+      },
+      "expected": {
+        "layout": "meitav_trade",
+        "rows": [
+          {
+            "name": "Acme Energy Corp",
+            "symbol": "ACME",
+            "tase_number": null,
+            "quantity": 12,
+            "price": 257.49,
+            "value": 3089.88,
+            "cost": 281.0,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "SPYX",
+            "symbol": "SPYX",
+            "tase_number": null,
+            "quantity": 50,
+            "price": 113.0,
+            "value": 5650.0,
+            "cost": 100.0,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred",
+              "conflict"
+            ]
+          },
+          {
+            "name": "Invesco Example Tracking Trust",
+            "symbol": "QQQX",
+            "tase_number": null,
+            "quantity": 20,
+            "price": 98.1,
+            "value": 1962.0,
+            "cost": null,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "duplicate_removed"
+            ]
+          },
+          {
+            "name": "מחקה מדד דמה 125",
+            "symbol": null,
+            "tase_number": "1234567",
+            "quantity": 489,
+            "price": 6272,
+            "value": 30670.08,
+            "cost": 6020.0,
+            "currency": "ILS",
+            "unit": "agorot",
+            "flags": [
+              "cost_inferred"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

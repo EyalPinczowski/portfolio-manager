@@ -3,11 +3,13 @@ import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { mutate } from "swr";
 import { api, ApiError, type ChangeType, type ImportDraft, type ImportRow, type ProposedChange } from "@/lib/api";
-import { MAX_UPLOAD_BYTES } from "@/lib/config";
+import { MAX_IMPORT_IMAGES, MAX_UPLOAD_BYTES } from "@/lib/config";
 import { rowProblems, type RowProblem } from "@/lib/import-rows";
 import { formatDate, formatTime, formatWeight } from "@/lib/format";
 import { useMe, usePortfolios } from "@/lib/hooks";
-import { prepareForServer, readScreenshotOnDevice, type OcrProgress } from "@/lib/ocr/engine";
+import { prepareForServer, readScreenshotsOnDevice, type OcrProgress } from "@/lib/ocr/engine";
+import type { LayoutChoice } from "@/lib/ocr/layouts";
+import type { RowMeta } from "@/lib/ocr/types";
 import { Link } from "@/i18n/navigation";
 import { AppShell } from "./AppShell";
 import { CreatePortfolio } from "./CreatePortfolio";
@@ -24,7 +26,10 @@ function Body() {
   const { data: me, mutate: mutateMe } = useMe();
   const { data: portfolios } = usePortfolios();
   const [pid, setPid] = useState<number | null>(null);
-  const [hasFile, setHasFile] = useState(false);
+  const [fileCount, setFileCount] = useState(0);
+  const [layout, setLayout] = useState<LayoutChoice>("auto");
+  const [metaByIndex, setMetaByIndex] = useState<Record<number, RowMeta>>({});
+  const [imageCount, setImageCount] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
   const synced = useRef<ImportRow[]>([]);
   const [draft, setDraft] = useState<ImportDraft | null>(null);
@@ -41,11 +46,11 @@ function Body() {
   const portfolioId = pid ?? portfolios?.[0]?.id ?? null;
 
   /** Take the chosen file out of the input (the browser keeps no other reference to it). */
-  const takeFile = (): File | null => {
-    const f = fileRef.current?.files?.[0] ?? null;
+  const takeFiles = (): File[] => {
+    const fs = Array.from(fileRef.current?.files ?? []);
     if (fileRef.current) fileRef.current.value = "";
-    setHasFile(false);
-    return f;
+    setFileCount(0);
+    return fs;
   };
   const showDraft = (d: ImportDraft) => { synced.current = d.rows; setDraft(d); setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set()); };
   /** `sent` = the rows of the failed request, so a 422 `loc` (position in the array) can be shown against its row. */
@@ -68,29 +73,36 @@ function Body() {
 
   const readOnDevice = async (e: React.FormEvent) => {
     e.preventDefault();
-    const file = takeFile();
-    if (!file || portfolioId === null) return;
-    if (file.size > MAX_UPLOAD_BYTES) return setError({ kind: "tooLarge" });
+    const files = takeFiles();
+    if (files.length === 0 || portfolioId === null) return;
+    if (files.length > MAX_IMPORT_IMAGES || files.some((f) => f.size > MAX_UPLOAD_BYTES)) return setError({ kind: "tooLarge" });
     setBusy("device"); setError(null); setProblems([]); setProgress(null);
     let parsed: ImportRow[];
+    let meta: RowMeta[];
     try {
-      parsed = await readScreenshotOnDevice(file, setProgress);
+      const out = await readScreenshotsOnDevice(files, { layout, onProgress: setProgress });
+      parsed = out.rows; meta = out.meta;
     } catch { setBusy(null); setProgress(null); return setError({ kind: "ocr" }); }
     try {
       if (parsed.length === 0) return setError({ kind: "noRows" });
-      showDraft(await api.importRows(portfolioId, parsed));
+      const d = await api.importRows(portfolioId, parsed);
+      setImageCount(files.length);
+      setMetaByIndex(Object.fromEntries(parsed.map((r, i) => [r.index, meta[i] ?? {}])));
+      showDraft(d);
     } catch (err) { fail(err, "generic", parsed); } finally { setBusy(null); setProgress(null); }
   };
 
   const uploadToServer = async () => {
     setConsentOpen(false);
-    const file = takeFile();
+    const [file] = takeFiles();
     if (!file || portfolioId === null) return;
     if (file.size > MAX_UPLOAD_BYTES) return setError({ kind: "tooLarge" });
     setBusy("server"); setError(null);
     try {
       if (!me?.ocr_consent) { await api.consentOcr(); await mutateMe(); }
-      showDraft(await api.createImport(portfolioId, await prepareForServer(file)));
+      const d = await api.createImport(portfolioId, await prepareForServer(file, layout));
+      setMetaByIndex({}); setImageCount(1);
+      showDraft(d);
     } catch (err) { fail(err); } finally { setBusy(null); }
   };
 
@@ -138,6 +150,8 @@ function Body() {
   /** Held before, absent from this screenshot: the server proposes a sale (row_index -1) and removes the holding on confirm. */
   const vanished = changes.filter((c) => c.row_index < 0);
   const missingSymbol = rows.some((r) => !r.symbol);
+  const needsQuantity = (r: ImportRow) => metaByIndex[r.index]?.quantity_uncertain === true && !(typeof r.quantity === "number" && r.quantity > 0);
+  const missingQuantity = rows.some(needsQuantity);
   const problemList = error?.kind === "rows" && problems.length > 0 && (
     <ul className="list-disc ps-5 text-sm text-red-700 dark:text-red-400">
       {problems.map((p, i) => (
@@ -171,15 +185,23 @@ function Body() {
           <div>
             <label htmlFor="imp-file" className="label">{t("chooseFile")}</label>
             <input
-              id="imp-file" ref={fileRef} className="input" type="file" accept="image/png,image/jpeg,image/webp" required
-              onChange={(e) => setHasFile((e.target.files?.length ?? 0) > 0)}
+              id="imp-file" ref={fileRef} className="input" type="file" accept="image/png,image/jpeg,image/webp" multiple required
+              onChange={(e) => setFileCount(e.target.files?.length ?? 0)}
             />
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{t("manyFilesHint", { max: MAX_IMPORT_IMAGES })}</p>
+          </div>
+          <div>
+            <label htmlFor="imp-layout" className="label">{t("layout")}</label>
+            <select id="imp-layout" className="input" value={layout} onChange={(e) => setLayout(e.target.value as LayoutChoice)}>
+              <option value="auto">{t("layoutAuto")}</option>
+              <option value="meitav_trade">{t("layoutMeitav")}</option>
+            </select>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <button type="submit" className="btn-primary" disabled={!hasFile || busy !== null}>
+            <button type="submit" className="btn-primary" disabled={fileCount === 0 || busy !== null}>
               {busy === "device" ? t("reading") : t("readOnDevice")}
             </button>
-            <button type="button" className="btn-secondary" disabled={!hasFile || busy !== null} onClick={() => (me?.ocr_consent ? uploadToServer() : setConsentOpen(true))}>
+            <button type="button" className="btn-secondary" disabled={fileCount !== 1 || busy !== null} onClick={() => (me?.ocr_consent ? uploadToServer() : setConsentOpen(true))}>
               {busy === "server" ? t("uploading") : t("useServer")}
             </button>
           </div>
@@ -221,7 +243,9 @@ function Body() {
               <tbody>
                 {rows.map((r) => {
                   const ch = changes.find((x) => x.row_index === r.index);
-                  const flagged = r.flags.length > 0;
+                  const m = metaByIndex[r.index] ?? {};
+                  const mustEnterQty = needsQuantity(r);
+                  const flagged = r.flags.length > 0 || mustEnterQty || !!m.conflict || !!m.quantity_fractional;
                   const k = (f: string) => `${draft.id}-${r.index}-${f}`;
                   const isCash = ch?.type === "deposit" || ch?.type === "withdrawal";
                   return (
@@ -231,6 +255,20 @@ function Body() {
                         {flagged && (
                           <ul className="mt-1 text-xs font-medium text-amber-900 dark:text-amber-200">
                             {r.flags.map((f) => <li key={f}>⚠ {t.has(`flags.${f}`) ? t(`flags.${f}`) : f}</li>)}
+                            {mustEnterQty && <li>⚠ {t("notes.quantityUncertain")}</li>}
+                            {m.quantity_fractional && <li>⚠ {t("notes.quantityFractional")}</li>}
+                            {m.conflict && (
+                              <li>⚠ {t("notes.conflict", {
+                                value: m.conflict.value === null ? "—" : String(m.conflict.value),
+                                price: m.conflict.price === null ? "—" : String(m.conflict.price),
+                              })}</li>
+                            )}
+                          </ul>
+                        )}
+                        {(m.cost_inferred || m.duplicate_removed) && (
+                          <ul className="mt-1 text-xs text-slate-700 dark:text-slate-300">
+                            {m.cost_inferred && <li data-testid="note-cost-inferred">{t("notes.costInferred", { pnl: `${(m.pnl_pct ?? 0) > 0 ? "+" : ""}${m.pnl_pct ?? 0}%` })}</li>}
+                            {m.duplicate_removed && <li data-testid="note-duplicate">{t("notes.duplicateRemoved")}</li>}
                           </ul>
                         )}
                       </td>
@@ -252,7 +290,7 @@ function Body() {
                         )}
                         {r.tase_number && <p className="mt-1 text-xs text-slate-600 dark:text-slate-400" dir="ltr">{t("taseNumber", { n: r.tase_number })}</p>}
                       </td>
-                      <td className="px-2 py-2"><NumberCell key={k("q")} label={`${t("col.quantity")} ${r.index + 1}`} className="w-24" value={r.quantity} onValue={(n, ok) => { editRow(r.index, { quantity: n }); cell(k("q"))(ok); }} /></td>
+                      <td className="px-2 py-2"><NumberCell key={k("q")} label={`${t("col.quantity")} ${r.index + 1}`} className="w-24" required={mustEnterQty} value={r.quantity} onValue={(n, ok) => { editRow(r.index, { quantity: n }); cell(k("q"))(ok); }} /></td>
                       <td className="px-2 py-2"><NumberCell key={k("p")} label={`${t("col.price")} ${r.index + 1}`} className="w-24" value={r.price} onValue={(n, ok) => { editRow(r.index, { price: n }); cell(k("p"))(ok); }} /></td>
                       <td className="px-2 py-2"><NumberCell key={k("v")} label={`${t("col.value")} ${r.index + 1}`} className="w-28" value={r.value} onValue={(n, ok) => { editRow(r.index, { value: n }); cell(k("v"))(ok); }} /></td>
                       <td className="px-2 py-2 tabular-nums" dir="ltr">{r.currency}{r.unit === "agorot" ? " (ag.)" : ""}</td>
@@ -284,7 +322,7 @@ function Body() {
           </div>
           {vanished.length > 0 && (
             <div className="space-y-2 rounded-xl bg-amber-50 p-3 dark:bg-amber-950/40" role="group" aria-label={t("vanished.title")}>
-              <h3 className="font-semibold">{t("vanished.title")}</h3>
+              <h3 className="font-semibold">{imageCount > 1 ? t("vanished.titleMany") : t("vanished.title")}</h3>
               <p className="text-sm text-amber-900 dark:text-amber-200">{t("vanished.hint")}</p>
               <ul className="space-y-2">
                 {vanished.map((ch) => {
@@ -309,12 +347,13 @@ function Body() {
               </ul>
             </div>
           )}
+          {missingQuantity && <p role="status" className="text-sm text-amber-900 dark:text-amber-200">{t("notes.quantityRequiredHint")}</p>}
           {missingSymbol && <p role="status" className="text-sm text-amber-900 dark:text-amber-200">{t("error.unmatchedHint")}</p>}
           {bad.size > 0 && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{t("error.badNumber")}</p>}
           {error && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{errorText}</p>}
           {problemList}
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-primary" onClick={confirm} disabled={busy === "confirm" || bad.size > 0 || missingSymbol || rows.length === 0}>
+            <button type="button" className="btn-primary" onClick={confirm} disabled={busy === "confirm" || bad.size > 0 || missingSymbol || missingQuantity || rows.length === 0}>
               {busy === "confirm" ? t("confirming") : t("confirm")}
             </button>
             <button type="button" className="btn-secondary" onClick={() => { setDraft(null); setRows([]); setChanges([]); setError(null); }}>{c("cancel")}</button>
