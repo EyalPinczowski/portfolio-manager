@@ -6,11 +6,11 @@ Guidance for Claude Code when working in this repository.
 
 A personal portfolio analysis and recommendation assistant for **US and Israeli (TASE)** stocks. It combines technical/chart analysis, analyst consensus, geopolitical/news signals and market sentiment (Fear & Greed, VIX) into buy/sell/hold suggestions. Every suggestion is filtered through **risk limits the user sets**. The output goes to a web app that refreshes continuously. See `README.md` for the feature spec.
 
-Status: **early stage**. Only the docs exist so far. See README → "Decisions so far". Follow the layout and conventions below when adding code.
+Status: **Phase 1 in progress** (see `docs/phase-1-spec.md`). Earlier text: Only the docs exist so far. See README → "Decisions so far". Follow the layout and conventions below when adding code.
 
 ## Stack
 
-- **Backend**: Python 3.12, FastAPI, SQLModel (SQLite now, Postgres later), APScheduler, pandas, `pandas-ta`, `yfinance`, `httpx`.
+- **Backend**: Python 3.12, FastAPI, SQLModel (SQLite now, Postgres later), APScheduler, pandas, in-house indicators (`signals/indicators.py`; don't add pandas-ta, which is abandoned), `yfinance`, `httpx`.
 - **Frontend**: Next.js (App Router) + TypeScript + Tailwind, TradingView `lightweight-charts` for price charts, WebSocket for live updates.
 - **Tests**: `pytest` (backend), `vitest` (frontend). Lint/format: `ruff`, `mypy`, `eslint`, `prettier`.
 

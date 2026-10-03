@@ -222,14 +222,14 @@ The selected horizon and risk filter are applied together. If a stop that fits t
 |---|---|
 | App | Web app that works on phones and can be installed to the home screen (PWA); Hebrew + English with right-to-left layout |
 | Users | You plus family/friends, each with their own login and multiple portfolios, plus a combined view |
-| Hosting | Small cloud server (~$5/month), running 24/7 |
+| Hosting | **Free**: Oracle Cloud Always Free (ARM VM), running 24/7 |
 | Alerts | Telegram bot |
 | Holdings input | **Broker screenshots**, read by AI (Gemini free tier; Tesseract offline as a fallback). You always review the result before it's saved. |
 | Horizon | Swing trading (weeks to months) |
 | Risk | A **risk filter** with presets (Very Conservative → Very Aggressive, default Balanced-Aggressive) and detailed options (max loss per position, % of portfolio per trade, total portfolio risk, min risk/reward). Set per portfolio, changeable per stock. |
 | Exit levels | Based on **holding period** (1 week / 1 month / 3 months / 6 months / 1 year+), for **one stock or a full portfolio review** |
 | Assets | US + TASE stocks, ETFs, crypto |
-| Analysts | Wall Street consensus + insider trading (SEC Form 4, MAYA) |
+| Analysts | Wall Street consensus + insider trading (SEC Form 4 for US; free best-effort MAYA scraping for TASE) |
 | AI text | Free LLM tier (Gemini / Groq), with fixed-template explanations as a fallback |
 | Refresh | About every 5 minutes, free data |
 | Holding period | **No default**: the app asks for each holding before suggesting exit levels |
@@ -249,7 +249,7 @@ The selected horizon and risk filter are applied together. If a stop that fits t
 | Need | Free source | Paid upgrade if needed |
 |---|---|---|
 | Prices, history, US + TASE (`.TA` suffix) | `yfinance` (Yahoo Finance) | Polygon.io, EODHD (good TASE coverage), Twelve Data |
-| Technical indicators | Computed locally (`pandas-ta` / `ta`) | — |
+| Technical indicators | Computed locally (in-house `signals/indicators.py`; pandas-ta is abandoned upstream) | — |
 | Analyst ratings & price targets | `yfinance` recommendations/targets, Finnhub free tier | Finnhub premium, FMP, TipRanks (no official public API) |
 | Fear & Greed | CNN Fear & Greed endpoint (unofficial) + VIX from Yahoo | — |
 | Geopolitics & news | GDELT (free, global events + tone), RSS feeds (Reuters, Globes, Calcalist, TheMarker, Times of Israel business), Finnhub news | NewsAPI, Marketaux |
