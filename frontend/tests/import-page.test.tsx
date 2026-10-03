@@ -22,7 +22,7 @@ vi.mock("@/i18n/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
 }));
 
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { prepareForServer, readScreenshotOnDevice } from "@/lib/ocr/engine";
 import { ImportPage } from "@/components/ImportPage";
 
@@ -129,6 +129,66 @@ describe("import page", () => {
     expect(screen.getByText("Did you mean:")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Use MNDY (monday.com, 58% match)" }));
     expect(screen.getByLabelText("Symbol 1")).toHaveValue("MNDY");
+  });
+
+  it("blocks confirming while a row has no symbol; picking a candidate re-syncs the draft and unblocks it", async () => {
+    vi.mocked(readScreenshotOnDevice).mockResolvedValueOnce([{ ...parsed[0], tase_number: null, name: "Monday" }]);
+    const patch = vi.spyOn(api, "patchImport");
+    renderPage();
+    await pick();
+    clickRead();
+    await screen.findByRole("region", { name: "Review the rows" });
+    expect(screen.getByRole("button", { name: "Confirm import" })).toBeDisabled();
+    expect(screen.getByText(/Pick a symbol for every highlighted row/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Use MNDY (monday.com, 58% match)" }));
+    await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
+    expect(patch.mock.calls[0][1]).toEqual({ rows: [expect.objectContaining({ symbol: "MNDY" })] }); // no stale proposed_changes
+    await waitFor(() => expect(screen.getByRole("button", { name: "Confirm import" })).toBeEnabled());
+  });
+
+  it("lets the user remove a row", async () => {
+    renderPage();
+    await pick();
+    clickRead();
+    await screen.findByRole("region", { name: "Review the rows" });
+    fireEvent.click(screen.getByRole("button", { name: "Remove row 1" }));
+    await waitFor(() => expect(screen.queryByLabelText("Name 1")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Confirm import" })).toBeDisabled();
+  });
+
+  it("server reading: 503 (no OCR engine on the server) points back at on-device reading", async () => {
+    vi.spyOn(api, "createImport").mockRejectedValueOnce(new ApiError(503, "Tesseract is not installed"));
+    renderPage();
+    await pick();
+    fireEvent.click(screen.getByRole("button", { name: "Use server reading" }));
+    const agree = screen.queryByRole("button", { name: "I agree, upload" }); // absent if an earlier test consented
+    if (agree) fireEvent.click(agree);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/server cannot read screenshots right now/i);
+  });
+
+  it("confirm 422 (unmatched row on the server) shows a specific message, not the generic one", async () => {
+    vi.spyOn(api, "confirmImport").mockRejectedValueOnce(new ApiError(422, "Row 1 is not matched"));
+    renderPage();
+    await pick();
+    clickRead();
+    await screen.findByRole("region", { name: "Review the rows" });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm import" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/not matched to a security/);
+  });
+
+  it("holdings that vanished from the screenshot are listed and their sale/withdrawal choice is sent", async () => {
+    const patch = vi.spyOn(api, "patchImport");
+    renderPage();
+    await pick();
+    clickRead();
+    const group = await screen.findByRole("group", { name: "Not in this screenshot" });
+    const picker = within(group).getAllByRole("combobox")[0];
+    expect(within(picker).getAllByRole("option").map((o) => o.getAttribute("value"))).toEqual(["sell", "withdrawal"]);
+    fireEvent.change(picker, { target: { value: "withdrawal" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm import" }));
+    await waitFor(() => expect(patch).toHaveBeenCalled());
+    const sent = patch.mock.calls[0][1].proposed_changes!;
+    expect(sent.some((c) => c.row_index < 0 && c.type === "withdrawal")).toBe(true);
   });
 
   it("says so when nothing could be read", async () => {

@@ -3,7 +3,7 @@ import type {
   Holding, Summary, Portfolio, RiskFilter, RiskPreset, ScoreCardDetail, XrayRaw, HeatmapItem,
   ImportDraft, ImportRow, PriceAlert, Me, Horizon, SignalBreakdown, ProposedChange,
 } from "./api";
-import type { LaunchGate, SessionInfo } from "./api-pending";
+import type { LaunchGate, SessionInfo } from "./api";
 import { ApiError } from "./errors";
 
 const FX = 3.7; // USD/ILS
@@ -132,7 +132,7 @@ function signals(h: Seed): SignalBreakdown[] {
   const asOf = AS_OF;
   return [
     {
-      name: "technical", score: h.tech, confidence: h.conf, weight: h.noData ? 0 : 0.67, nominal_weight: 0.67, reasons: [
+      name: "technical", score: h.tech, confidence: h.conf, weight: h.noData ? 0 : 67, nominal_weight: 67, reasons: [
         h.tech >= 0 ? `Price is above its 50-day average` : `Price is below its 50-day average`,
         `RSI(14) is ${h.tech >= 0 ? 58 : 36}`,
       ], data_as_of: asOf,
@@ -143,7 +143,7 @@ function signals(h: Seed): SignalBreakdown[] {
       },
     },
     {
-      name: "patterns", score: h.pat, confidence: h.noData ? 0 : Math.max(0.3, h.conf - 0.2), weight: h.noData ? 0 : 0.33, nominal_weight: 0.33, reasons: [
+      name: "patterns", score: h.pat, confidence: h.noData ? 0 : Math.max(0.3, h.conf - 0.2), weight: h.noData ? 0 : 33, nominal_weight: 33, reasons: [
         h.pat >= 0 ? "Held support 3% below the price" : "Failed to break resistance twice",
       ], data_as_of: asOf,
       explanation: {
@@ -205,7 +205,7 @@ let draft: ImportDraft = {
     { index: 0, name: "טבע", symbol: "TEVA.TA", tase_number: "629014", quantity: 650, price: 62.4, value: 40560, cost: 51.2, currency: "ILS", unit: "ILS", matched_name: "Teva", flags: [] },
     { index: 1, name: "לאומי", symbol: "LUMI.TA", quantity: 900, price: 4790, value: 43110, cost: 44, currency: "ILS", unit: "agorot", matched_name: "Bank Leumi", flags: [] },
     { index: 2, name: "אנבידיה", symbol: "NVDA", quantity: 30, price: 142.3, value: 5100, cost: 98.5, currency: "USD", unit: "USD", matched_name: "NVIDIA", flags: ["value_mismatch", "currency_changed"] },
-    { index: 3, name: "מניה לא מזוהה בע״מ", symbol: null, quantity: 100, price: 12.5, value: 1250, cost: null, currency: "ILS", unit: "ILS", matched_name: null, flags: ["unmatched", "low_confidence_match"], candidates: [{ symbol: "MNDY", name: "monday.com", score: 0.58 }, { symbol: "MGDL.TA", name: "Migdal Insurance", score: 0.52 }] },
+    { index: 3, name: "מניה לא מזוהה בע״מ", symbol: null, quantity: 100, price: 12.5, value: 1250, cost: null, currency: "ILS", unit: "ILS", matched_name: null, flags: ["unmatched", "low_confidence_match"], candidates: [{ symbol: "MNDY", name: "monday.com", score: 58 }, { symbol: "MGDL.TA", name: "Migdal Insurance", score: 52 }] },
   ],
   proposed_changes: [
     { row_index: 0, symbol: "TEVA.TA", type: "buy", quantity: 50, amount: 3120, currency: "ILS" },
@@ -221,14 +221,20 @@ function draftFromRows(pid: number, rows: ImportRow[]): ImportDraft {
     const flags: ImportRow["flags"] = r.flags.filter((f) => f !== "low_confidence_match" && f !== "unmatched");
     const weak = !r.symbol && !r.tase_number;
     if (weak) flags.push("unmatched", "low_confidence_match");
-    return { ...r, index: i, flags, candidates: weak ? [{ symbol: "MNDY", name: "monday.com", score: 0.58 }] : [] };
+    return { ...r, symbol: r.symbol ?? (r.tase_number ? "TEVA.TA" : null), index: i, flags, candidates: weak ? [{ symbol: "MNDY", name: "monday.com", score: 58 }] : [] };
   });
   const held = holdingsFor(pid);
-  const changes: ProposedChange[] = kept.map((r) => {
+  // Like the server: only real quantity differences, plus a sale (row_index -1) for each held symbol that vanished.
+  const changes: ProposedChange[] = [];
+  for (const r of kept) {
     const cur = held.find((h) => h.symbol === r.symbol);
     const diff = (r.quantity ?? 0) - (cur?.quantity ?? 0);
-    return { row_index: r.index, symbol: r.symbol ?? null, type: diff < 0 ? "sell" : "buy", quantity: Math.abs(diff), amount: null, currency: r.currency };
-  });
+    if (diff === 0) continue;
+    changes.push({ row_index: r.index, symbol: r.symbol ?? null, type: diff < 0 ? "sell" : "buy", quantity: Math.abs(diff), amount: null, currency: r.currency });
+  }
+  for (const h of held) {
+    if (!kept.some((r) => r.symbol === h.symbol)) changes.push({ row_index: -1, symbol: h.symbol, type: "sell", quantity: h.quantity, amount: null, currency: h.currency });
+  }
   draft = { id: 1, portfolio_id: pid, status: "draft", expires_at: EXPIRES, rows: kept, proposed_changes: changes };
   return draft;
 }
@@ -303,7 +309,12 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
   if (p === "/risk/presets") return PRESETS;
   if (p === "/imports/1/confirm") { draft = { ...draft, status: "confirmed" }; return draft; }
   if ((m = p.match(/^\/imports\/(\d+)$/))) {
-    if (method === "PATCH") draft = { ...draft, ...(b as Partial<ImportDraft>) };
+    if (method === "PATCH") {
+      const patch = b as Partial<ImportDraft>;
+      // Like the server: new rows without explicit changes => re-match and recompute the changes.
+      const redone = patch.rows && !patch.proposed_changes ? draftFromRows(draft.portfolio_id, patch.rows) : null;
+      draft = { ...draft, ...patch, ...(redone ? { rows: redone.rows, proposed_changes: redone.proposed_changes } : {}) };
+    }
     return draft;
   }
   if (p === "/securities/search") return [{ symbol: "TEVA.TA", name_en: "Teva", name_he: "טבע", market: "TASE" }];

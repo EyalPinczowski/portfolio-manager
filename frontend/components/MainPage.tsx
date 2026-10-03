@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { loadPortfolioChoice, savePortfolioChoice, useHoldings, usePortfolios, useSummary, type PortfolioRef } from "@/lib/hooks";
 import { ActionButtons } from "./ActionButtons";
 import { AppShell } from "./AppShell";
+import { CreatePortfolio } from "./CreatePortfolio";
 import { HoldingsList } from "./HoldingsList";
 import { LiveHeader } from "./LiveHeader";
 import { PnlStrip } from "./PnlStrip";
@@ -21,6 +22,7 @@ function Body() {
 
   if (pErr) return <p role="alert">{t("common.errorLoad")}</p>;
   if (!portfolios) return <p role="status" className="text-slate-500">{t("common.loading")}</p>;
+  if (portfolios.length === 0) return <CreatePortfolio />;
   return (
     <>
       <PortfolioSwitcher

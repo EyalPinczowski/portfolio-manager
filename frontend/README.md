@@ -11,7 +11,7 @@ npm run gen:api             # regenerate lib/api-schema.d.ts from ../backend/ope
 ```
 
 ## Layout and conventions
-- API client and types: `lib/api.ts`. Types are **derived from the generated** `lib/api-schema.d.ts`; contract items the backend has not published yet are hand-written in `lib/api-pending.ts` (see its header). Mock fixtures: `lib/mock.ts`; `tests/mock-contract.test.ts` validates every mock response against `backend/openapi.json` with Ajv, so mocks cannot drift.
+- API client and types: `lib/api.ts`. Types are **derived from the generated** `lib/api-schema.d.ts`. `lib/upload-types.ts` holds the raster MIME list. Mock fixtures: `lib/mock.ts`; `tests/mock-contract.test.ts` validates every mock response against `backend/openapi.json` with Ajv, so mocks cannot drift.
 - Strings: `messages/he.json` and `messages/en.json` (a test enforces identical keys).
 - Pages: `/[locale]` (main), `/[locale]/holding?id=123`, `/import`, `/xray`, `/settings`, `/login`, `/signup`. The holding page is query-based because a static export has no dynamic segment; `lib/routes.ts` builds the link. `/` redirects to the browser language (`he` or `en`).
 - Weeks run Sunday to Saturday; the summary's `week_start` is shown in labels.

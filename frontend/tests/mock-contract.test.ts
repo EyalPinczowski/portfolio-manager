@@ -7,9 +7,6 @@
  * checks every mock response, at run time, against the exact schema FastAPI published: types, required keys,
  * nullability, enums, date formats. The static types in lib/api.ts are derived from the same file, so the two
  * layers agree.
- *
- * Contract items the backend has not published yet (docs/phase-1.5-spec.md) are checked against the small
- * hand-written schemas below until they appear in openapi.json, at which point the real schema wins automatically.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -40,21 +37,6 @@ function responseSchema(method: string, apiPath: string): Json | null {
   return JSON.parse(json) as Json;
 }
 
-const isoTime = { type: "string", format: "date-time" };
-
-/** Hand-written schemas for contract items not yet in openapi.json. Mirrors lib/api-pending.ts. */
-const PENDING: Record<string, Json> = {
-  "GET /auth/sessions": {
-    type: "array",
-    items: { type: "object", required: ["id", "created_at", "last_seen_at", "current"], properties: { id: { type: "integer" }, created_at: isoTime, last_seen_at: isoTime, current: { type: "boolean" } } },
-  },
-  "GET /launch-gate": { type: "object", required: ["open", "reasons"], properties: { open: { type: "boolean" }, reasons: { type: "array", items: { type: "string" } } } },
-  "POST /portfolios/{id}/imports/rows": { $ref: "openapi#/components/schemas/ImportDraftOut" },
-};
-
-/** Extra constraints for spec-table fields that openapi.json does not have yet (harmless once it does). */
-const DRAFT_PENDING: Json = { type: "object", required: ["expires_at"], properties: { expires_at: isoTime } };
-
 const validate = (schema: Json, data: unknown, label: string) => {
   const fn = ajv.compile(schema);
   const ok = fn(data);
@@ -63,7 +45,7 @@ const validate = (schema: Json, data: unknown, label: string) => {
 
 const png = () => new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" });
 
-interface Case { method: string; path: string; api: string; body?: unknown; extra?: Json }
+interface Case { method: string; path: string; api: string; body?: unknown }
 const CASES: Case[] = [
   { method: "GET", path: "/auth/me", api: "/auth/me" },
   { method: "GET", path: "/portfolios", api: "/portfolios" },
@@ -83,23 +65,20 @@ const CASES: Case[] = [
   { method: "GET", path: "/alerts", api: "/alerts" },
   { method: "POST", path: "/alerts", api: "/alerts", body: { symbol: "TEVA.TA", op: "above", price: 70 } },
   { method: "GET", path: "/notifications", api: "/notifications" },
-  { method: "POST", path: "/portfolios/1/imports", api: "/portfolios/{portfolio_id}/imports", body: png(), extra: DRAFT_PENDING },
-  { method: "POST", path: "/portfolios/1/imports/rows", api: "/portfolios/{portfolio_id}/imports/rows", body: { rows: [{ index: 0, name: "טבע", symbol: "TEVA.TA", quantity: 1, price: 2, value: 2, currency: "ILS", unit: "ILS", flags: [] }] }, extra: DRAFT_PENDING },
-  { method: "GET", path: "/imports/1", api: "/imports/{draft_id}", extra: DRAFT_PENDING },
-  { method: "PATCH", path: "/imports/1", api: "/imports/{draft_id}", body: {}, extra: DRAFT_PENDING },
+  { method: "POST", path: "/portfolios/1/imports", api: "/portfolios/{portfolio_id}/imports", body: png() },
+  { method: "POST", path: "/portfolios/1/imports/rows", api: "/portfolios/{portfolio_id}/imports/rows", body: { rows: [{ index: 0, name: "טבע", symbol: "TEVA.TA", quantity: 1, price: 2, value: 2, currency: "ILS", unit: "ILS", flags: [] }] } },
+  { method: "GET", path: "/imports/1", api: "/imports/{draft_id}" },
+  { method: "PATCH", path: "/imports/1", api: "/imports/{draft_id}", body: {} },
   { method: "GET", path: "/auth/sessions", api: "/auth/sessions" },
   { method: "GET", path: "/launch-gate", api: "/launch-gate" },
 ];
 
 describe("mock fixtures match backend/openapi.json", () => {
-  it.each(CASES)("$method $path", ({ method, path: p, api, body, extra }) => {
+  it.each(CASES)("$method $path", ({ method, path: p, api, body }) => {
     const data = JSON.parse(JSON.stringify(mockRequest(method, p, body) ?? null));
     const real = responseSchema(method, api);
-    const pending = PENDING[`${method} ${api.replace("{portfolio_id}", "{id}")}`] ?? PENDING[`${method} ${api}`];
-    const schema = real ?? pending;
-    expect(schema, `no schema for ${method} ${api}`).toBeTruthy();
-    validate(schema!, data, `${method} ${p}`);
-    if (extra) validate(extra, data, `${method} ${p} (pending fields)`);
+    expect(real, `no schema for ${method} ${api}`).toBeTruthy();
+    validate(real!, data, `${method} ${p}`);
   });
 
   it("covers the nullable cases the UI must survive", () => {

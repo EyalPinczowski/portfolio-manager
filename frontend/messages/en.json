@@ -104,7 +104,11 @@
     "weight": "Weight {pct}",
     "signal": {
       "technical": "Technical",
-      "patterns": "Chart patterns"
+      "patterns": "Chart patterns",
+      "fundamentals": "Fundamentals",
+      "analysts": "Analyst consensus",
+      "geo_news": "Geopolitics and news",
+      "sentiment": "Market sentiment"
     },
     "why": "Why?",
     "whyHide": "Hide explanation",
@@ -185,7 +189,8 @@
       "value": "Value",
       "currency": "Currency",
       "change": "Change type",
-      "changeAmount": "Change qty / amount"
+      "changeAmount": "Change qty / amount",
+      "remove": "Remove"
     },
     "changeType": {
       "buy": "Buy",
@@ -218,10 +223,22 @@
       "rate": "Too many uploads. Wait a moment and try again.",
       "rateWait": "Too many uploads. Try again in {seconds} seconds.",
       "confirm": "Could not save the import. Try again.",
-      "badNumber": "Some numbers cannot be read. Fix the red fields before saving."
+      "badNumber": "Some numbers cannot be read. Fix the red fields before saving.",
+      "serverOcr": "The server cannot read screenshots right now. Use \"Read on this device\" instead.",
+      "unmatched": "Some rows are not matched to a security. Pick a symbol for the highlighted rows or remove them.",
+      "unmatchedHint": "Pick a symbol for every highlighted row, or remove the row, to continue."
     },
     "useCandidate": "Use {symbol} ({name}, {pct} match)",
-    "candidates": "Did you mean:"
+    "candidates": "Did you mean:",
+    "removeRow": "Remove row {n}",
+    "vanished": {
+      "title": "Not in this screenshot",
+      "hint": "You held these before, but they are not in this screenshot, so they will be removed from the portfolio. Was it a sale, or did you move them out (withdrawal)?",
+      "type": {
+        "sell": "Sold",
+        "withdrawal": "Moved out (withdrawal)"
+      }
+    }
   },
   "xray": {
     "title": "Portfolio X-ray",
@@ -305,5 +322,13 @@
     "gate": "Buy/sell suggestions",
     "gateOpen": "Open: suggestions are enabled.",
     "gateClosed": "Locked: the app shows analysis only until it has proven itself."
+  },
+  "createPortfolio": {
+    "title": "Create your first portfolio",
+    "intro": "A portfolio holds the stocks you import from your broker. You can add more later.",
+    "name": "Portfolio name",
+    "currency": "Base currency",
+    "create": "Create portfolio",
+    "error": "Could not create the portfolio. Try again."
   }
 }

@@ -9,11 +9,12 @@ import { useMe, usePortfolios } from "@/lib/hooks";
 import { prepareForServer, readScreenshotOnDevice, type OcrProgress } from "@/lib/ocr/engine";
 import { Link } from "@/i18n/navigation";
 import { AppShell } from "./AppShell";
+import { CreatePortfolio } from "./CreatePortfolio";
 import { Modal } from "./Modal";
 import { NumberCell } from "./NumberCell";
 
 const TYPES: ChangeType[] = ["buy", "sell", "deposit", "withdrawal"];
-type ErrorKind = "generic" | "noRows" | "ocr" | "tooLarge" | "type" | "rate" | "confirm";
+type ErrorKind = "generic" | "noRows" | "ocr" | "tooLarge" | "type" | "rate" | "confirm" | "serverOcr" | "unmatched";
 
 function Body() {
   const t = useTranslations("import");
@@ -24,6 +25,7 @@ function Body() {
   const [pid, setPid] = useState<number | null>(null);
   const [hasFile, setHasFile] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const synced = useRef<ImportRow[]>([]);
   const [draft, setDraft] = useState<ImportDraft | null>(null);
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [changes, setChanges] = useState<ProposedChange[]>([]);
@@ -43,12 +45,15 @@ function Body() {
     setHasFile(false);
     return f;
   };
-  const showDraft = (d: ImportDraft) => { setDraft(d); setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set()); };
+  const showDraft = (d: ImportDraft) => { synced.current = d.rows; setDraft(d); setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set()); };
   const fail = (e: unknown, fallback: ErrorKind = "generic") => {
     if (e instanceof ApiError) {
       if (e.status === 413) return setError({ kind: "tooLarge" });
       if (e.status === 415) return setError({ kind: "type" });
       if (e.status === 429) return setError({ kind: "rate", wait: e.retryAfter });
+      // 503: the server has no OCR engine (and no cloud vision key). Point back at the on-device reader.
+      if (e.status === 503) return setError({ kind: "serverOcr" });
+      if (e.status === 422 && fallback === "confirm") return setError({ kind: "unmatched" });
     }
     setError({ kind: fallback });
   };
@@ -94,8 +99,22 @@ function Body() {
 
   const editRow = (i: number, patch: Partial<ImportRow>) =>
     setRows((rs) => rs.map((r) => (r.index === i ? { ...r, ...patch } : r)));
-  const editChange = (i: number, patch: Partial<ProposedChange>) =>
-    setChanges((cs) => cs.map((x) => (x.row_index === i ? { ...x, ...patch } : x)));
+  /** Symbol fixed or row removed: let the server re-match and recompute the proposed changes, then show them. */
+  const resync = async (next: ImportRow[]) => {
+    if (!draft) return;
+    setRows(next);
+    try {
+      const d = await api.patchImport(draft.id, { rows: next });
+      synced.current = d.rows; setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set());
+    } catch (err) { fail(err, "confirm"); }
+  };
+  const symbolOf = (list: ImportRow[], i: number) => list.find((r) => r.index === i)?.symbol ?? null;
+  const pickSymbol = (i: number, symbol: string) => void resync(rows.map((r) => (r.index === i ? { ...r, symbol } : r)));
+  /** On leaving the symbol field: re-match only if it differs from what the server last saw. */
+  const commitSymbol = (i: number) => { if (symbolOf(rows, i) !== symbolOf(synced.current, i)) void resync(rows); };
+  const removeRow = (i: number) => void resync(rows.filter((r) => r.index !== i));
+  const editChange = (match: (c: ProposedChange) => boolean, patch: Partial<ProposedChange>) =>
+    setChanges((cs) => cs.map((x) => (match(x) ? { ...x, ...patch } : x)));
   const cell = (key: string) => (valid: boolean) =>
     setBad((s) => { const n = new Set(s); if (valid) n.delete(key); else n.add(key); return n; });
 
@@ -108,6 +127,9 @@ function Body() {
     );
   }
 
+  /** Held before, absent from this screenshot: the server proposes a sale (row_index -1) and removes the holding on confirm. */
+  const vanished = changes.filter((c) => c.row_index < 0);
+  const missingSymbol = rows.some((r) => !r.symbol);
   const errorText = error && (error.kind === "rate"
     ? (error.wait ? t("error.rateWait", { seconds: error.wait }) : t("error.rate"))
     : t(`error.${error.kind}`));
@@ -115,7 +137,8 @@ function Body() {
   return (
     <>
       <h1 className="text-2xl font-bold">{t("title")}</h1>
-      {!draft && (
+      {!draft && portfolios && portfolios.length === 0 && <CreatePortfolio />}
+      {!draft && portfolios && portfolios.length > 0 && (
         <form onSubmit={readOnDevice} className="card space-y-4">
           <p className="text-sm text-slate-700 dark:text-slate-300">{t("intro")}</p>
           <p className="rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">{t("keepOnly")}</p>
@@ -172,6 +195,7 @@ function Body() {
                   {(["name", "symbol", "quantity", "price", "value", "currency", "change", "changeAmount"] as const).map((k) => (
                     <th key={k} scope="col" className="px-2 py-2 text-start font-semibold">{t(`col.${k}`)}</th>
                   ))}
+                  <th scope="col" className="px-2 py-2"><span className="sr-only">{t("col.remove")}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -191,15 +215,15 @@ function Body() {
                         )}
                       </td>
                       <td className="px-2 py-2">
-                        <input aria-label={`${t("col.symbol")} ${r.index + 1}`} className="input w-28" dir="ltr" value={r.symbol ?? ""} onChange={(e) => editRow(r.index, { symbol: e.target.value || null })} />
+                        <input aria-label={`${t("col.symbol")} ${r.index + 1}`} className="input w-28" dir="ltr" value={r.symbol ?? ""} onChange={(e) => editRow(r.index, { symbol: e.target.value.trim() || null })} onBlur={() => commitSymbol(r.index)} />
                         {r.candidates && r.candidates.length > 0 && (
                           <div className="mt-1 text-xs">
                             <p className="font-medium">{t("candidates")}</p>
                             <ul className="space-y-1">
                               {r.candidates.map((cand) => (
                                 <li key={cand.symbol}>
-                                  <button type="button" className="text-start font-semibold text-blue-800 underline dark:text-blue-300" onClick={() => editRow(r.index, { symbol: cand.symbol })}>
-                                    {t("useCandidate", { symbol: cand.symbol, name: cand.name, pct: formatWeight(cand.score * 100, locale, 0) })}
+                                  <button type="button" className="text-start font-semibold text-blue-800 underline dark:text-blue-300" onClick={() => pickSymbol(r.index, cand.symbol)}>
+                                    {t("useCandidate", { symbol: cand.symbol, name: cand.name, pct: formatWeight(cand.score, locale, 0) })}
                                   </button>
                                 </li>
                               ))}
@@ -214,7 +238,7 @@ function Body() {
                       <td className="px-2 py-2 tabular-nums" dir="ltr">{r.currency}{r.unit === "agorot" ? " (ag.)" : ""}</td>
                       <td className="px-2 py-2">
                         {ch && (
-                          <select aria-label={`${t("col.change")} ${r.index + 1}`} className="input w-32" value={ch.type} onChange={(e) => editChange(r.index, { type: e.target.value as ChangeType })}>
+                          <select aria-label={`${t("col.change")} ${r.index + 1}`} className="input w-32" value={ch.type} onChange={(e) => editChange((x) => x.row_index === r.index, { type: e.target.value as ChangeType })}>
                             {TYPES.map((x) => <option key={x} value={x}>{t(`changeType.${x}`)}</option>)}
                           </select>
                         )}
@@ -225,9 +249,12 @@ function Body() {
                             key={`${k("c")}-${ch.type}`}
                             label={`${t("col.changeAmount")} ${r.index + 1}`} className="w-28"
                             value={isCash ? ch.amount : ch.quantity}
-                            onValue={(n, ok) => { editChange(r.index, isCash ? { amount: n } : { quantity: n }); cell(k("c"))(ok); }}
+                            onValue={(n, ok) => { editChange((x) => x.row_index === r.index, isCash ? { amount: n } : { quantity: n }); cell(k("c"))(ok); }}
                           />
                         )}
+                      </td>
+                      <td className="px-2 py-2">
+                        <button type="button" className="btn-secondary" aria-label={t("removeRow", { n: r.index + 1 })} onClick={() => removeRow(r.index)}>✕</button>
                       </td>
                     </tr>
                   );
@@ -235,10 +262,38 @@ function Body() {
               </tbody>
             </table>
           </div>
+          {vanished.length > 0 && (
+            <div className="space-y-2 rounded-xl bg-amber-50 p-3 dark:bg-amber-950/40" role="group" aria-label={t("vanished.title")}>
+              <h3 className="font-semibold">{t("vanished.title")}</h3>
+              <p className="text-sm text-amber-900 dark:text-amber-200">{t("vanished.hint")}</p>
+              <ul className="space-y-2">
+                {vanished.map((ch) => {
+                  const isCash = ch.type === "deposit" || ch.type === "withdrawal";
+                  const sym = ch.symbol ?? "";
+                  const match = (x: ProposedChange) => x.row_index < 0 && x.symbol === ch.symbol;
+                  return (
+                    <li key={sym} className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-20 font-semibold" dir="ltr">{sym}</span>
+                      <select aria-label={`${t("col.change")} ${sym}`} className="input w-36" value={ch.type} onChange={(e) => editChange(match, { type: e.target.value as ChangeType })}>
+                        {(["sell", "withdrawal"] as const).map((x) => <option key={x} value={x}>{t(`vanished.type.${x}`)}</option>)}
+                      </select>
+                      <NumberCell
+                        key={`gone-${sym}-${ch.type}`}
+                        label={`${t("col.changeAmount")} ${sym}`} className="w-28"
+                        value={isCash ? ch.amount : ch.quantity}
+                        onValue={(n, ok) => { editChange(match, isCash ? { amount: n } : { quantity: n }); cell(`gone-${sym}`)(ok); }}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+          {missingSymbol && <p role="status" className="text-sm text-amber-900 dark:text-amber-200">{t("error.unmatchedHint")}</p>}
           {bad.size > 0 && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{t("error.badNumber")}</p>}
           {error && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{errorText}</p>}
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-primary" onClick={confirm} disabled={busy === "confirm" || bad.size > 0}>
+            <button type="button" className="btn-primary" onClick={confirm} disabled={busy === "confirm" || bad.size > 0 || missingSymbol || rows.length === 0}>
               {busy === "confirm" ? t("confirming") : t("confirm")}
             </button>
             <button type="button" className="btn-secondary" onClick={() => { setDraft(null); setRows([]); setChanges([]); setError(null); }}>{c("cancel")}</button>

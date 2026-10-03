@@ -111,8 +111,8 @@ function Body({ hid }: { hid: number }) {
                   : <span className="tabular-nums" dir="ltr">{s.score > 0 ? "+" : ""}{s.score}</span>}
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400">
-                {t("confidence", { pct: formatWeight(s.confidence * 100, locale, 0) })} · {t("weight", { pct: formatWeight(s.weight * 100, locale, 0) })}
-                {s.nominal_weight != null && Math.abs(s.nominal_weight - s.weight) >= 0.005 && ` · ${t("nominalWeight", { pct: formatWeight(s.nominal_weight * 100, locale, 0) })}`}
+                {t("confidence", { pct: formatWeight(s.confidence * 100, locale, 0) })} · {t("weight", { pct: formatWeight(s.weight, locale, 0) })}
+                {s.nominal_weight != null && Math.abs(s.nominal_weight - s.weight) >= 0.05 && ` · ${t("nominalWeight", { pct: formatWeight(s.nominal_weight, locale, 0) })}`}
               </p>
             </li>
           ))}

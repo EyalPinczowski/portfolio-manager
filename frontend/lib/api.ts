@@ -1,19 +1,16 @@
 import type { components } from "./api-schema";
-import type { ImportDraftPending, LaunchGate, SessionInfo } from "./api-pending";
-import { RASTER_TYPES } from "./api-pending";
+import { RASTER_TYPES } from "./upload-types";
 import { apiBase } from "./config";
 import { ApiError } from "./errors";
 import { mockRequest } from "./mock";
 import { clearClientState } from "./session";
 
 export { ApiError };
-export type { LaunchGate, SessionInfo };
 
 /*
  * Types are DERIVED from the generated lib/api-schema.d.ts (npm run gen:api, from backend/openapi.json).
  * `Narrow` replaces fields that the OpenAPI schema types loosely (plain `string`, free-form objects) with the
- * precise union the backend actually returns. Contract items the backend has not published yet come from
- * lib/api-pending.ts (hand-written) and are intersected in.
+ * precise union the backend actually returns.
  */
 type S = components["schemas"];
 type Narrow<T, N> = Omit<T, keyof N> & N;
@@ -54,8 +51,11 @@ export type ImportFlag = NonNullable<S["ImportRowModel"]["flags"]>[number];
 export type MatchCandidate = S["MatchCandidate"];
 export type ImportRow = Narrow<S["ImportRowModel"], { flags: ImportFlag[]; candidates?: MatchCandidate[] }>;
 export type ProposedChange = Narrow<S["ProposedChange"], { type: ChangeType }>;
-export type ImportDraft = Narrow<S["ImportDraftOut"], { rows: ImportRow[]; proposed_changes: ProposedChange[] }> &
-  ImportDraftPending;
+export type ImportDraft = Narrow<S["ImportDraftOut"], { rows: ImportRow[]; proposed_changes: ProposedChange[] }>;
+export type LaunchGate = S["LaunchGateOut"];
+export type SessionInfo = S["SessionOut"];
+export type ImportRowsBody = Narrow<S["ImportRowsBody"], { rows: ImportRow[] }>;
+export type PasswordBody = S["PasswordBody"];
 export type SecurityHit = Narrow<S["SecurityHit"], { market: MarketKey }>;
 export type PriceAlert = Narrow<S["AlertOut"], { op: "above" | "below" }>;
 export type Notification = S["NotificationOut"];
@@ -125,9 +125,9 @@ export const api = {
   },
   consentOcr: () => post("/auth/consent/ocr"),
   /** Needs the account password (wrong password -> 403). */
-  exportData: (password: string) => post<unknown>("/me/export", { password }),
+  exportData: (password: string) => post<unknown>("/me/export", { password } satisfies PasswordBody),
   async deleteAccount(password: string) {
-    await del("/me", { password });
+    await del("/me", { password } satisfies PasswordBody);
     csrfToken = null;
     await clearClientState();
   },
@@ -156,7 +156,7 @@ export const api = {
   },
   /** On-device path: rows parsed in the browser; the image never leaves the device. */
   importRows: (portfolioId: number, rows: ImportRow[]) =>
-    post<ImportDraft>(`/portfolios/${portfolioId}/imports/rows`, { rows }),
+    post<ImportDraft>(`/portfolios/${portfolioId}/imports/rows`, { rows } satisfies ImportRowsBody),
   getImport: (id: number) => get<ImportDraft>(`/imports/${id}`),
   patchImport: (id: number, b: { rows?: ImportRow[]; proposed_changes?: ProposedChange[] }) =>
     patch<ImportDraft>(`/imports/${id}`, b),
