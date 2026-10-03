@@ -11,11 +11,12 @@ It watches your holdings and a watchlist, scores each one from several independe
 
 | Signal | What it looks at | Default weight |
 |---|---|---|
-| **Technical analysis** | Trend (SMA/EMA 20/50/200), momentum (RSI, MACD, Stochastic), volatility (Bollinger, ATR), volume (OBV, volume spikes) | 30% |
-| **Chart patterns** | Support/resistance, breakouts, golden/death cross, higher-highs/lower-lows, gaps, simple pattern detection (double top/bottom, head & shoulders) | 15% |
-| **Analyst consensus** | Rating distribution (strong buy → sell), consensus price target vs. current price, recent upgrades/downgrades, earnings surprises | 25% |
-| **Geopolitics & macro** | News and event tone by region and sector (US, Israel, Middle East, China, energy, defense, rates), with extra weight on Israel-specific risk for TASE stocks | 15% |
-| **Market sentiment** | CNN Fear & Greed Index, VIX, and a TASE sentiment proxy (TA-35 vs. its moving averages, USD/ILS) | 15% |
+| **Technical analysis** | Trend (SMA/EMA 20/50/200), momentum (RSI, MACD, Stochastic), volatility (Bollinger, ATR), volume (OBV, volume spikes) | 25% |
+| **Chart patterns** | Support/resistance, breakouts, golden/death cross, higher-highs/lower-lows, gaps, simple pattern detection (double top/bottom, head & shoulders) | 10% |
+| **Fundamentals** | P/E (trailing/forward), EPS consensus & surprises, free-cash-flow yield, ROIC, margins trend, debt/equity, vs. sector peers | 20% |
+| **Analyst consensus** | Rating distribution (strong buy → sell), consensus price target vs. current price, recent upgrades/downgrades, earnings surprises | 20% |
+| **Geopolitics & macro** | News and event tone by region and sector (US, Israel, Middle East, China, energy, defense, rates), with extra weight on Israel-specific risk for TASE stocks | 12.5% |
+| **Market sentiment** | CNN Fear & Greed Index, VIX, and a TASE sentiment proxy (TA-35 vs. its moving averages, USD/ILS) | 12.5% |
 
 Each signal returns a score from **-100 (strong sell) to +100 (strong buy)** with a short explanation. The weighted total goes through the **risk engine** before it becomes a recommendation.
 
@@ -54,7 +55,7 @@ You can switch between portfolios or see all of them combined. On a phone, the t
 
 ### Suggest new stocks
 
-The app scans the S&P 500, NASDAQ-100, TA-125, main US and TASE ETFs and the top cryptocurrencies, and scores each one with the same five signals.
+The app scans the S&P 500, NASDAQ-100, TA-125, main US and TASE ETFs and the top cryptocurrencies, and scores each one with the same six signals.
 
 - **The app asks you each time; nothing is assumed:**
   - how much to invest (₪/$)
@@ -129,7 +130,7 @@ Type any ticker or company name, in English or Hebrew (`NVDA`, `טבע`, `TEVA.T
   - a free-text question, e.g. "is this a good entry before earnings?"
 - **What you get**:
   - A buy / hold / sell verdict (add / trim if you already own it) with a confidence level.
-  - The breakdown of all five signals with the reasons behind each.
+  - The breakdown of all six signals with the reasons behind each.
   - An interactive chart with moving averages, Bollinger bands, support/resistance and detected patterns, plus RSI/MACD.
   - Analyst consensus and price targets, recent insider buys and sells, and the latest news with its tone.
   - **Portfolio fit**: the largest position your risk rules allow, your sector/country exposure after buying, and a suggested entry, stop-loss and target.

@@ -1,6 +1,11 @@
 # Analysis design: the "Investment Committee"
 
-Status: **proposed** (user input, 2026-10-03). Built in Phase 2 ("Analyze a stock"), and reused by the full portfolio review and the new-stock suggestions.
+Status: **accepted** (user input, 2026-10-03).
+- Decisions: fundamentals become a **6th scored signal**. Weights: technical 25, patterns 10, fundamentals 20, analysts 20, geo/news 12.5, sentiment 12.5.
+- News uses **free sources only**. Exa is optional and used only if a key is set.
+- Paper-test length: pending.
+
+Built in Phase 2 ("Analyze a stock"), and reused by the full portfolio review and the new-stock suggestions.
 
 ## Why
 Asking one LLM "should I buy X?" gives vague and over-optimistic answers. Instead, the analysis is split into specialised roles:
