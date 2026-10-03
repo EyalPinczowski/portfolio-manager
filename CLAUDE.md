@@ -58,7 +58,7 @@ cd frontend && npm run dev | npm test | npm run lint
 - Risk profiles: presets Very Conservative → Very Aggressive (default Balanced-Aggressive), each expanding to a `RiskFilter`. They are set per portfolio and can be overridden per holding. The per-holding profile wins.
 - Assets: US + TASE stocks, ETFs, crypto. Crypto has no analyst/insider signal, so those return `confidence=0`, and it uses the crypto Fear & Greed index.
 - Tax is ignored.
-- **Backtest gate**: the API must not return live recommendations until a passing backtest exists for the active weights config.
+- **Launch gate**: the API must not return live buy/sell verdicts until (a) a passing backtest exists for the active weights config, **and** (b) the paper-trading gate passes: ≥4 weeks with no critical errors, ≥50 calls resolved at 1 month, and beating the S&P 500/TA-125. Thresholds live in config.
 - **Analyze a stock** (`/analyze/[symbol]`): on-demand analysis of any ticker, plus optional user notes or a question answered by the LLM using the computed signal data. It uses the **Investment Committee** (`docs/analysis-committee.md`, `backend/app/committee/`):
   - Scout and Chartist are deterministic code; the News analyst, Bear and CIO are LLM roles.
   - Every role hand-off is a Pydantic model, with a JSON response schema, validate → retry once → template fallback.

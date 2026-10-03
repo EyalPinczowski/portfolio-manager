@@ -3,7 +3,7 @@
 Status: **accepted** (user input, 2026-10-03).
 - Decisions: fundamentals become a **6th scored signal**. Weights: technical 25, patterns 10, fundamentals 20, analysts 20, geo/news 12.5, sentiment 12.5.
 - News uses **free sources only**. Exa is optional and used only if a key is set.
-- Paper-test length: pending.
+- Paper-test gate: **goal-based** (see below).
 
 Built in Phase 2 ("Analyze a stock"), and reused by the full portfolio review and the new-stock suggestions.
 
@@ -88,7 +88,16 @@ The idea from the article: give the agents **ready-made data tools** instead of 
 - A **paper portfolio** per user automatically follows every committee verdict that passes the risk filter: simulated entries and exits at the next available price, with the suggested stops and targets.
 - It tracks P&L vs the S&P 500 / TA-125, hit rate, and stop/target outcomes. It also tracks **operational metrics**: provider errors, rate-limit hits, LLM fallbacks, and latency per role.
 - **Important:** LLMs have "seen the future" relative to historical dates, so the LLM layer **cannot be honestly backtested** on past data. The Phase 6 historical backtest validates only the deterministic score. The committee layer is validated **forward**, by paper trading.
-- **Launch gate (proposed):** live verdicts are shown only when *both* of these hold:
-  - the deterministic backtest passes
-  - paper trading has run for at least N weeks with acceptable metrics
+- **Launch gate (decided, goal-based):** live verdicts are shown only when *all* of these hold:
+  1. the deterministic backtest passes
+  2. paper trading has run for at least **4 weeks** with no critical operational errors
+  3. at least **50 paper calls** have completed their 1-month evaluation window
+  4. the paper calls beat buy-and-hold of the S&P 500 / TA-125 over the same period
+
+  Reasons:
+  - a call can only be graded after its horizon ends
+  - with fewer than ~50 resolved calls, the margin of error on the hit rate is more than ±14%
+  - a short window covers only one market regime
+
+  Expected wait: about 6–10 weeks. Until then, the app shows the live paper track record. The thresholds live in config.
 - No connection to a real brokerage at any point. The app only suggests trades.
