@@ -133,6 +133,9 @@ See `docs/deployment.md`. Until a host is chosen:
 - The scheduler can run in-process or as a separate process.
 - The frontend can be served as static files and call the API at a configurable URL.
 
+## Reminders for the user
+`docs/reminders.md` lists things the user said they would provide or decide later (for example more broker screenshots). At each milestone listed there, **remind the user in plain words and ask**, and at the start of every session read that file. Remove an item once it is done.
+
 ## When unsure
 
 Ask the user before you change scoring weights, the risk logic, or add a paid data source. Those choices are theirs.
