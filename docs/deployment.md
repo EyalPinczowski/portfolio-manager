@@ -1,6 +1,6 @@
 # Deployment: free hosting, no credit card
 
-Status: **host not chosen yet** (user decision, 2026-10-03: "decide later, build host-agnostic").
+Status: **host not chosen yet** (user decision, 2026-10-03: "decide later, build host-agnostic"). The code is ready for Option A (Phase 1.5-D): see the setup guide below.
 Constraints: no credit card, no always-on home device, free.
 Researched 2026-10-03 from search results. Items marked *verify* must be checked at deploy time.
 
@@ -65,6 +65,62 @@ Not available to the user today (no spare device), so this is a fallback only.
 - OCR is behind a provider interface: server Tesseract, Gemini, or in-browser tesseract.js.
 - The scheduler can run in-process or as a separate process.
 - The frontend can be served as static files and call the API at a configurable URL.
+
+## Measured facts (Phase 1.5-D, 2026-10-03)
+- **Memory:** `backend/scripts/memprobe.py` runs the API (one worker, in-process scheduler, no Tesseract) through 8 concurrent sign-ups and logins, a 3000×6000 screenshot, a pixel bomb and a 25-megapixel image. **Peak 359 MB** against the 400 MB limit it enforces (Render's limit is 512 MB). Idle is 139 MB. Biggest remaining costs: decoding a 25 MP image (~75 MB) and password-hashing bursts. `MALLOC_ARENA_MAX=2` is set in the image and saved ~80 MB.
+- **Tests:** 460 pass on SQLite and 472 on Postgres 16; ruff and mypy strict are clean. Alembic migrations match the models on both databases and downgrade cleanly.
+- **Not verified here:** the Docker image was never built (no Docker daemon in the sandbox), the Supabase hostnames and pooler behaviour are from memory, and Render's keep-alive terms are unconfirmed.
+
+## Setup guide: Option A step by step (about 45 minutes, no card)
+Do these yourself; they need your accounts. Check each *verify* item against the service's current docs.
+
+**1. Supabase (database)**
+1. Create a free project at supabase.com (note the database password).
+2. Open *Connect* and copy the **session pooler** connection string (port **5432**). The direct host may be IPv6-only on the free plan and unreachable from Render *(verify)*.
+3. Turn it into `DATABASE_URL`: `postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require`. The app rewrites `postgres://`/`postgresql://` to the psycopg driver itself.
+4. If you ever use the **transaction pooler (port 6543)** instead, also set `DATABASE_PREPARE_THRESHOLD=none` and `SCHEDULER_LOCK_DATABASE_URL` to the session-pooler URL (the scheduler's lock needs a session-level connection).
+
+**2. Create the first admin and invite (from your own computer)**
+```bash
+cd backend && uv sync --extra postgres
+export ENV=production COOKIE_SECURE=true SECRET_KEY="$(python -c 'import secrets;print(secrets.token_urlsafe(48))')" DATABASE_URL='<the URL above>'
+python -m app.cli migrate
+python -m app.cli create-admin --email you@example.com
+python -m app.cli create-invite
+```
+Render's free plan probably has no shell, so do this locally against Supabase *(verify)*.
+
+**3. Render (API + scheduler)**
+1. New *Web Service* from this repository, **Docker** runtime, Dockerfile path `backend/Dockerfile.slim`, build context `backend`, instance type **Free**.
+2. Environment variables:
+
+| Name | Purpose | Example | Secret |
+|---|---|---|---|
+| `ENV` | production mode (docs off, secure cookies enforced) | `production` | no |
+| `COOKIE_SECURE` | must be true in production | `true` | no |
+| `SECRET_KEY` | signs sessions, 32+ characters (the app refuses to start otherwise) | output of `secrets.token_urlsafe(48)` | **yes** |
+| `DATABASE_URL` | Supabase session pooler | see step 1 | **yes** |
+| `TRUSTED_PROXY_HEADER` | the rate limiter trusts the proxy's client-IP header | `CF-Connecting-IP` | no |
+| `TELEGRAM_BOT_TOKEN` | alerts (optional) | | **yes** |
+| `SCHEDULER_IN_PROCESS`, `MALLOC_ARENA_MAX`, `PORT` | already set by the image / Render | | no |
+
+   Leave `GEMINI_API_KEY` unset: the slim image has no Tesseract, and the app refuses to send an image to a third party without server-side redaction. Leave `CORS_ORIGINS` empty (same-origin proxy).
+3. The image's start command runs `python -m app.cli migrate` and then uvicorn with one worker. Health check path: `/api/health`.
+4. Note the service URL, e.g. `https://pm-api.onrender.com`.
+
+**4. UptimeRobot (keeps Render awake)**
+Add an HTTP monitor on `https://<service>.onrender.com/api/health`, interval **5 minutes**. `/api/health` does not touch the database, so Supabase stays active only because the scheduler writes every 5 minutes. *Verify Render's terms on keep-alive pings and Supabase's 7-day pause rule.*
+
+**5. Cloudflare Pages (website + same-origin proxy)**
+1. Create a Pages project from this repository: root directory `frontend`, build command `npm ci && npm run build`, output directory `out`.
+2. Environment variables: `API_ORIGIN` = the Render URL (used by `functions/api/[[path]].ts`). Leave `NEXT_PUBLIC_API_URL` empty so the browser calls the same origin.
+3. The Function forwards `/api/*` to Render and passes `CF-Connecting-IP`; the browser only ever talks to the Pages domain, so the login cookie is first-party.
+
+**6. First login**
+Open the Pages URL, sign up with the invite code from step 2, accept the disclaimer, create a portfolio and import a screenshot (read on your phone).
+
+**7. Backups**
+Supabase keeps its own backups on paid plans only, so use Settings → Export regularly (it downloads your data as JSON), and run a periodic `pg_dump` from your computer *(optional)*.
 
 ## Decision checklist (when Phase 1 is ready to deploy)
 1. Measure the API's memory in a 512 MB container.
