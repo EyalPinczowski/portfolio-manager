@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 A personal portfolio analysis and recommendation assistant for **US and Israeli (TASE)** stocks. It combines technical/chart analysis, analyst consensus, geopolitical/news signals and market sentiment (Fear & Greed, VIX) into buy/sell/hold suggestions. Every suggestion is filtered through **risk limits the user sets**. The output goes to a web app that refreshes continuously. See `README.md` for the feature spec.
 
-Status: **Phase 1 in progress** (see `docs/phase-1-spec.md`). Earlier text: Only the docs exist so far. See README → "Decisions so far". Follow the layout and conventions below when adding code.
+Status: **Phase 1 in progress** (see `docs/phase-1-spec.md` and README → "Decisions so far"). Follow the layout and conventions below when adding code.
 
 ## Stack
 
