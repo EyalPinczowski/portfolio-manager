@@ -26,9 +26,23 @@ class Providers:
 _override: Providers | None = None
 
 
+def _security_currency(symbol: str) -> str | None:
+    """Fallback currency from the Security table when Yahoo's currency lookup fails."""
+    from app.db import new_session
+    from app.models import Security
+
+    try:
+        with new_session() as db:
+            sec = db.get(Security, symbol)
+            return sec.currency if sec is not None else None
+    except Exception:
+        return None
+
+
 @lru_cache
 def _default() -> Providers:
     yf = YFinanceProvider()
+    yf.currency_hint = _security_currency
     return Providers(quotes=yf, history=yf)
 
 

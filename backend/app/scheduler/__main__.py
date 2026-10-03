@@ -29,6 +29,11 @@ def _snapshots() -> None:
         log.info("daily snapshots: %d", jobs.run_daily_snapshots(db))
 
 
+def _catchup() -> None:
+    with new_session() as db:
+        log.info("catch-up snapshots: %d", jobs.run_catchup_snapshots(db))
+
+
 def _scores() -> None:
     with new_session() as db:
         log.info("score refresh: %d", jobs.run_score_refresh(db, get_providers().history))
@@ -43,6 +48,7 @@ def build_scheduler() -> BlockingScheduler:
         id="quotes",
         max_instances=1,
         coalesce=True,
+        misfire_grace_time=s.scheduler_misfire_grace_seconds,
     )
     sched.add_job(
         _snapshots,
@@ -52,6 +58,7 @@ def build_scheduler() -> BlockingScheduler:
         id="daily_snapshot",
         max_instances=1,
         coalesce=True,
+        misfire_grace_time=s.snapshot_misfire_grace_seconds,
     )
     sched.add_job(
         _scores,
@@ -59,6 +66,7 @@ def build_scheduler() -> BlockingScheduler:
         id="scores",
         max_instances=1,
         coalesce=True,
+        misfire_grace_time=s.scheduler_misfire_grace_seconds,
     )
     return sched
 
@@ -68,6 +76,7 @@ def main() -> None:
     init_db(get_engine())
     with new_session() as db:
         seed_securities(db)
+    _catchup()
     sched = build_scheduler()
     # Prime quotes right away; the interval trigger takes over afterwards.
     _quotes()

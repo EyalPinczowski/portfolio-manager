@@ -90,7 +90,7 @@ def test_weekly_and_monthly_bars() -> None:
         DayPoint(D(10), 1650),
         DayPoint(D(1, 4), 1650),
     ]
-    weeks = grouped_bars(pts, week_start, 12)
+    weeks = grouped_bars(pts, lambda d: week_start(d, "monday"), 12)
     assert [k for k, _ in weeks][:2] == [D(2), D(9)]
     assert weeks[0][1].pnl_ils == pytest.approx(100)
     assert weeks[0][1].pct == pytest.approx(10.0)
@@ -98,12 +98,12 @@ def test_weekly_and_monthly_bars() -> None:
     months = grouped_bars(pts, month_start, 12)
     assert [k for k, _ in months] == [date(2026, 3, 1), date(2026, 4, 1)]
     assert months[0][1].pnl_ils == pytest.approx(150)
-    assert grouped_bars(pts, week_start, 1)[0][0] == weeks[-1][0]
+    assert grouped_bars(pts, lambda d: week_start(d, "monday"), 1)[0][0] == weeks[-1][0]
 
 
-def test_week_start_is_monday() -> None:
-    assert week_start(date(2026, 3, 8)) == date(2026, 3, 2)  # Sunday
-    assert week_start(date(2026, 3, 2)) == date(2026, 3, 2)
+def test_week_start_monday_when_configured() -> None:
+    assert week_start(date(2026, 3, 8), "monday") == date(2026, 3, 2)  # Sunday
+    assert week_start(date(2026, 3, 2), "monday") == date(2026, 3, 2)
 
 
 def test_empty_and_single_point() -> None:

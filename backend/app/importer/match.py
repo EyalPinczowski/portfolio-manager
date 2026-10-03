@@ -6,10 +6,10 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from rapidfuzz import fuzz, process
+from rapidfuzz import fuzz
 
 from app.config import Settings, get_settings
-from app.importer.parse import ParsedRow
+from app.importer.parse import MatchCandidate, ParsedRow
 from app.models import Security
 
 QUOTES_RE = re.compile(r"[\"'`׳״’‘“”.,]")
@@ -74,9 +74,17 @@ class SecurityIndex:
         return sec
 
 
+def _similarity(query: str, choice: str) -> float:
+    return float(max(fuzz.token_sort_ratio(query, choice), fuzz.ratio(query, choice)))
+
+
 def match_row(
     row: ParsedRow, index: SecurityIndex, settings: Settings | None = None
 ) -> MatchResult:
+    """Match a row to a security. Only an exact symbol, an exact TASE number or an exact
+    (normalised) name is accepted. Anything weaker returns candidates and `low_confidence=True`
+    with `security=None`, so the user decides (a superstring like "Apple Hospitality REIT" must
+    never become AAPL)."""
     s = settings or get_settings()
     if row.symbol:
         sym = row.symbol.upper()
@@ -90,40 +98,72 @@ def match_row(
     query = normalize_name(row.name)
     if not query or not index.choices:
         return MatchResult(None, "none", 0.0)
-    hits = process.extract(query, index.choices, scorer=fuzz.WRatio, limit=6)
-    if not hits:
-        return MatchResult(None, "none", 0.0)
-    best_score = float(hits[0][1])
-    candidates = [(key[0], float(score)) for _text, score, key in hits]
-    if best_score < s.match_suggest_threshold:
-        return MatchResult(None, "none", best_score, candidates)
-    # Among hits tied with the best score, prefer a listing in the row's own currency/market.
-    top = [h for h in hits if float(h[1]) >= best_score - 1e-6]
-    best_sym = top[0][2][0]
-    sec = index.by_symbol[best_sym.upper()]
-    sec = index.prefer_listing(sec, row)
-    return MatchResult(
-        sec, "name", best_score, candidates, low_confidence=best_score < s.match_auto_threshold
-    )
+    exact = {key[0] for key, text in index.choices.items() if text == query}
+    if exact:
+        # Dual listings share one name: pick the listing in the row's currency. Two unrelated
+        # securities with the same name are ambiguous, so they fall through to candidates.
+        secs = [index.by_symbol[sym.upper()] for sym in sorted(exact)]
+        groups = {x.dual_listing_group or x.symbol for x in secs}
+        if len(groups) == 1:
+            return MatchResult(index.prefer_listing(secs[0], row), "name", 100.0)
+    scored: dict[str, float] = {}
+    for (symbol, _lang), text in index.choices.items():
+        shorter, longer = sorted((len(query), len(text)))
+        if longer == 0:
+            continue
+        score = 0.0
+        if shorter / longer >= s.match_min_length_ratio:
+            score = _similarity(query, text)  # a very different length is not "the same name"
+        if shorter >= s.match_containment_min_chars and fuzz.partial_ratio(query, text) >= 95:
+            # One name contains the other ("בנק הפועלים" / "פועלים"): worth suggesting, never
+            # accepted on its own (it is how "Apple Hospitality REIT" looked like AAPL).
+            score = max(score, s.match_containment_score)
+        if score:
+            scored[symbol] = max(score, scored.get(symbol, 0.0))
+    want = "TASE" if row.currency == "ILS" else "US"
+
+    def order(kv: tuple[str, float]) -> tuple[float, int, str]:
+        market_ok = index.by_symbol[kv[0].upper()].market == want
+        return (-kv[1], 0 if market_ok else 1, kv[0])  # ties: the listing in the row's currency
+
+    ranked = sorted(scored.items(), key=order)
+    candidates = [(sym, sc) for sym, sc in ranked if sc >= s.match_suggest_threshold][
+        : s.match_max_candidates
+    ]
+    if not candidates:
+        return MatchResult(None, "none", ranked[0][1] if ranked else 0.0)
+    return MatchResult(None, "none", candidates[0][1], candidates, low_confidence=True)
 
 
-def apply_match(row: ParsedRow, result: MatchResult) -> ParsedRow:
-    flags = [f for f in row.flags if f not in ("unmatched", "low_confidence_match")]
+def apply_match(
+    row: ParsedRow, result: MatchResult, index: SecurityIndex | None = None
+) -> ParsedRow:
+    managed = ("unmatched", "low_confidence_match", "currency_changed", "unit_mismatch")
+    flags = [f for f in row.flags if f not in managed]
+    row.candidates = []
     if result.security is None:
         flags.append("unmatched")
         row.symbol = None
         row.matched_name = None
+        if result.low_confidence:
+            flags.append("low_confidence_match")
+            row.candidates = [
+                MatchCandidate(
+                    symbol=sym,
+                    name=(index.by_symbol[sym.upper()].name_en if index else sym),
+                    score=round(score, 1),
+                )
+                for sym, score in result.candidates
+            ]
     else:
         sec = result.security
         row.symbol = sec.symbol
         row.matched_name = sec.name_en
         if row.unit != "agorot" and sec.currency != row.currency and sec.currency in ("ILS", "USD"):
-            # The security's own currency is the truth for non-agorot rows.
-            row.currency = sec.currency
-            row.unit = "USD" if sec.currency == "USD" else "ILS"
+            # Do NOT overwrite the displayed currency: a broker may legitimately show a US stock in
+            # shekels. The user must confirm (the flag blocks confirming the import).
+            flags.append("currency_changed")
         elif row.unit == "agorot" and sec.currency != "ILS":
             flags.append("unit_mismatch")
-        if result.low_confidence:
-            flags.append("low_confidence_match")
     row.flags = flags
     return row

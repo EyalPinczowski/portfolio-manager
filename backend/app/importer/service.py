@@ -25,14 +25,13 @@ from app.models import (
     HoldingsSnapshot,
     ImportDraft,
     Portfolio,
-    PriceQuote,
     Security,
     Transaction,
 )
 from app.portfolio.valuation import ensure_tracking_started
 from app.providers.base import OcrProvider, OcrUnavailableError
 from app.providers.fx_provider import get_usd_ils
-from app.timeutil import local_today, utcnow
+from app.timeutil import local_today
 
 log = logging.getLogger(__name__)
 
@@ -72,8 +71,9 @@ def finalize_rows(
         if known is not None and not rematch:
             row.matched_name = known.name_en
             row.flags = [f for f in row.flags if f not in ("unmatched", "low_confidence_match")]
+            row.candidates = []
             continue
-        apply_match(row, match_row(row, index, settings))
+        apply_match(row, match_row(row, index, settings), index)
     return rows
 
 
@@ -174,6 +174,12 @@ def confirm_draft(
             )
         if r.quantity is None or r.quantity <= 0:
             raise HTTPException(422, f"Row {r.index + 1} has no valid quantity")
+        if "currency_changed" in r.flags:
+            raise HTTPException(
+                422,
+                f"Row {r.index + 1} ('{r.name}') is shown in a different currency than the "
+                "security's own; confirm the currency (remove the flag) or edit the row",
+            )
     rows = merge_duplicate_rows(rows)
     today = local_today()
     usd_ils = get_usd_ils(db, s)
@@ -200,11 +206,7 @@ def confirm_draft(
         elif h.avg_cost is None:
             h.cost_currency = cur
         db.add(h)
-        px = price_native(r)
-        if px is not None and db.get(PriceQuote, r.symbol) is None:
-            db.add(
-                PriceQuote(symbol=r.symbol, price=px, currency=cur, change_pct=None, as_of=utcnow())
-            )
+        px = price_native(r)  # kept per user in the HoldingsSnapshot below (never a global quote)
         snapshot_rows.append(
             {"symbol": r.symbol, "quantity": r.quantity, "price_native": px, "currency": cur}
         )

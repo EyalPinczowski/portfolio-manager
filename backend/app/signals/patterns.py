@@ -111,7 +111,8 @@ def patterns_signal(df: pd.DataFrame | None, settings: Settings | None = None) -
             f"Only {n} daily bars; at least {s.patterns_min_rows} are needed for patterns.",
             as_of,
         )
-    close, high, low, volume = df["Close"], df["High"], df["Low"], df["Volume"]
+    close, high, low = df["Close"], df["High"], df["Low"]
+    volume = df["Volume"].dropna()
     price = float(close.iloc[-1])
     w = s.patterns_pivot_window
     inputs: dict[str, float | str | None] = {"close": price, "bars": float(n)}

@@ -53,6 +53,14 @@ SYMBOL_STOPWORDS = {
 }
 
 
+class MatchCandidate(BaseModel):
+    """A possible security for a row whose name match was too weak to accept automatically."""
+
+    symbol: str
+    name: str
+    score: float  # 0-100 name similarity
+
+
 class ParsedRow(BaseModel):
     index: int = 0
     name: str = ""
@@ -65,6 +73,9 @@ class ParsedRow(BaseModel):
     currency: str = "ILS"
     unit: Unit = "ILS"
     matched_name: str | None = None
+    # Weak name matches are never picked silently: `symbol` stays None, `flags` contains
+    # "low_confidence_match" and the best guesses are listed here (best first) for the user.
+    candidates: list[MatchCandidate] = Field(default_factory=list)
     flags: list[str] = Field(default_factory=list)
 
 

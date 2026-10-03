@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -95,7 +95,7 @@ class Pnl(BaseModel):
 
 
 class WeeklyBar(BaseModel):
-    week_start: str
+    week_start: date  # the first day of the week (Sunday by default)
     pnl_ils: float
     pct: float
 
@@ -130,6 +130,8 @@ class SummaryOut(BaseModel):
     month_pnl: Pnl
     since_start_pnl: Pnl
     since_start_date: str | None = None
+    week_start: date  # Sunday of the current week in Asia/Jerusalem (setting `week_start_day`)
+    fx_stale: bool  # USD/ILS is old or a fallback: the ILS/USD figures are approximate
     weekly_bars: list[WeeklyBar]
     monthly_bars: list[MonthlyBar]
     since_start_series: list[SeriesPoint]
@@ -211,8 +213,19 @@ class HeatmapItem(BaseModel):
 
 
 # ---------------------------------------------------------------- imports
+ImportFlag = Literal[
+    "missing_fields",  # quantity, price or value could not be read
+    "value_mismatch",  # quantity x price differs from the value
+    "unmatched",  # no security chosen (symbol is null)
+    "low_confidence_match",  # weak name match: pick one of `candidates` (symbol stays null)
+    "currency_changed",  # the row currency differs from the security's: confirm before import
+    "unit_mismatch",  # agorot shown for a non-shekel security
+]
+
+
 class ImportRowModel(ParsedRow):
     model_config = ConfigDict(extra="ignore")
+    flags: list[ImportFlag] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class ImportDraftOut(BaseModel):

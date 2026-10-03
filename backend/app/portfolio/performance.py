@@ -58,8 +58,20 @@ def period_result(points: Sequence[DayPoint], start: date | None = None) -> Peri
     return PeriodResult(round(profit_total, 6), round((growth - 1.0) * 100.0, 6))
 
 
-def week_start(d: date) -> date:
-    return d - timedelta(days=d.weekday())
+WEEKDAY_INDEX = {
+    "monday": 0,
+    "tuesday": 1,
+    "wednesday": 2,
+    "thursday": 3,
+    "friday": 4,
+    "saturday": 5,
+    "sunday": 6,
+}
+
+
+def week_start(d: date, start_day: str = "sunday") -> date:
+    """First day of the week containing `d`. Israeli weeks start on Sunday (the default)."""
+    return d - timedelta(days=(d.weekday() - WEEKDAY_INDEX[start_day]) % 7)
 
 
 def month_start(d: date) -> date:

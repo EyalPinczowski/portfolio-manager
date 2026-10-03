@@ -125,26 +125,24 @@ def test_match_exact_symbol_and_tase_number(index: SecurityIndex) -> None:
     assert r2.security and r2.security.symbol == "TEVA.TA" and r2.method == "tase_number"
 
 
-def test_match_hebrew_names_fuzzy(index: SecurityIndex) -> None:
-    cases = {
-        "טבע": "TEVA.TA",
-        "בנק הפועלים": "POLI.TA",
-        "פועלים": "POLI.TA",
-        "לאומי": "LUMI.TA",
-        "אלביט מערכות": "ESLT.TA",
-        "מזרחי טפחות": "MZTF.TA",
-        "איי.סי.אל": "ICL.TA",
-        "עזריאלי": "AZRG.TA",
-    }
-    for name, expected in cases.items():
+def test_match_hebrew_exact_names_accepted_partial_names_become_candidates(
+    index: SecurityIndex,
+) -> None:
+    exact = {"טבע": "TEVA.TA", "לאומי": "LUMI.TA", "פועלים": "POLI.TA"}
+    for name, expected in exact.items():
         res = match_row(ParsedRow(name=name, currency="ILS", unit="agorot"), index, S)
-        assert res.security is not None, name
-        assert res.security.symbol == expected, (name, res.security.symbol, res.score)
+        assert res.security is not None and res.security.symbol == expected, name
+        assert res.method == "name" and not res.low_confidence
+    # A partial name is only a suggestion: nothing is picked, the user chooses.
+    for name, expected in {"בנק הפועלים": "POLI.TA", "אלביט": "ESLT.TA"}.items():
+        res = match_row(ParsedRow(name=name, currency="ILS", unit="agorot"), index, S)
+        assert res.security is None and res.low_confidence, name
+        assert res.candidates and res.candidates[0][0] == expected, (name, res.candidates)
 
 
-def test_match_english_fuzzy_and_unmatched(index: SecurityIndex) -> None:
+def test_match_english_name_and_unmatched(index: SecurityIndex) -> None:
     res = match_row(ParsedRow(name="Microsoft Corp", currency="USD", unit="USD"), index, S)
-    assert res.security and res.security.symbol == "MSFT"
+    assert res.security and res.security.symbol == "MSFT"  # exact after stripping "Corp"
     none = match_row(ParsedRow(name="zzzzqqq xxyy", currency="USD"), index, S)
     assert none.security is None
     row = apply_match(ParsedRow(name="zzzzqqq xxyy"), none)
@@ -160,10 +158,45 @@ def test_dual_listing_prefers_listing_in_row_currency(index: SecurityIndex) -> N
     assert swapped.security and swapped.security.symbol == "TEVA.TA"
 
 
-def test_security_currency_wins_for_non_agorot_rows(index: SecurityIndex) -> None:
+def test_currency_mismatch_is_flagged_not_overwritten(index: SecurityIndex) -> None:
     row = ParsedRow(name="אפל", currency="ILS", unit="ILS")
-    apply_match(row, match_row(row, index, S))
-    assert row.symbol == "AAPL" and row.currency == "USD" and row.unit == "USD"
+    apply_match(row, match_row(row, index, S), index)
+    assert row.symbol == "AAPL" and "currency_changed" in row.flags
+    assert row.currency == "ILS" and row.unit == "ILS"  # what the broker displays is kept
+
+
+def test_apple_hospitality_reit_must_not_become_aapl(index: SecurityIndex) -> None:
+    row = ParsedRow(name="Apple Hospitality REIT", currency="USD", unit="USD")
+    res = match_row(row, index, S)
+    assert res.security is None  # the old WRatio scorer returned AAPL at 90 with no warning
+    apply_match(row, res, index)
+    assert row.symbol is None and row.matched_name is None
+    assert "unmatched" in row.flags and "low_confidence_match" in row.flags
+    # AAPL may be *offered* (the name contains "Apple") but is never chosen
+    assert all(c.score <= S.match_containment_score for c in row.candidates)
+
+
+def test_microstrategy_must_not_become_msft(index: SecurityIndex) -> None:
+    row = ParsedRow(name="Microstrategy", currency="USD", unit="USD")
+    res = match_row(row, index, S)
+    assert res.security is None and res.low_confidence
+    apply_match(row, res, index)
+    assert row.symbol is None and row.matched_name is None
+    assert "low_confidence_match" in row.flags and "unmatched" in row.flags
+    assert [c.symbol for c in row.candidates] == ["MSFT"]  # offered, never chosen
+    assert row.candidates[0].name == "Microsoft" and 60 <= row.candidates[0].score < 100
+
+
+def test_exact_name_shared_by_two_unrelated_securities_is_ambiguous(db: Session) -> None:
+    from app.importer.match import SecurityIndex as Idx
+
+    twins = [
+        Security(symbol="AAA", name_en="Delta", market="US", currency="USD"),
+        Security(symbol="BBB", name_en="Delta Ltd", market="US", currency="USD"),
+    ]
+    res = match_row(ParsedRow(name="delta", currency="USD", unit="USD"), Idx(twins), S)
+    assert res.security is None and res.low_confidence
+    assert {sym for sym, _ in res.candidates} == {"AAA", "BBB"}
 
 
 def test_normalize_name_strips_quotes_and_suffixes() -> None:

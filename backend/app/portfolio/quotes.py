@@ -13,9 +13,17 @@ from app.providers.base import Quote, QuoteProvider
 log = logging.getLogger(__name__)
 
 
+def has_valid_currency(q: Quote) -> bool:
+    """Only indices (points) may have an empty currency; every other quote must name one."""
+    return bool(q.currency) or q.symbol.startswith("^")
+
+
 def store_quotes(db: Session, quotes: Iterable[Quote]) -> int:
     n = 0
     for q in quotes:
+        if not has_valid_currency(q):
+            log.warning("not storing quote for %s: unknown currency", q.symbol)
+            continue
         row = db.get(PriceQuote, q.symbol)
         if row is None:
             db.add(

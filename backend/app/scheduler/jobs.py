@@ -13,7 +13,7 @@ from app.models import Holding, Portfolio, PriceAlert, Security
 from app.portfolio.quotes import refresh_symbols
 from app.portfolio.valuation import take_snapshot
 from app.providers.base import HistoryProvider, QuoteProvider
-from app.scheduler.calendars import is_market_open
+from app.scheduler.calendars import is_market_open, is_post_close_fetch_due
 from app.scoring.scorecard import is_fresh, refresh_scorecard
 from app.timeutil import local_today
 
@@ -30,7 +30,8 @@ def symbols_to_track(db: Session) -> set[str]:
 def symbols_for_cycle(
     db: Session, now: datetime | None = None, settings: Settings | None = None
 ) -> list[str]:
-    """US/TASE symbols only while their market is open; crypto always.
+    """US/TASE symbols only while their market is open (plus one fetch ~15 min after the close,
+    so the stored close is final); crypto always.
 
     FX (and the benchmark indices) ride along whenever any equity market is open.
     """
@@ -41,10 +42,13 @@ def symbols_for_cycle(
     for sym in sorted(symbols_to_track(db)):
         sec = db.get(Security, sym)
         market = sec.market if sec else ("TASE" if sym.endswith(".TA") else "US")
-        if is_market_open(market, now, s):
+        if is_market_open(market, now, s) or is_post_close_fetch_due(market, now, s):
             out.append(sym)
             any_open = any_open or market != "CRYPTO"
-    if any_open or is_market_open("US", now, s) or is_market_open("TASE", now, s):
+    equity_active = any(
+        is_market_open(m, now, s) or is_post_close_fetch_due(m, now, s) for m in ("US", "TASE")
+    )
+    if any_open or equity_active:
         out.extend([s.fx_symbol])
     return out
 
@@ -70,6 +74,13 @@ def run_daily_snapshots(db: Session, settings: Settings | None = None) -> int:
         if take_snapshot(db, p, today, settings) is not None:
             n += 1
     return n
+
+
+def run_catchup_snapshots(db: Session, settings: Settings | None = None) -> int:
+    """On scheduler start: fill in yesterday's snapshot if the 23:59 job was missed."""
+    from app.portfolio.valuation import take_catchup_snapshots
+
+    return take_catchup_snapshots(db, local_today(), settings)
 
 
 def run_score_refresh(

@@ -56,7 +56,7 @@ def technical_signal(df: pd.DataFrame | None, settings: Settings | None = None) 
             f"Only {n} daily bars; at least {s.tech_min_rows} are needed for technical analysis.",
             as_of,
         )
-    close, high, low, volume = df["Close"], df["High"], df["Low"], df["Volume"]
+    close, high, low = df["Close"], df["High"], df["Low"]
     price = float(close.iloc[-1])
     inputs: dict[str, float | str | None] = {"close": price, "bars": float(n)}
 
@@ -199,11 +199,16 @@ def technical_signal(df: pd.DataFrame | None, settings: Settings | None = None) 
             )
 
     # ---- volume ----
-    if float(volume.tail(20).sum()) > 0:
-        obv = ind.obv(close, volume)
-        if len(obv) > 20:
-            obv_up = float(obv.iloc[-1]) > float(obv.iloc[-20])
-            px_up = float(close.iloc[-1]) > float(close.iloc[-20])
+    # Bars without a volume (e.g. the in-progress day) are dropped *together with their close*, so
+    # OBV and the volume ratio never see NaN.
+    vpairs = df[["Close", "Volume"]].dropna()
+    vclose, vvol = vpairs["Close"], vpairs["Volume"]
+    if len(vvol) > 21 and float(vvol.tail(20).sum()) > 0:
+        obv = ind.obv(vclose, vvol)
+        obv_now, obv_then = float(obv.iloc[-1]), float(obv.iloc[-20])
+        if math.isfinite(obv_now) and math.isfinite(obv_then):
+            obv_up = obv_now > obv_then
+            px_up = float(vclose.iloc[-1]) > float(vclose.iloc[-20])
             inputs["obv_rising_20d"] = "yes" if obv_up else "no"
             if obv_up == px_up:
                 volume_cat.add(
@@ -217,11 +222,11 @@ def technical_signal(df: pd.DataFrame | None, settings: Settings | None = None) 
                     "On-balance volume diverges from price over 20 sessions.",
                     "OBV diverges from price",
                 )
-        avg_vol = float(volume.iloc[-21:-1].mean())
-        if avg_vol > 0:
-            ratio = float(volume.iloc[-1]) / avg_vol
+        avg_vol = float(vvol.iloc[-21:-1].mean())
+        if math.isfinite(avg_vol) and avg_vol > 0:
+            ratio = float(vvol.iloc[-1]) / avg_vol
             inputs["volume_ratio"] = ratio
-            day_up = float(close.iloc[-1]) >= float(close.iloc[-2])
+            day_up = float(vclose.iloc[-1]) >= float(vclose.iloc[-2])
             if ratio >= s.tech_volume_spike_ratio:
                 volume_cat.add(
                     60 if day_up else -60,

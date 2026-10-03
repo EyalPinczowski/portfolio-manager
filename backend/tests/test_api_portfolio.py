@@ -168,6 +168,7 @@ def test_summary_shape_and_combined_starts_at_earliest_start(
     assert set(one) == {
         "value", "day_pnl", "week_pnl", "month_pnl", "since_start_pnl", "since_start_date",
         "weekly_bars", "monthly_bars", "since_start_series", "as_of", "markets",
+            "week_start", "fx_stale",
     }  # fmt: skip
     assert set(one["value"]) == {"ils", "usd"} and set(one["day_pnl"]) == {"ils", "usd", "pct"}
     assert (
@@ -499,3 +500,84 @@ def test_no_image_is_persisted(signup: SignupFn, ocr_text: dict[str, str], tmp_p
             for v in draft.rows[0].values()
         )
         assert len(str(draft.rows)) < 5000  # a few rows of text, not image data
+
+
+def test_weak_name_match_returns_candidates_and_blocks_confirm(
+    signup: SignupFn, ocr_text: dict[str, str]
+) -> None:
+    ocr_text["text"] = "Microstrategy 10 $120.00 $1,200.00\n"
+    c = signup()
+    pid = make_portfolio(c)
+    c.post("/api/auth/consent/ocr")
+    d = upload(c, pid).json()
+    row = d["rows"][0]
+    assert row["symbol"] is None and "low_confidence_match" in row["flags"]
+    assert row["candidates"][0]["symbol"] == "MSFT"
+    assert c.post(f"/api/imports/{d['id']}/confirm").status_code == 422
+    row["symbol"] = row["candidates"][0]["symbol"]  # the user picks the suggestion
+    fixed = c.patch(f"/api/imports/{d['id']}", json={"rows": d["rows"]}).json()["rows"][0]
+    assert fixed["symbol"] == "MSFT" and fixed["candidates"] == []
+    assert "low_confidence_match" not in fixed["flags"]
+    assert c.post(f"/api/imports/{d['id']}/confirm").status_code == 200
+
+
+def test_currency_changed_flag_blocks_confirm_until_the_user_confirms(
+    signup: SignupFn, ocr_text: dict[str, str]
+) -> None:
+    ocr_text["text"] = "אפל 10 700 7,000 ₪\n"  # a US stock shown in shekels by the broker
+    c = signup()
+    pid = make_portfolio(c)
+    c.post("/api/auth/consent/ocr")
+    d = upload(c, pid).json()
+    row = d["rows"][0]
+    assert row["symbol"] == "AAPL" and "currency_changed" in row["flags"]
+    assert row["currency"] == "ILS"  # not silently relabelled USD (that would be x3.6)
+    blocked = c.post(f"/api/imports/{d['id']}/confirm")
+    assert blocked.status_code == 422 and "currency" in blocked.json()["detail"]
+    row["flags"] = [f for f in row["flags"] if f != "currency_changed"]  # user confirms
+    assert c.patch(f"/api/imports/{d['id']}", json={"rows": d["rows"]}).status_code == 200
+    assert c.post(f"/api/imports/{d['id']}/confirm").status_code == 200
+    with new_session() as db:
+        h = db.exec(select(Holding).where(Holding.symbol == "AAPL")).one()
+        assert h.cost_currency == "ILS" or h.avg_cost is None
+
+
+def test_screenshot_prices_never_become_global_quotes(
+    signup: SignupFn, ocr_text: dict[str, str]
+) -> None:
+    set_fx(3.5)
+    ocr_text["text"] = OCR_FIRST
+    c = signup()
+    pid = make_portfolio(c)
+    c.post("/api/auth/consent/ocr")
+    d = upload(c, pid).json()
+    assert c.post(f"/api/imports/{d['id']}/confirm").status_code == 200
+    with new_session() as db:
+        assert db.get(PriceQuote, "TEVA.TA") is None  # a screenshot is not a live market quote
+        assert db.get(PriceQuote, "LUMI.TA") is None
+    h = {x["symbol"]: x for x in c.get(f"/api/portfolios/{pid}/holdings").json()}["TEVA.TA"]
+    assert h["price_stale"] is True and h["price"] == pytest.approx(65.0)
+    assert h["value_ils"] == pytest.approx(65000.0)
+    # another user holding the same symbol does not inherit this user's screenshot price
+    other = signup("bob@mail.com")
+    pid2 = make_portfolio(other)
+    other.post(f"/api/portfolios/{pid2}/holdings", json={"symbol": "TEVA.TA", "quantity": 1})
+    h2 = other.get(f"/api/portfolios/{pid2}/holdings").json()[0]
+    assert h2["price_stale"] is True and h2["price"] != pytest.approx(65.0)
+
+
+def test_live_quote_replaces_the_stale_screenshot_price(
+    signup: SignupFn, ocr_text: dict[str, str], quotes: FakeQuotes
+) -> None:
+    set_fx(3.5)
+    ocr_text["text"] = OCR_FIRST
+    c = signup()
+    pid = make_portfolio(c)
+    c.post("/api/auth/consent/ocr")
+    d = upload(c, pid).json()
+    c.post(f"/api/imports/{d['id']}/confirm")
+    with new_session() as db:
+        db.merge(PriceQuote(symbol="TEVA.TA", price=70.0, currency="ILS", as_of=utcnow()))
+        db.commit()
+    h = {x["symbol"]: x for x in c.get(f"/api/portfolios/{pid}/holdings").json()}["TEVA.TA"]
+    assert h["price"] == 70.0 and h["price_stale"] is False

@@ -1837,9 +1837,24 @@
             ],
             "title": "Matched Name"
           },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/MatchCandidate"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
           "flags": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "missing_fields",
+                "value_mismatch",
+                "unmatched",
+                "low_confidence_match",
+                "currency_changed",
+                "unit_mismatch"
+              ]
             },
             "type": "array",
             "title": "Flags"
@@ -1898,6 +1913,30 @@
           "CRYPTO"
         ],
         "title": "Markets"
+      },
+      "MatchCandidate": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "score"
+        ],
+        "title": "MatchCandidate",
+        "description": "A possible security for a row whose name match was too weak to accept automatically."
       },
       "MeOut": {
         "properties": {
@@ -2673,6 +2712,15 @@
             ],
             "title": "Since Start Date"
           },
+          "week_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Week Start"
+          },
+          "fx_stale": {
+            "type": "boolean",
+            "title": "Fx Stale"
+          },
           "weekly_bars": {
             "items": {
               "$ref": "#/components/schemas/WeeklyBar"
@@ -2710,6 +2758,8 @@
           "week_pnl",
           "month_pnl",
           "since_start_pnl",
+          "week_start",
+          "fx_stale",
           "weekly_bars",
           "monthly_bars",
           "since_start_series",
@@ -2762,6 +2812,7 @@
         "properties": {
           "week_start": {
             "type": "string",
+            "format": "date",
             "title": "Week Start"
           },
           "pnl_ils": {

@@ -7,10 +7,10 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 import pandas as pd
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.config import Settings, get_settings
-from app.models import Portfolio
+from app.models import Portfolio, Transaction
 from app.portfolio.performance import (
     DayPoint,
     benchmark_pct,
@@ -24,7 +24,7 @@ from app.portfolio.performance import (
 from app.portfolio.valuation import (
     PortfolioValuation,
     all_user_snapshots,
-    net_flow_for_date,
+    flows_since_previous_point,
     value_portfolio,
 )
 from app.providers.base import HistoryProvider
@@ -38,15 +38,13 @@ def portfolio_points(
     """Snapshots plus a live point for today (flows of today included)."""
     if portfolio.tracking_started_at is None or portfolio.id is None:
         return []
-    pts = {
-        s.date: DayPoint(s.date, s.value_ils, s.net_flow_ils)
-        for s in all_user_snapshots(db, portfolio.id)
-    }
+    values = {s.date: s.value_ils for s in all_user_snapshots(db, portfolio.id)}
     if today >= portfolio.tracking_started_at:
-        pts[today] = DayPoint(
-            today, valuation.total_ils, net_flow_for_date(db, portfolio.id, today)
-        )
-    return sorted(pts.values(), key=lambda p: p.date)
+        values[today] = valuation.total_ils
+    dates = sorted(values)
+    txs = list(db.exec(select(Transaction).where(Transaction.portfolio_id == portfolio.id)).all())
+    flows = flows_since_previous_point(txs, dates)  # recomputed: robust to missed snapshots
+    return [DayPoint(d, values[d], flows[d]) for d in dates]
 
 
 def _pnl(res_pnl_ils: float, pct: float, usd_ils: float) -> dict[str, float]:
@@ -80,7 +78,8 @@ def build_summary(
         if len(portfolios) > 1
         else (per_portfolio[0] if per_portfolio else [])
     )
-    week = period_result(points, week_start(today))
+    this_week = week_start(today, s.week_start_day)
+    week = period_result(points, this_week)
     month = period_result(points, month_start(today))
     since = period_result(points, None)
     starts = [p.tracking_started_at for p in portfolios if p.tracking_started_at is not None]
@@ -108,14 +107,16 @@ def build_summary(
         "since_start_pnl": _pnl(since.pnl_ils, since.pct, usd_ils),
         "since_start_date": since_date.isoformat() if since_date else None,
         "weekly_bars": [
-            {"week_start": k.isoformat(), "pnl_ils": round(r.pnl_ils, 2), "pct": round(r.pct, 4)}
-            for k, r in grouped_bars(points, week_start, 12)
+            {"week_start": k, "pnl_ils": round(r.pnl_ils, 2), "pct": round(r.pct, 4)}
+            for k, r in grouped_bars(points, lambda d: week_start(d, s.week_start_day), 12)
         ],
         "monthly_bars": [
             {"month": k.strftime("%Y-%m"), "pnl_ils": round(r.pnl_ils, 2), "pct": round(r.pct, 4)}
             for k, r in grouped_bars(points, month_start, 12)
         ],
         "since_start_series": series,
+        "week_start": this_week,
+        "fx_stale": any(v.fx_stale for v in valuations) if valuations else False,
         "as_of": as_utc(as_of).astimezone(UTC).isoformat(),
         "markets": markets_status(now_dt, s),
     }

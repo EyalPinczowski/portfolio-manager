@@ -24,10 +24,27 @@ class Quote(BaseModel):
     as_of: datetime  # naive UTC
 
 
+def is_pence(currency: str | None) -> bool:
+    """British pence: "GBp" (lower-case p) or "GBX". Upper-case "GBP" is pounds."""
+    if currency is None:
+        return False
+    cur = currency.strip()
+    return cur == "GBp" or cur.upper() == "GBX"
+
+
+def is_minor_unit(currency: str | None) -> bool:
+    """Agorot (ILA) or pence (GBp/GBX): the raw price must be divided by 100."""
+    if currency is None:
+        return False
+    return currency.strip().upper() in AGOROT_CODES or is_pence(currency)
+
+
 def normalize_currency(currency: str | None) -> str | None:
-    """ILA (agorot) is reported as ILS after normalisation."""
+    """ILA (agorot) is reported as ILS and GBp/GBX (pence) as GBP after normalisation."""
     if currency is None:
         return None
+    if is_pence(currency):
+        return "GBP"
     cur = currency.strip().upper()
     return "ILS" if cur in AGOROT_CODES else cur
 
@@ -37,14 +54,14 @@ def normalize_price(price: float, currency: str | None) -> tuple[float, str | No
 
     Indices are quoted in points (currency is usually None/"") and are never divided.
     """
-    if currency is not None and currency.strip().upper() in AGOROT_CODES:
-        return price / 100.0, "ILS"
+    if is_minor_unit(currency):
+        return price / 100.0, normalize_currency(currency)
     return price, normalize_currency(currency)
 
 
 def normalize_history(df: pd.DataFrame, currency: str | None) -> pd.DataFrame:
-    """Scale OHLC columns by 1/100 for agorot-quoted instruments; volume is untouched."""
-    if currency is None or currency.strip().upper() not in AGOROT_CODES:
+    """Scale OHLC columns by 1/100 for agorot/pence-quoted instruments; volume is untouched."""
+    if not is_minor_unit(currency):
         return df
     out = df.copy()
     for col in OHLC_COLUMNS:

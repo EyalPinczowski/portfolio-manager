@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -44,31 +45,6 @@ def _default_tase_hours() -> dict[str, tuple[str, str]]:
     }
 
 
-def _default_us_holidays() -> list[date]:
-    return [
-        date(2026, 1, 1),
-        date(2026, 1, 19),
-        date(2026, 2, 16),
-        date(2026, 4, 3),
-        date(2026, 5, 25),
-        date(2026, 6, 19),
-        date(2026, 7, 3),
-        date(2026, 9, 7),
-        date(2026, 11, 26),
-        date(2026, 12, 25),
-        date(2027, 1, 1),
-        date(2027, 1, 18),
-        date(2027, 2, 15),
-        date(2027, 3, 26),
-        date(2027, 5, 31),
-        date(2027, 6, 18),
-        date(2027, 7, 5),
-        date(2027, 9, 6),
-        date(2027, 11, 25),
-        date(2027, 12, 24),
-    ]
-
-
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -90,7 +66,8 @@ class Settings(BaseSettings):
     benchmark_sp500: str = "^GSPC"
     benchmark_ta125: str = "^TA125.TA"
     fx_symbol: str = "ILS=X"
-    fx_fallback_usd_ils: float = 3.6
+    fx_fallback_usd_ils: float = 3.6  # last resort only; always reported as stale
+    fx_stale_after_hours: float = 72.0
     quote_stale_after_minutes: int = 30
     history_cache_ttl_seconds: int = 6 * 3600
     history_failure_ttl_seconds: int = 300
@@ -98,6 +75,9 @@ class Settings(BaseSettings):
     provider_max_retries: int = 3
     provider_backoff_base_seconds: float = 2.0
     currency_cache_ttl_seconds: int = 7 * 24 * 3600
+    provider_breaker_threshold: int = 2  # consecutive all-empty quote fetches before backing off
+    provider_breaker_cooldown_seconds: float = 300.0
+    provider_single_retry_max: int = 5  # tickers retried one by one after a batch came back empty
 
     # --- scheduler ---
     quotes_interval_minutes: int = 5
@@ -105,14 +85,22 @@ class Settings(BaseSettings):
     score_cache_ttl_minutes: int = 360
     snapshot_hour: int = 23
     snapshot_minute: int = 59
+    snapshot_misfire_grace_seconds: int = 6 * 3600  # run a late snapshot instead of skipping it
+    scheduler_misfire_grace_seconds: int = 300
     scheduler_timezone: str = "Asia/Jerusalem"
+    week_start_day: Literal[
+        "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"
+    ] = "sunday"
     tase_timezone: str = "Asia/Jerusalem"
     us_timezone: str = "America/New_York"
     tase_hours: dict[str, tuple[str, str]] = Field(default_factory=_default_tase_hours)
-    tase_holidays: list[date] = Field(default_factory=list)
+    tase_holidays: list[date] = Field(default_factory=list)  # forced closed (library override)
+    tase_extra_open_days: list[date] = Field(default_factory=list)  # forced open
     us_open: str = "09:30"
     us_close: str = "16:00"
-    us_holidays: list[date] = Field(default_factory=_default_us_holidays)
+    us_holidays: list[date] = Field(default_factory=list)  # forced closed (library override)
+    us_extra_open_days: list[date] = Field(default_factory=list)  # forced open
+    post_close_fetch_delay_minutes: int = 15  # one more quote fetch this long after each close
 
     # --- scoring ---
     signal_weights: dict[str, float] = Field(default_factory=_default_weights)
@@ -156,8 +144,11 @@ class Settings(BaseSettings):
     redact_min_digit_run: int = 6
     redact_blur_radius: int = 12
     import_value_tolerance: float = 0.02
-    match_auto_threshold: float = 88.0
-    match_suggest_threshold: float = 60.0
+    match_suggest_threshold: float = 60.0  # minimum name similarity to list a candidate
+    match_min_length_ratio: float = 0.5  # shorter/longer name length for similarity candidates
+    match_containment_score: float = 80.0  # candidate score when one name contains the other
+    match_containment_min_chars: int = 4
+    match_max_candidates: int = 5
     tesseract_lang: str = "heb+eng"
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.5-flash"
