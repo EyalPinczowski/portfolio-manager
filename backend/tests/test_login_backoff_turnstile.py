@@ -129,7 +129,7 @@ def turnstile_env(env: None, monkeypatch: pytest.MonkeyPatch) -> FakeVerifier:
 
 
 def test_turnstile_is_required_after_repeated_failures(
-    signup: SignupFn, turnstile_env: FakeVerifier
+    signup: SignupFn, turnstile_env: FakeVerifier, clock: list[float]
 ) -> None:
     signup(VICTIM).post("/api/auth/logout")
     c = TestClient(create_app())
@@ -143,6 +143,7 @@ def test_turnstile_is_required_after_repeated_failures(
     assert turnstile_env.calls == []  # no token sent: nothing to verify
     bad = login(c, VICTIM, PW, "198.51.100.1", turnstile_token="forged")
     assert bad.status_code == 403 and bad.json()["code"] == "turnstile_required"  # type: ignore[attr-defined]
+    clock[0] += 60.0  # a forged token counts as a failed attempt (2.0-F), so wait out the backoff
     good = login(c, VICTIM, PW, "198.51.100.1", turnstile_token="good-token")
     assert good.status_code == 200  # type: ignore[attr-defined]
     assert turnstile_env.calls[-1] == ("good-token", "198.51.100.1")
@@ -205,7 +206,9 @@ def test_cloudflare_verifier_posts_to_siteverify_and_fails_closed(
     def fake_post(url: str, data: dict[str, str], timeout: float) -> httpx.Response:
         sent.append({"url": url, **data})
         return httpx.Response(
-            200, json={"success": data["response"] == "ok"}, request=httpx.Request("POST", url)
+            200,
+            json={"success": data["response"] == "ok", "action": "login"},
+            request=httpx.Request("POST", url),
         )
 
     monkeypatch.setattr(httpx, "post", fake_post)

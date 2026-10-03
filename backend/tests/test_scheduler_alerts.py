@@ -20,6 +20,7 @@ from app.models import (
     Transaction,
     User,
 )
+from app.outbound import Symbol, render
 from app.providers.cache import TTLCache, is_rate_limited, retry_with_backoff
 from app.scheduler.calendars import is_market_open, is_tase_open, is_us_open, markets_status
 from app.scheduler.jobs import run_daily_snapshots, run_quotes_cycle, symbols_for_cycle
@@ -305,8 +306,77 @@ def test_telegram_only_sends_when_configured(monkeypatch: pytest.MonkeyPatch) ->
         return Resp()
 
     monkeypatch.setattr("app.alerts.telegram.httpx.post", fake_post)
-    assert send_telegram("42", "hi", Settings(telegram_bot_token=None)) is False
-    assert send_telegram(None, "hi", Settings(telegram_bot_token="T")) is False  # user not linked
+    hi = render("Price alert: {symbol}", symbol=Symbol("AAPL"))
+    assert send_telegram("42", hi, Settings(telegram_bot_token=None)) is False
+    assert send_telegram(None, hi, Settings(telegram_bot_token="T")) is False  # user not linked
     assert posted == []
-    assert send_telegram("42", "hi", Settings(telegram_bot_token="T")) is True
+    assert send_telegram("42", hi, Settings(telegram_bot_token="T")) is True
     assert posted[0]["chat_id"] == "42" and "botT/sendMessage" in posted[0]["url"]
+
+
+# ---------------------------------------------------------------- alerts must always fire (2.0-F item 1)
+def _alert_user(db: Session, email: str, chat: str) -> int:
+    user = User(email=email, password_hash="x", telegram_chat_id=chat)
+    db.add(user)
+    db.commit()
+    assert user.id is not None
+    return user.id
+
+
+def test_an_alert_on_a_verdict_word_symbol_does_not_stop_other_users_alerts(db: Session) -> None:
+    evil = _alert_user(db, "evil@mail.com", "1")
+    victim = _alert_user(db, "victim@mail.com", "2")
+    db.add(PriceAlert(user_id=evil, symbol="BUY-USD", op="above", price=1.0))
+    db.add(PriceAlert(user_id=evil, symbol="SELL", op="above", price=1.0))
+    db.add(PriceAlert(user_id=victim, symbol="AAPL", op="above", price=100.0))
+    db.add(PriceQuote(symbol="BUY-USD", price=5.0, currency="USD"))
+    db.add(PriceQuote(symbol="SELL", price=5.0, currency="USD"))
+    db.add(PriceQuote(symbol="AAPL", price=101.0, currency="USD"))
+    db.commit()
+    sent: list[str] = []
+    notes = check_price_alerts(
+        db, Settings(_env_file=None), sender=lambda c, t: bool(sent.append(t) or True)
+    )
+    assert {n.user_id for n in notes} == {evil, victim}
+    assert len(sent) == 3
+    assert not db.exec(select(PriceAlert).where(PriceAlert.active)).all()
+
+
+def test_a_failing_alert_is_logged_and_marked_and_the_rest_still_fire(
+    db: Session, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    a = _alert_user(db, "a@mail.com", "1")
+    b = _alert_user(db, "b@mail.com", "2")
+    db.add(PriceAlert(user_id=a, symbol="AAA", op="above", price=1.0))
+    db.add(PriceAlert(user_id=b, symbol="BBB", op="above", price=1.0))
+    db.add(PriceQuote(symbol="AAA", price=5.0, currency="USD"))
+    db.add(PriceQuote(symbol="BBB", price=5.0, currency="USD"))
+    db.commit()
+    import app.alerts.price_alerts as mod
+
+    real = mod.price_alert_text
+
+    def flaky(alert: PriceAlert, quote: PriceQuote, settings: object = None) -> object:
+        if alert.symbol == "AAA":
+            raise RuntimeError("boom")
+        return real(alert, quote, None)
+
+    monkeypatch.setattr(mod, "price_alert_text", flaky)
+    notes = check_price_alerts(db, Settings(_env_file=None), sender=lambda c, t: True)
+    assert [n.user_id for n in notes] == [b]
+    first = db.exec(select(PriceAlert).where(PriceAlert.symbol == "AAA")).one()
+    assert first.active is False and first.triggered_at is not None  # marked, not retried forever
+    assert any("price alert" in r.message for r in caplog.records)
+
+
+def test_a_failing_telegram_sender_does_not_lose_the_notification(db: Session) -> None:
+    uid = _alert_user(db, "t@mail.com", "9")
+    db.add(PriceAlert(user_id=uid, symbol="AAPL", op="below", price=100.0))
+    db.add(PriceQuote(symbol="AAPL", price=90.0, currency="USD"))
+    db.commit()
+
+    def broken(chat: str | None, text: str) -> bool:
+        raise ConnectionError("down")
+
+    notes = check_price_alerts(db, Settings(_env_file=None), sender=broken)
+    assert len(notes) == 1 and len(db.exec(select(Notification)).all()) == 1

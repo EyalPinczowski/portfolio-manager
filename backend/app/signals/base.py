@@ -5,7 +5,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import AfterValidator, BaseModel, Field, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    model_validator,
+)
 
 from app.timeutil import as_utc, utcnow
 
@@ -14,26 +21,40 @@ NOT_AVAILABLE_YET = "Not available yet (planned for Phase 2)."
 
 EXPLANATION_VERSION = 1
 
-RawValue = float | str | None
+# Short free text (names, labels, one reason) and the summary have length caps: an explanation is
+# stored with every scored object and shown in the UI, so one hostile or buggy 100 KB string must
+# not be able to bloat the database or the page.
+ShortText = Annotated[str, StringConstraints(max_length=500)]
+RawText = Annotated[str, StringConstraints(max_length=200)]
+SummaryText = Annotated[str, StringConstraints(max_length=2000)]
+RawValue = float | RawText | None
 # Naive datetimes are UTC (the database convention); an explanation always carries an offset.
 UtcDatetime = Annotated[datetime, AfterValidator(as_utc)]
+# Every number in an explanation is finite: NaN/Infinity would be stored as JSON `null` and the
+# stored "Why?" could then never be read back (`model_validate_json` fails).
+FINITE = ConfigDict(allow_inf_nan=False)
+MAX_ITEMS = 50
 
 
 class SignalContribution(BaseModel):
     """One signal's part in a combined score: what it said and how much it counted."""
 
-    name: str
-    score: float
-    weight: float  # effective weight in percent after confidence-based redistribution
+    model_config = FINITE
+
+    name: ShortText
+    score: float = Field(ge=-100.0, le=100.0)
+    weight: float = Field(ge=0.0, le=100.0)  # effective weight in percent after redistribution
     confidence: float = Field(ge=0.0, le=1.0)
-    raw: dict[str, RawValue] = Field(default_factory=dict)
+    raw: dict[ShortText, RawValue] = Field(default_factory=dict, max_length=MAX_ITEMS)
 
 
 class ChartAnnotation(BaseModel):
     """Something the chart should draw: a level, a moving average or a detected pattern."""
 
+    model_config = FINITE
+
     kind: Literal["support", "resistance", "moving_average", "pattern"]
-    label: str
+    label: ShortText
     price: float | None = None
     as_of: UtcDatetime | None = None
 
@@ -41,9 +62,11 @@ class ChartAnnotation(BaseModel):
 class ExplanationSource(BaseModel):
     """Where a number came from and how fresh it is."""
 
-    name: str
+    model_config = FINITE
+
+    name: ShortText
     as_of: UtcDatetime | None = None
-    detail: str = ""
+    detail: SummaryText = ""
 
 
 class Explanation(BaseModel):
@@ -53,23 +76,27 @@ class Explanation(BaseModel):
     as part of v1. Every field after them has a default, so payloads cached before v1 still load.
     """
 
+    model_config = FINITE
+
     version: int = EXPLANATION_VERSION
-    summary: str
-    inputs: dict[str, float | str] = Field(default_factory=dict)
-    rules_applied: list[str] = Field(default_factory=list)
+    summary: SummaryText
+    inputs: dict[ShortText, float | RawText] = Field(default_factory=dict, max_length=100)
+    rules_applied: list[ShortText] = Field(default_factory=list, max_length=MAX_ITEMS)
     as_of: UtcDatetime | None = None
-    contributions: list[SignalContribution] = Field(default_factory=list)
-    annotations: list[ChartAnnotation] = Field(default_factory=list)
-    risk_rules_applied: list[str] = Field(default_factory=list)
-    invalidation_risks: list[str] = Field(default_factory=list)
-    sources: list[ExplanationSource] = Field(default_factory=list)
+    contributions: list[SignalContribution] = Field(default_factory=list, max_length=MAX_ITEMS)
+    annotations: list[ChartAnnotation] = Field(default_factory=list, max_length=MAX_ITEMS * 2)
+    risk_rules_applied: list[ShortText] = Field(default_factory=list, max_length=MAX_ITEMS)
+    invalidation_risks: list[ShortText] = Field(default_factory=list, max_length=MAX_ITEMS)
+    sources: list[ExplanationSource] = Field(default_factory=list, max_length=MAX_ITEMS)
 
 
 class SignalResult(BaseModel):
+    model_config = FINITE
+
     name: str = ""
     score: float = Field(ge=-100.0, le=100.0)
     confidence: float = Field(ge=0.0, le=1.0)
-    reasons: list[str]
+    reasons: list[ShortText]
     data_as_of: datetime
     explanation: Explanation
 

@@ -38,6 +38,7 @@ UNTYPED_ALLOWLIST: dict[str, str] = {
 # Verdict-looking names that are not verdicts.
 BENIGN: dict[str, str] = {
     "ProposedChange.type": "the user's own recorded change in quantity (a trade they made), not advice",
+    "XrayOut.home_bias": "home-country concentration of the user's own portfolio, not a view",
 }
 
 S = Settings(_env_file=None)

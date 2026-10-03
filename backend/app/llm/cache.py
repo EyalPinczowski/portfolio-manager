@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -20,12 +21,28 @@ from app.models import LlmCache
 from app.timeutil import utcnow
 
 
-def input_hash(role: str, system: str, prompt: str, schema: dict[str, Any] | None) -> str:
+def input_hash(
+    role: str,
+    system: str,
+    prompt: str,
+    schema: dict[str, Any] | None,
+    *,
+    scope: str,
+    provider: str,
+    model: str,
+    untrusted: Sequence[tuple[str, str, str]] | None = None,
+) -> str:
+    """The cache key. `scope` ("global" or "user:<id>") keeps one user's answer away from another's;
+    provider and model are part of it, so a different model never answers from a cached answer of
+    another one; `untrusted` is the fenced input as (label, source, text)."""
     payload = json.dumps(
-        {"role": role, "system": system, "prompt": prompt, "schema": schema},
+        {
+            "role": role, "system": system, "prompt": prompt, "schema": schema, "scope": scope,
+            "provider": provider, "model": model, "untrusted": list(untrusted or []),
+        },
         sort_keys=True,
         ensure_ascii=False,
-    )
+    )  # fmt: skip
     return hashlib.sha256(payload.encode()).hexdigest()
 
 

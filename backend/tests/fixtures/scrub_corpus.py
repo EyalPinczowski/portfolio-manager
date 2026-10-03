@@ -2,14 +2,24 @@
 
 Each case is `(id, kind, text, expected)`. `kind` groups the rule under test; `keep` cases are text
 that must come out **unchanged** (prices, Hebrew with numbers, tickers, dates). Add a case here
-before changing a rule. The users in the "User table" are `USER_EMAILS`.
+before changing a rule.
+
+`kind == "provider"` cases go through `scrub_baseline` (what every prompt gets); all the other
+kinds go through `scrub_user_text` for the requesting user (`USER_EMAILS`, id 1) with
+`IMPORT_NAMES` as the owner names captured at import. Other users (`OTHER_USER_EMAILS`) are never
+masked. `KNOWN_TASE`, `ALLOW_TICKERS` and `ALLOW_WORDS` stand for the `Security` table.
 """
 
 from __future__ import annotations
 
 from typing import NamedTuple
 
-USER_EMAILS = ["dana.levi@example.com", "eyalpin2002@gmail.com", "moshe_cohen@example.org"]
+USER_EMAILS = ["dana.levi@example.com"]  # the requesting user
+OTHER_USER_EMAILS = ["eyalpin2002@gmail.com", "moshe_cohen@example.org"]
+IMPORT_NAMES = ["דנה לוי"]  # owner name captured at import
+KNOWN_TASE = frozenset({"1081124", "629014"})
+ALLOW_TICKERS = frozenset({"aapl", "teva", "teva.ta", "tsla"})
+ALLOW_WORDS = frozenset({"tesla", "apple"})
 
 
 class Case(NamedTuple):
@@ -21,6 +31,11 @@ class Case(NamedTuple):
 
 def keep(id_: str, text: str) -> Case:
     return Case(id_, "keep", text, text)
+
+
+def provider(id_: str, text: str, expected: str | None = None) -> Case:
+    """Provider data: only secrets are masked, facts and numbers pass through."""
+    return Case(id_, "provider", text, text if expected is None else expected)
 
 
 CORPUS: list[Case] = [
@@ -42,7 +57,6 @@ CORPUS: list[Case] = [
     Case("digits-israeli-id", "digits", "ת.ז. 123456789", "ת.ז. [number]"),
     Case("digits-sentence-end", "digits", "Total 1234567.", "Total [number]."),
     Case("digits-hebrew-sentence", "digits", "המספר 1234567 הוא מזהה", "המספר [number] הוא מזהה"),
-    Case("digits-isin-trade-off", "digits", "ISIN US0378331005 held", "ISIN US[number] held"),
     Case(
         "digits-unformatted-cap-trade-off",
         "digits",
@@ -91,8 +105,10 @@ CORPUS: list[Case] = [
     Case("key-hex-hash", "token", "hash 5d41402abc4b2a76b9719d911017c592", "hash [token]"),
     # ---- names of users in the User table ----
     Case("name-first", "name", "Dana asked about AAPL", "[user] asked about AAPL"),
-    Case("name-local-part", "name", "Hi eyalpin2002, welcome", "Hi [user], welcome"),
-    Case("name-case-insensitive", "name", "MOSHE sold half", "[user] sold half"),
+    Case("name-case-insensitive", "name", "DANA sold half", "[user] sold half"),
+    # names belong to the requesting user only: other users' names stay (review: `tesla.fan@`)
+    keep("name-other-user-local-part", "Hi eyalpin2002, welcome"),
+    keep("name-other-user-first", "Moshe sold half"),
     Case(
         "name-whole-word-only",
         "keep",
@@ -100,6 +116,44 @@ CORPUS: list[Case] = [
         "Danahar Corp and Bandana Inc",
     ),
     Case("name-common-word-trade-off", "name", "Levi Strauss reported", "[user] Strauss reported"),
+    # ---- leaks the Phase 2.0 diff review verified ----
+    Case("leak-id-spaces", "leak", "ת.ז. 012 345 678 של הלקוח", "ת.ז. [number] של הלקוח"),
+    Case("leak-id-dashes", "leak", "id 012-345-678 given", "id [number] given"),
+    Case("leak-id-dots", "leak", "id 012.345.678 given", "id [number] given"),
+    Case("leak-id-single-digits", "leak", "id 0-1-2-3-4-5-6-7-8 given", "id [number] given"),
+    Case("leak-id-single-digits-spaces", "leak", "id 0 1 2 3 4 5 6 7 8", "id [number]"),
+    Case(
+        "leak-email-base64", "leak", "token ZGFuYS5sZXZpQGV4YW1wbGUuY29t end", "token [token] end"
+    ),
+    Case("leak-email-base64-padded", "leak", "x=am9obi5kb2VAZXhhbXBsZS5jb20=", "x=[token]"),
+    Case(
+        "leak-phone-base64url",
+        "leak",
+        "ref dXNlcjogMDUwMTIzNDU2NyBjYWxsIG1l ok",
+        "ref [token] ok",
+    ),
+    Case(
+        "leak-url-user-param",
+        "leak",
+        "see https://app.example.com/p?user=danalevi&sym=AAPL",
+        "see https://app.example.com/p?user=[user]&sym=AAPL",
+    ),
+    Case("leak-url-uid", "leak", "GET /x?uid=87654&a=1", "GET /x?uid=[user]&a=1"),
+    Case("leak-hebrew-owner-label", "leak", "בעל החשבון: יוסי כהן", "בעל החשבון: [user]"),
+    Case(
+        "leak-hebrew-owner-label-line",
+        "leak",
+        "שם בעל החשבון: יוסי כהן\nיתרה: 1,234.56",
+        "שם בעל החשבון: [user]\nיתרה: 1,234.56",
+    ),
+    Case(
+        "leak-english-owner-label",
+        "leak",
+        "Account holder: Yossi Cohen, AAPL",
+        "Account holder: [user], AAPL",
+    ),
+    Case("leak-hebrew-import-name", "leak", "החשבון של דנה לוי נפתח", "החשבון של [user] נפתח"),
+    Case("leak-hebrew-import-name-prefix", "leak", "שלחתי לדנה לוי", "שלחתי ל[user]"),
     # ---- several rules at once ----
     Case(
         "mixed-contact-block",
@@ -136,4 +190,25 @@ CORPUS: list[Case] = [
     keep("keep-tickers", "BRK-B, BTC-USD, ^TA125.TA, ^GSPC, S&P 500"),
     keep("keep-x-ray-word", "X-ray: concentration is high in tech"),
     keep("keep-empty", ""),
+    # ---- numbers that are facts, not ids (the diff review's over-masking) ----
+    keep("keep-isin", "ISIN US0378331005 held, also IL0011234567"),
+    keep("keep-tase-numbers-known", "TASE security 1081124 and 629014 (Teva)"),
+    keep("keep-dates-and-ranges", "03-10-2026, 2026-10-03, 100-200, 10-20-30"),
+    keep("keep-three-groups", "scores 12-34-56"),
+    keep("keep-allowed-company-word", "Tesla and Apple were discussed, TSLA, AAPL"),
+    keep("keep-sku-not-base64", "internationalization characterization"),
+    # ---- provider data: nothing but secrets is touched ----
+    provider("provider-market-cap", "Market cap 1250000 USD, volume 12345678 shares"),
+    provider("provider-tase-numbers", "Security 629014 and 1081124; ID 1081124"),
+    provider("provider-isin", "ISIN US0378331005, IL0011234567"),
+    provider("provider-names-and-words", "Tesla fan club, Dana Corp, Levi Strauss"),
+    provider("provider-hebrew-numbers", "מחזור 12345678 מניות, נייר 629014"),
+    provider("provider-long-integer-price", "Revenue 123456789012 in thousands"),
+    provider("provider-email-still-masked", "Contact ir@tesla.com today", "Contact [email] today"),
+    provider(
+        "provider-key-still-masked",
+        "api key AIzaSyA1234567890abcdefghijklmnopqrstuv in the feed",
+        "api key [token] in the feed",
+    ),
+    provider("provider-phone-kept", "IR line 050-123-4567 for investors"),
 ]

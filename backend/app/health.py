@@ -48,7 +48,14 @@ class HealthProbe:
         self._value: tuple[datetime | None, date | None] = (None, None)
 
     def read(self) -> tuple[datetime | None, date | None]:
-        with self._lock:
+        """The last quote and snapshot times, at most one DB read per `ttl` seconds.
+
+        The lock is a try-lock: while one request is reading (a hanging database), every other
+        request returns the last known value at once instead of queueing a worker thread behind the
+        read. The health endpoint therefore always answers, whatever the database is doing."""
+        if not self._lock.acquire(blocking=False):
+            return self._value
+        try:
             now = self._clock()
             if self._at is not None and now - self._at < self._ttl:
                 return self._value
@@ -66,6 +73,8 @@ class HealthProbe:
             except Exception as exc:
                 log.warning("health: could not read last quote/snapshot (%s)", type(exc).__name__)
             return self._value
+        finally:
+            self._lock.release()
 
 
 class _HasState(Protocol):

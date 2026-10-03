@@ -12,10 +12,11 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Protocol, final, runtime_checkable
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.config import Settings, get_settings
 from app.llm.scrub import PersonalDataScrubber
+from app.llm.untrusted import UNTRUSTED_RULE, UntrustedText, fence, limit_text
 
 log = logging.getLogger("llm")
 
@@ -23,7 +24,10 @@ log = logging.getLogger("llm")
 class LLMRequest(BaseModel):
     role: str  # which committee role or feature asks (for logs and metrics only)
     system: str = ""
-    prompt: str
+    prompt: str  # written by our code (template + provider facts): not personal-data scrubbed
+    untrusted: list[UntrustedText] = Field(default_factory=list)  # fenced; user text is scrubbed
+    user_id: int | None = None  # the requesting user: only their own names are masked
+    known_names: list[str] = Field(default_factory=list)  # e.g. owner names captured at import
     json_schema: dict[str, Any] | None = None  # JSON schema the answer must follow
     max_output_tokens: int | None = None
 
@@ -82,15 +86,48 @@ class BaseLLMProvider(ABC):
 
     @final
     def complete(self, request: LLMRequest) -> LLMResponse:
-        system = self.scrubber.scrub(request.system)
-        prompt = self.scrubber.scrub(request.prompt)
-        masked = {
-            k: system.counts.get(k, 0) + prompt.counts.get(k, 0)
-            for k in {*system.counts, *prompt.counts}
-        }
-        if masked:
-            log.info("scrubbed personal data before sending (%s)", masked)  # counts only
-        return self._send(request.model_copy(update={"system": system.text, "prompt": prompt.text}))
+        """Scrub, fence and send. `system` and `prompt` get the baseline scrub (e-mails, tokens,
+        keys), so a role that interpolates a secret cannot leak it; numbers, names and tickers in
+        them are provider data and stay. `untrusted` blocks are capped and fenced; those from a
+        user also get the full personal-data scrub for the requesting user."""
+        s = self.settings
+        counts: dict[str, int] = {}
+
+        def merge(res_counts: dict[str, int]) -> None:
+            for k, v in res_counts.items():
+                counts[k] = counts.get(k, 0) + v
+
+        system = self.scrubber.scrub_baseline(request.system)
+        prompt = self.scrubber.scrub_baseline(request.prompt)
+        merge(system.counts)
+        merge(prompt.counts)
+        system_text, prompt_text = system.text, prompt.text
+        if request.untrusted:
+            blocks: list[str] = []
+            for block in request.untrusted:
+                body = limit_text(
+                    block.text,
+                    max_chars=s.llm_untrusted_max_chars,
+                    max_urls=s.llm_untrusted_max_urls,
+                    url_chars=s.llm_untrusted_url_chars,
+                )
+                if block.source == "user":
+                    res = self.scrubber.scrub_user_text(
+                        body, user_id=request.user_id, names=request.known_names
+                    )
+                else:
+                    res = self.scrubber.scrub_baseline(body)
+                merge(res.counts)
+                blocks.append(fence(block, res.text))
+            system_text = f"{system_text}\n\n{UNTRUSTED_RULE}".strip()
+            prompt_text = f"{prompt_text}\n\n" + "\n".join(blocks)
+        if counts:
+            log.info("scrubbed personal data before sending (%s)", counts)  # counts only
+        return self._send(
+            request.model_copy(
+                update={"system": system_text, "prompt": prompt_text, "untrusted": []}
+            )
+        )
 
     @abstractmethod
     def _send(self, request: LLMRequest) -> LLMResponse:

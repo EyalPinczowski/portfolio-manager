@@ -46,3 +46,7 @@ An older build never downgrades the database. Roll forward again as soon as poss
 | `DB_AHEAD_MAX_REVISIONS` | `1` | how many numbered revisions ahead an older build tolerates |
 | `DB_ACCEPTED_AHEAD_REVISIONS` | empty | revision ids to accept regardless of the rules above |
 | `AUTO_MIGRATE` | true in dev, false in production | migrate at API/scheduler start; production uses the release step |
+
+
+## Note (2026-10-03): revisions 0005–0007
+`0005_pending_flow_holding` (unique partial index for pending flows), `0006_user_device_nonce`, `0007_paper_append_only_triggers` are expand-only. An older build refuses a database more than `DB_AHEAD_MAX_REVISIONS` (default 1) revisions ahead, so a rollback past Phase 2.0-F needs `DB_AHEAD_MAX_REVISIONS=3` for that deploy.

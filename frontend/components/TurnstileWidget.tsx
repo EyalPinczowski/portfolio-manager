@@ -20,7 +20,7 @@ export function StubTurnstile({ siteKey, onToken }: TurnstileProps) {
   );
 }
 
-function CloudflareTurnstile({ siteKey, onToken }: TurnstileProps) {
+export function CloudflareTurnstile({ siteKey, onToken }: TurnstileProps) {
   const t = useTranslations("auth");
   const locale = useLocale();
   const host = useRef<HTMLDivElement>(null);
@@ -34,6 +34,7 @@ function CloudflareTurnstile({ siteKey, onToken }: TurnstileProps) {
       if (gone || !host.current) return;
       id = api.render(host.current, {
         sitekey: siteKey,
+        action: "login", // the server verifies this action (TURNSTILE_EXPECTED_ACTION)
         theme: "auto",
         language: locale === "he" ? "he" : "en",
         callback: (tok) => cb.current(tok),

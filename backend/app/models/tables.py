@@ -6,7 +6,7 @@ from datetime import date
 from typing import Any
 
 from pydantic import NaiveDatetime
-from sqlalchemy import JSON, CheckConstraint, Column, UniqueConstraint
+from sqlalchemy import JSON, CheckConstraint, Column, Index, UniqueConstraint, text
 from sqlmodel import Field, SQLModel
 
 from app.timeutil import utcnow
@@ -22,6 +22,9 @@ class User(SQLModel, table=True):
     ocr_consent_at: NaiveDatetime | None = None
     telegram_chat_id: str | None = None
     is_admin: bool = False
+    # Random per user; the known-device cookie carries it. Rotated on logout, so a copied cookie (or
+    # a reused SQLite id) stops being a known device. Null (legacy rows) means "no device is known".
+    device_nonce: str | None = None
     created_at: NaiveDatetime = Field(default_factory=utcnow)
 
 
@@ -113,12 +116,26 @@ class ImportDraft(SQLModel, table=True):
     created_at: NaiveDatetime = Field(default_factory=utcnow)
 
 
+_PENDING_ONLY = text("type = 'pending_buy'")
+
+
 class Transaction(SQLModel, table=True):
     __tablename__ = "transaction"
+    __table_args__ = (
+        # One outstanding `pending_buy` marker per holding (ordinary rows have no holding_id).
+        Index(
+            "uq_transaction_pending_holding",
+            "holding_id",
+            unique=True,
+            sqlite_where=_PENDING_ONLY,
+            postgresql_where=_PENDING_ONLY,
+        ),
+    )
     id: int | None = Field(default=None, primary_key=True)
     portfolio_id: int = Field(foreign_key="portfolio.id", index=True, ondelete="CASCADE")
     symbol: str | None = None
     type: str  # buy|sell|deposit|withdrawal
+    holding_id: int | None = None  # only set on a `pending_buy` marker (see portfolio/valuation)
     quantity: float | None = None
     price: float | None = None
     amount: float  # positive magnitude, in `currency`

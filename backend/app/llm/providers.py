@@ -79,6 +79,9 @@ class GeminiProvider(_HttpProvider):
             "maxOutputTokens": self._max_tokens(request),
             "temperature": TEMPERATURE,
         }
+        if self.settings.gemini_thinking_budget is not None:
+            # thinking tokens count against maxOutputTokens: an explicit budget keeps the JSON whole
+            config["thinkingConfig"] = {"thinkingBudget": self.settings.gemini_thinking_budget}
         if request.json_schema is not None:
             config["responseMimeType"] = "application/json"
             config["responseJsonSchema"] = request.json_schema

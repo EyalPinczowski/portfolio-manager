@@ -164,6 +164,19 @@ def match_row(
     return MatchResult(None, "none", candidates[0][1], candidates, low_confidence=True)
 
 
+def currency_flag(row: ParsedRow, sec: Security) -> str | None:
+    """`currency_changed` / `unit_mismatch` when the row's currency or unit disagrees with the
+    security's own. Compares what confirm stores (`row_currency`, from the unit)."""
+    shown = row_currency(row)
+    if row.unit != "agorot" and sec.currency != shown and sec.currency in ("ILS", "USD"):
+        # A broker may legitimately show a US stock in shekels: the user must confirm (the flag
+        # blocks confirming the import), the displayed currency is never overwritten.
+        return "currency_changed"
+    if row.unit == "agorot" and sec.currency != "ILS":
+        return "unit_mismatch"
+    return None
+
+
 def apply_match(
     row: ParsedRow, result: MatchResult, index: SecurityIndex | None = None
 ) -> ParsedRow:
@@ -188,13 +201,8 @@ def apply_match(
         sec = result.security
         row.symbol = sec.symbol
         row.matched_name = sec.name_en
-        # Compare what confirm stores (`row_currency`, from the unit), never a second field.
-        shown = row_currency(row)
-        if row.unit != "agorot" and sec.currency != shown and sec.currency in ("ILS", "USD"):
-            # Do NOT overwrite the displayed currency: a broker may legitimately show a US stock in
-            # shekels. The user must confirm (the flag blocks confirming the import).
-            flags.append("currency_changed")
-        elif row.unit == "agorot" and sec.currency != "ILS":
-            flags.append("unit_mismatch")
+        flag = currency_flag(row, sec)
+        if flag is not None:
+            flags.append(flag)
     row.flags = flags
     return row

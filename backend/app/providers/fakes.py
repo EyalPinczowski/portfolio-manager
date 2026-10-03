@@ -17,6 +17,7 @@ from app.providers.base import (
     NewsItem,
     Transcript,
     covers,
+    market_of_symbol,
 )
 from app.timeutil import utcnow
 
@@ -48,7 +49,8 @@ class FakeFundamentals:
                 if n in row
                 else Field[float].missing(self.name, "not_found")
             )
-        return FundamentalsSnapshot(symbol=symbol, **fields)
+        currency = "ILS" if market_of_symbol(symbol) == "TASE" else "USD"
+        return FundamentalsSnapshot(symbol=symbol, currency=currency, period="TTM", **fields)
 
 
 class _FakeList:

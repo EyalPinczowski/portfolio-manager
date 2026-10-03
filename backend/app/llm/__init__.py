@@ -13,6 +13,7 @@ from app.llm.ledger import TokenBucket, record_usage, usage_for_day
 from app.llm.providers import GeminiProvider, GroqProvider, build_providers
 from app.llm.scrub import PersonalDataScrubber, ScrubResult
 from app.llm.structured import StructuredResult, structured_call
+from app.llm.untrusted import UntrustedText
 
 __all__ = [
     "BaseLLMProvider",
@@ -28,6 +29,7 @@ __all__ = [
     "ScrubResult",
     "StructuredResult",
     "TokenBucket",
+    "UntrustedText",
     "build_providers",
     "record_usage",
     "structured_call",

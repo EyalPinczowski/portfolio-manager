@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Annotated, Protocol
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import Depends
@@ -36,10 +37,28 @@ class CloudflareVerifier:
                 s.turnstile_verify_url, data=data, timeout=s.turnstile_timeout_seconds
             )
             resp.raise_for_status()
-            return bool(resp.json().get("success") is True)
+            body = resp.json()
+            if body.get("success") is not True:
+                return False
+            return self._claims_match(body)
         except Exception as exc:  # network, HTTP or JSON error: treat as "not verified"
             log.warning("turnstile verification failed (%s)", type(exc).__name__)
             return False
+
+    def _claims_match(self, body: dict[str, object]) -> bool:
+        """The token was minted for this site (`hostname`) and this form (`action`)."""
+        s = self._settings
+        hosts = {h.lower() for h in s.turnstile_allowed_hostnames} or {
+            (urlsplit(o).hostname or "").lower() for o in s.cors_origins
+        }
+        hosts.discard("")
+        if hosts and str(body.get("hostname", "")).lower() not in hosts:
+            log.warning("turnstile token for another hostname refused")
+            return False
+        if s.turnstile_expected_action and body.get("action") != s.turnstile_expected_action:
+            log.warning("turnstile token for another action refused")
+            return False
+        return True
 
 
 _override: TurnstileVerifier | None = None

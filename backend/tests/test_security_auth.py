@@ -237,7 +237,8 @@ def test_untrusted_request_falls_back_to_the_host_header_then_the_peer() -> None
         fallback_ip_header="CF-Connecting-IP",
     )
     req = fake_request("10.0.0.5", {"X-Client-IP": "6.6.6.6", "CF-Connecting-IP": "2a06:98c0::103"})
-    assert client_ip(req, s) == "2a06:98c0::103"  # Render's own header, never the spoofed one
+    # Render's own header, never the spoofed one; IPv6 is bucketed to its /64 (2.0-F item 4)
+    assert client_ip(req, s) == "2a06:98c0::"
     assert client_ip(fake_request("10.0.0.5", {"X-Client-IP": "6.6.6.6"}), s) == "10.0.0.5"
 
 

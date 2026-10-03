@@ -50,9 +50,10 @@ def record_call(
     weights_hash: str,
     user_id: int | None = None,
     is_global: bool = False,
-    created_at: datetime | None = None,
 ) -> PaperCall:
-    """Append one call. Exactly one scope: a user's paper portfolio, or the global (gate) track."""
+    """Append one call, stamped with the time it is made (there is no way to backdate it).
+
+    Exactly one scope: a user's paper portfolio, or the global (gate) track."""
     if is_global == (user_id is not None):
         raise ValueError("a paper call is either global or owned by one user, not both or neither")
     if side not in SIDES:
@@ -74,7 +75,6 @@ def record_call(
         weights_hash=weights_hash,
         user_id=user_id,
         is_global=is_global,
-        created_at=created_at or utcnow(),
     )
     db.add(call)
     db.commit()
@@ -99,9 +99,12 @@ def resolve_call(
         raise LookupError(f"paper call {call_id} does not exist")
     if call.resolved_at is not None:
         raise AppendOnlyError("paper_call is already resolved; a resolution is final")
+    when = resolved_at or utcnow()
+    if when < call.created_at or when > utcnow() + timedelta(minutes=5):
+        raise ValueError("resolved_at must lie between the time of the call and now")
     if outcome != "error" and outcome_price is None:
         raise ValueError("a resolution other than 'error' needs the outcome price")
-    call.resolved_at = resolved_at or utcnow()
+    call.resolved_at = when
     call.outcome = outcome
     call.outcome_price = None if outcome_price is None else _finite(outcome_price, "outcome_price")
     call.benchmark_returns = (
@@ -142,17 +145,48 @@ def record_backtest(
 
 
 # ---------------------------------------------------------------- launch-gate reads
-def _return_pct(call: PaperCall) -> float | None:
+def _raw_return_pct(call: PaperCall) -> float | None:
+    """The asset's own % move from the entry to the outcome price (not signed by the side)."""
     if call.outcome_price is None or call.entry <= 0:
         return None
-    raw = (call.outcome_price / call.entry - 1.0) * 100.0
-    return raw if call.side == "buy" else -raw
+    return (call.outcome_price / call.entry - 1.0) * 100.0
+
+
+def excess_return_pct(call: PaperCall, benchmark_return_pct: float) -> float | None:
+    """How far the call beat the benchmark, in percentage points, in the call's own direction.
+
+    A buy is right when the asset beats the benchmark: `asset - benchmark`. A sell is right when
+    the asset *lags* it: `benchmark - asset`. So a sell that merely fell with the market has no
+    edge (0), and one that fell while the market rose has the full gap. (The old formula
+    `-asset - benchmark` credited a sell for the market's own fall and charged it for the market's
+    rise.)
+    """
+    raw = _raw_return_pct(call)
+    if raw is None:
+        return None
+    gap = raw - benchmark_return_pct
+    return gap if call.side == "buy" else -gap
 
 
 def paper_metrics(db: Session, settings: Settings, now: datetime | None = None) -> PaperMetrics:
-    """What the gate needs from the global paper calls (zeros when there are none)."""
+    """What the gate needs from the global paper calls (zeros when there are none).
+
+    Only calls made with the active weights config (and, when `launch_paper_model_hash` is set, the
+    active model) count: a track record of another configuration says nothing about this one.
+    Errors are operational events: only an `error` outcome recorded inside the last
+    `launch_paper_min_weeks` counts as a critical error, so one Yahoo glitch months ago cannot keep
+    the gate closed for good (the rows themselves are append-only and stay).
+    """
+    from app.launchgate import weights_fingerprint
+
     now = now or utcnow()
-    calls = list(db.exec(select(PaperCall).where(col(PaperCall.is_global).is_(True))).all())
+    query = select(PaperCall).where(
+        col(PaperCall.is_global).is_(True),
+        PaperCall.weights_hash == weights_fingerprint(settings.signal_weights),
+    )
+    if settings.launch_paper_model_hash:
+        query = query.where(PaperCall.model_hash == settings.launch_paper_model_hash)
+    calls = list(db.exec(query).all())
     if not calls:
         return PaperMetrics(weeks_running=0.0, critical_errors=0, resolved_calls_1m=0)
     first = min(c.created_at for c in calls)
@@ -162,19 +196,27 @@ def paper_metrics(db: Session, settings: Settings, now: datetime | None = None) 
         for c in calls
         if c.resolved_at is not None and c.outcome != "error" and c.created_at + window <= now
     ]
+    error_window = timedelta(weeks=settings.launch_paper_min_weeks)
+    errors = [
+        c
+        for c in calls
+        if c.outcome == "error"
+        and c.resolved_at is not None
+        and now - c.resolved_at <= error_window
+    ]
     excess: dict[str, float] = {}
     for bench in settings.launch_paper_must_beat:
         diffs = [
-            ret - c.benchmark_returns[bench]
+            diff
             for c in counted
             if c.benchmark_returns and bench in c.benchmark_returns
-            if (ret := _return_pct(c)) is not None
+            if (diff := excess_return_pct(c, c.benchmark_returns[bench])) is not None
         ]
         if diffs:
             excess[bench] = sum(diffs) / len(diffs)
     return PaperMetrics(
         weeks_running=max(0.0, (now - first).total_seconds() / (7 * 86400)),
-        critical_errors=sum(1 for c in calls if c.outcome == "error"),
+        critical_errors=len(errors),
         resolved_calls_1m=len(counted),
         excess_return_pct=excess,
         calls_recorded=len(calls),

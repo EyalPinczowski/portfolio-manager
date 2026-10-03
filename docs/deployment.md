@@ -130,3 +130,8 @@ Supabase keeps its own backups on paid plans only, so use Settings → Export re
 3. Confirm Render's free-tier terms and restart behaviour.
 4. Confirm Supabase's pause rules for a database that gets a write every 5 minutes.
 5. Pick the option, then write the step-by-step setup guide here.
+
+
+## Client IP behind each hosting option (Phase 2.0-F)
+- **Option A (Cloudflare Pages Function → Render):** the Function sends `X-Client-IP` and `X-Proxy-Auth` (shared secret). Set `TRUSTED_PROXY_HEADER=X-Client-IP` and `PROXY_SHARED_SECRET` on Render; nothing else. The Turnstile widget uses the action `login`; the server verifies the action and the hostname (`TURNSTILE_EXPECTED_ACTION`, `TURNSTILE_HOSTNAME` or the hostnames in `CORS_ORIGINS`).
+- **Option B (home device, `compose.prod.yml`):** Caddy trusts **nobody** by default (`TRUSTED_PROXIES` defaults to a dummy address). Behind a **Cloudflare Tunnel** (`cloudflared` sets `CF-Connecting-IP`) or **Tailscale Serve** (sets `X-Forwarded-For`), set `TRUSTED_PROXIES` to the daemon's address and `CLIENT_IP_HEADERS` to the header it sets; otherwise every user shares one IP.

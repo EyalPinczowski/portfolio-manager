@@ -19,7 +19,7 @@ from sqlmodel import Session, col, select
 from app.config import Settings, get_settings
 from app.importer.diff import ProposedChange, diff_rows
 from app.importer.imageio import ImageRejectedError
-from app.importer.match import SecurityIndex, apply_match, match_row
+from app.importer.match import SecurityIndex, apply_match, currency_flag, match_row
 from app.importer.parse import (
     ParsedRow,
     cost_native,
@@ -37,7 +37,13 @@ from app.models import (
     Security,
     Transaction,
 )
-from app.portfolio.valuation import ensure_tracking_started, sync_pending_flows
+from app.portfolio.valuation import (
+    ensure_tracking_started,
+    pending_markers,
+    register_pending,
+    sync_pending_flows,
+    value_portfolio,
+)
 from app.providers.base import OcrProvider, OcrUnavailableError
 from app.providers.fx_provider import get_usd_ils
 from app.providers.ocr.tesseract import ON_DEVICE_MESSAGE
@@ -106,11 +112,20 @@ def matchable_securities(db: Session, owner_id: int) -> list[Security]:
 
 
 def finalize_rows(
-    db: Session, rows: list[ParsedRow], settings: Settings, owner_id: int, rematch: bool = True
+    db: Session,
+    rows: list[ParsedRow],
+    settings: Settings,
+    owner_id: int,
+    rematch: bool = True,
+    previous: list[ParsedRow] | None = None,
 ) -> list[ParsedRow]:
     """Validate and (re)match rows. A row that already has a known symbol keeps it.
 
-    `owner_id` scopes the match index (`matchable_securities`).
+    `owner_id` scopes the match index (`matchable_securities`). With `rematch=False` (a user's
+    edit) a known symbol is kept, but a row whose symbol, currency or unit differs from the same
+    row in `previous` is checked again: it raises `currency_changed` / `unit_mismatch` when its
+    currency disagrees with the security's, so an edit is never a silent confirmation. A row the
+    user did not touch keeps the flags (or the absence of them) it was confirmed with.
     """
     index = SecurityIndex(matchable_securities(db, owner_id))
     for i, row in enumerate(rows):
@@ -121,9 +136,25 @@ def finalize_rows(
             row.matched_name = known.name_en
             row.flags = [f for f in row.flags if f not in ("unmatched", "low_confidence_match")]
             row.candidates = []
+            if previous is None or _changed(row, previous[i] if i < len(previous) else None):
+                row.flags = [f for f in row.flags if f not in ("currency_changed", "unit_mismatch")]
+                flag = currency_flag(row, known)
+                if flag is not None:
+                    row.flags.append(flag)
             continue
         apply_match(row, match_row(row, index, settings), index)
     return rows
+
+
+def _changed(row: ParsedRow, old: ParsedRow | None) -> bool:
+    """Did an edit touch what decides the currency check (symbol, currency, unit)?"""
+    if old is None:
+        return True
+    return (
+        (row.symbol or "").upper(),
+        row_currency(row),
+        row.unit,
+    ) != ((old.symbol or "").upper(), row_currency(old), old.unit)
 
 
 def _diff_input(rows: list[ParsedRow]) -> list[dict[str, Any]]:
@@ -287,6 +318,7 @@ def confirm_draft(
         h.symbol: h
         for h in db.exec(select(Holding).where(Holding.portfolio_id == portfolio.id)).all()
     }
+    previous_qty = {sym: h.quantity for sym, h in existing.items()}
     keep: set[str] = set()
     snapshot_rows: list[dict[str, Any]] = []
     for r in rows:
@@ -339,7 +371,18 @@ def confirm_draft(
     db.add(draft)
     db.commit()
     if not ensure_tracking_started(db, portfolio, today):
-        sync_pending_flows(db, portfolio, settings=s, today=today)  # unpriced new holdings
+        # New holdings without a real price (and quantity changes of ones still waiting for it) go
+        # into the holding's one marker; settled at the first real price, never at the cost.
+        val = value_portfolio(db, portfolio, s)
+        waiting = pending_markers(db, portfolio.id)
+        for v in val.holdings:
+            h = v.holding
+            old_qty = previous_qty.get(h.symbol)
+            if old_qty is None and not v.performance_priced:
+                register_pending(db, portfolio, h, h.quantity, today)
+            elif old_qty is not None and h.id in waiting and h.quantity != old_qty:
+                register_pending(db, portfolio, h, h.quantity - old_qty, today)
+        sync_pending_flows(db, portfolio, settings=s, today=today)
         db.commit()
     db.refresh(draft)
     return draft

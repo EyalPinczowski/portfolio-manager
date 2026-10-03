@@ -6,12 +6,20 @@ agorot (currency "ILA"). We decide by the reported currency field, never by the 
 
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import Annotated, Any, Literal, Protocol, runtime_checkable
 
 import pandas as pd
-from pydantic import BaseModel, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, StringConstraints, model_validator
 from pydantic import Field as PydField
+
+from app.timeutil import as_utc
+
+# Naive datetimes are UTC (the database convention); provider times always carry an offset, so they
+# compare with `Explanation.as_of` (also aware) without a TypeError.
+UtcDatetime = Annotated[datetime, AfterValidator(as_utc)]
+SourceName = Annotated[str, StringConstraints(max_length=120)]
 
 AGOROT_CODES = {"ILA", "ILX"}
 OHLC_COLUMNS = ("Open", "High", "Low", "Close")
@@ -145,9 +153,11 @@ class Field[T](BaseModel):
     confidence 0 (CLAUDE.md rule 4).
     """
 
+    model_config = ConfigDict(allow_inf_nan=False)
+
     value: T | None = None
-    source: str
-    as_of: datetime | None = None  # naive UTC, when the provider says the value was true
+    source: SourceName
+    as_of: UtcDatetime | None = None  # aware UTC, when the provider says the value was true
     missing_reason: MissingReason | None = None
 
     @model_validator(mode="after")
@@ -171,10 +181,24 @@ class Field[T](BaseModel):
         return cls(value=None, source=source, missing_reason=reason)
 
 
+Period = Literal["TTM", "FY"]
+_MAJOR_CURRENCY = re.compile(r"[A-Z]{3}")
+
+
 class FundamentalsSnapshot(BaseModel):
-    """Valuation and quality numbers, each with its own source and date."""
+    """Valuation and quality numbers, each with its own source and date.
+
+    `currency` is the ISO code of the monetary fields (market cap, EPS) and `period` says whether
+    flow figures are trailing twelve months or a fiscal year. Both are required as soon as any
+    value is present: a TASE EPS in agorot next to one in shekels, or a TTM figure compared with a
+    fiscal-year one, would be silently wrong. Minor units (ILA, GBX) are refused: normalise first.
+    """
+
+    model_config = ConfigDict(allow_inf_nan=False)
 
     symbol: str
+    currency: str | None = None
+    period: Period | None = None
     market_cap: Field[float]
     pe_trailing: Field[float]
     pe_forward: Field[float]
@@ -186,6 +210,21 @@ class FundamentalsSnapshot(BaseModel):
     fcf_yield_pct: Field[float]
     debt_to_equity: Field[float]
 
+    @model_validator(mode="after")
+    def _labelled(self) -> FundamentalsSnapshot:
+        if self.currency is not None and not (
+            _MAJOR_CURRENCY.fullmatch(self.currency) and not is_minor_unit(self.currency)
+        ):
+            raise ValueError(
+                "currency must be a 3-letter upper-case ISO code in major units (not ILA/GBX)"
+            )
+        if not self.all_fields_missing:
+            if self.currency is None:
+                raise ValueError("a fundamentals snapshot with values needs its currency")
+            if self.period is None:
+                raise ValueError("a fundamentals snapshot with values needs its period (TTM or FY)")
+        return self
+
     @classmethod
     def all_missing(cls, symbol: str, source: str, reason: MissingReason) -> FundamentalsSnapshot:
         return cls(
@@ -194,7 +233,7 @@ class FundamentalsSnapshot(BaseModel):
 
     @classmethod
     def _numeric(cls) -> list[str]:
-        return [n for n in cls.model_fields if n != "symbol"]
+        return [n for n in cls.model_fields if n not in ("symbol", "currency", "period")]
 
     @property
     def fields(self) -> dict[str, Field[float]]:
@@ -210,9 +249,9 @@ class NewsItem(BaseModel):
     headline: str
     url: str = ""
     publisher: str = ""
-    published_at: datetime | None = None
+    published_at: UtcDatetime | None = None
     # When we could first have known about it (point-in-time control for evals).
-    available_at: datetime | None = None
+    available_at: UtcDatetime | None = None
 
 
 class Transcript(BaseModel):
@@ -226,7 +265,7 @@ class Transcript(BaseModel):
 class Filing(BaseModel):
     id: str
     form: str  # 10-K, 10-Q, 8-K, 20-F ...
-    filed_at: datetime | None = None
+    filed_at: UtcDatetime | None = None
     title: str = ""
     url: str = ""
 

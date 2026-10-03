@@ -297,7 +297,7 @@
           "auth"
         ],
         "summary": "Revoke All Sessions",
-        "description": "Log out everywhere else: every session of this user except the current one.",
+        "description": "Log out everywhere else: every session of this user except the current one.\n\nOther browsers also lose their \"known device\" status (new nonce); this one keeps it.",
         "operationId": "revoke_all_sessions_api_auth_sessions_revoke_all_post",
         "responses": {
           "204": {
@@ -1588,6 +1588,7 @@
           },
           "label": {
             "type": "string",
+            "maxLength": 500,
             "title": "Label"
           },
           "price": {
@@ -1631,6 +1632,7 @@
           },
           "summary": {
             "type": "string",
+            "maxLength": 2000,
             "title": "Summary"
           },
           "inputs": {
@@ -1640,18 +1642,25 @@
                   "type": "number"
                 },
                 {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 200
                 }
               ]
             },
+            "propertyNames": {
+              "maxLength": 500
+            },
             "type": "object",
+            "maxProperties": 100,
             "title": "Inputs"
           },
           "rules_applied": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Rules Applied"
           },
           "as_of": {
@@ -1671,6 +1680,7 @@
               "$ref": "#/components/schemas/SignalContribution"
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Contributions"
           },
           "annotations": {
@@ -1678,20 +1688,25 @@
               "$ref": "#/components/schemas/ChartAnnotation"
             },
             "type": "array",
+            "maxItems": 100,
             "title": "Annotations"
           },
           "risk_rules_applied": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Risk Rules Applied"
           },
           "invalidation_risks": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Invalidation Risks"
           },
           "sources": {
@@ -1699,6 +1714,7 @@
               "$ref": "#/components/schemas/ExplanationSource"
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Sources"
           }
         },
@@ -1713,6 +1729,7 @@
         "properties": {
           "name": {
             "type": "string",
+            "maxLength": 500,
             "title": "Name"
           },
           "as_of": {
@@ -1729,6 +1746,7 @@
           },
           "detail": {
             "type": "string",
+            "maxLength": 2000,
             "title": "Detail",
             "default": ""
           }
@@ -3569,14 +3587,19 @@
         "properties": {
           "name": {
             "type": "string",
+            "maxLength": 500,
             "title": "Name"
           },
           "score": {
             "type": "number",
+            "maximum": 100.0,
+            "minimum": -100.0,
             "title": "Score"
           },
           "weight": {
             "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
             "title": "Weight"
           },
           "confidence": {
@@ -3592,14 +3615,19 @@
                   "type": "number"
                 },
                 {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 200
                 },
                 {
                   "type": "null"
                 }
               ]
             },
+            "propertyNames": {
+              "maxLength": 500
+            },
             "type": "object",
+            "maxProperties": 50,
             "title": "Raw"
           }
         },

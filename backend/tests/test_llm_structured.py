@@ -36,6 +36,7 @@ def template() -> Bear:
 
 def call(providers: list[FakeLLMProvider] | None, s: Settings | None = None, **kw: object):  # type: ignore[no-untyped-def]
     return structured_call(
+        cache_scope="global",
         role="bear",
         model_cls=Bear,
         system="argue against buying",
@@ -120,6 +121,7 @@ def test_cache_expires_after_the_ttl(env: None) -> None:
 def test_a_different_input_is_a_different_cache_key(env: None) -> None:
     a = call([FakeLLMProvider([GOOD])])
     b = structured_call(
+        cache_scope="global",
         role="bear",
         model_cls=Bear,
         system="argue against buying",
@@ -184,6 +186,7 @@ def test_an_empty_bucket_yields_the_template_without_asking_the_provider(env: No
     fake = FakeLLMProvider([GOOD, GOOD, GOOD], name="gemini")
     results = [
         structured_call(
+            cache_scope="global",
             role="bear",
             model_cls=Bear,
             system="s",
@@ -210,6 +213,7 @@ def test_an_empty_bucket_moves_to_the_next_provider(env: None) -> None:
     bucket = TokenBucket(s)
     out = [
         structured_call(
+            cache_scope="global",
             role="r",
             model_cls=Bear,
             system="s",

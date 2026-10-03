@@ -21,7 +21,8 @@ x-backend-env: &backend-env
   SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY to a random string of 32+ characters}
   DATABASE_URL: ${DATABASE_URL:-sqlite:////data/portfolio.db}
   AUTO_MIGRATE: "false" # the migrate service does it; the API only checks the schema
-  # Caddy (the only thing that reaches the API) overwrites CF-Connecting-IP with the real peer address.
+  # Caddy (the only thing that reaches the API) overwrites CF-Connecting-IP with the visitor's address
+  # (`{client_ip}`: the peer, or the tunnel's header when the peer is in TRUSTED_PROXIES).
   # It is trusted ONLY because the API port is not published. TRUSTED_PROXY_HEADER is deliberately unset:
   # that mode needs a shared secret that the Pages Function sends (docs/deployment.md, Option A).
   FALLBACK_IP_HEADER: CF-Connecting-IP
@@ -88,6 +89,11 @@ services:
     build: ./frontend
     environment:
       API_ORIGIN: http://api:8000
+      # Behind a Cloudflare Tunnel or Tailscale Serve the TCP peer is the tunnel daemon: list its address
+      # here so Caddy reads the visitor's address from the tunnel's header (`{client_ip}`, see the
+      # Caddyfile). The default trusts nobody, which is right when visitors reach this port directly.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-192.0.2.1/32}
+      CLIENT_IP_HEADERS: ${CLIENT_IP_HEADERS:-CF-Connecting-IP X-Forwarded-For}
     ports:
       - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:8080"
     depends_on:

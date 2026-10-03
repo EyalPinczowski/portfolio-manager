@@ -4,6 +4,19 @@
 {
 	admin off
 	auto_https off
+	servers {
+		# Who may tell Caddy the visitor's real address (the header names below). Default: nobody (a
+		# TEST-NET address that never connects), so `{client_ip}` is the TCP peer. That is right when
+		# visitors reach Caddy directly (Option B on a LAN / port forward), and a spoofed
+		# CF-Connecting-IP or X-Forwarded-For from them is ignored.
+		# Behind a tunnel the peer is the tunnel daemon and every visitor would share one address (and
+		# one login rate-limit key). Then set TRUSTED_PROXIES to that daemon's address, as Caddy sees it:
+		#   Cloudflare Tunnel (cloudflared): its container/host address; it sets CF-Connecting-IP.
+		#   Tailscale Serve (tailscaled on the host): 127.0.0.1/32 or the Docker gateway; it sets X-Forwarded-For.
+		# Several ranges are space separated. Never put a range there that a visitor can connect from.
+		trusted_proxies static {$TRUSTED_PROXIES:192.0.2.1/32}
+		client_ip_headers {$CLIENT_IP_HEADERS:CF-Connecting-IP X-Forwarded-For}
+	}
 }
 
 :{$PORT:8080} {
@@ -13,7 +26,9 @@
 		reverse_proxy {$API_ORIGIN} {
 			header_up Host {upstream_hostport}
 			# The API trusts only this header from the configured proxy. Overwrite whatever the client sent.
-			header_up CF-Connecting-IP {remote_host}
+			# `{client_ip}` is the TCP peer, or the address from CF-Connecting-IP / X-Forwarded-For when (and only
+			# when) the peer is in TRUSTED_PROXIES (see the global options). `{remote_host}` would be the tunnel.
+			header_up CF-Connecting-IP {client_ip}
 			header_up -X-Forwarded-For
 			header_up -X-Real-IP
 			header_up -True-Client-IP

@@ -158,7 +158,9 @@ def patch_import(
         raise HTTPException(status.HTTP_409_CONFLICT, "This import can no longer be edited")
     if body.rows is not None:
         rows = [ParsedRow.model_validate(r.model_dump()) for r in body.rows]
-        service.finalize_rows(db, rows, settings, p.owner_id, rematch=False)
+        service.finalize_rows(
+            db, rows, settings, p.owner_id, rematch=False, previous=service.draft_rows(d)
+        )
         d.rows = [r.model_dump() for r in rows]
         if body.proposed_changes is None:
             assert p.id is not None

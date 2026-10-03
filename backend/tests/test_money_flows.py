@@ -86,9 +86,16 @@ def test_unpriced_holding_settles_at_the_daily_snapshot_and_deleting_drops_the_m
 def test_flow_uses_the_valuation_currency_not_the_security_currency(
     signup: SignupFn, quotes: FakeQuotes
 ) -> None:
-    """Verified hole (b): AAPL with an ILS cost of 700 became a 7,000 USD flow (25,200 ILS)."""
+    """Verified hole (b): AAPL with an ILS price of 700 became a 7,000 USD flow (25,200 ILS).
+
+    2.0-F changed the premise: a *cost* price is never a flow (it is out of the TWR, see
+    `tests/test_money_phantom.py`), so the currency rule is tested with a real quote in ILS.
+    """
     c = signup()
     pid = _started_portfolio(c, quotes)
+    quotes.set("AAPL", 700.0, "ILS")
+    with new_session() as db:
+        refresh_symbols(db, ["AAPL"], quotes)
     r = c.post(
         f"/api/portfolios/{pid}/holdings",
         json={"symbol": "AAPL", "quantity": 10, "avg_cost": 700, "cost_currency": "ILS"},

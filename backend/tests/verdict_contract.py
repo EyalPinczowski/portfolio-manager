@@ -1,4 +1,4 @@
-"""Contract check: no response model may expose a buy/sell verdict unless its route is gated.
+"""Contract check: no response may expose a buy/sell verdict unless its route is gated.
 
 `find_violations(app, allowlist)` walks the app's OpenAPI schema, follows every `$ref` reachable
 from each operation's responses, and flags field names that look like a verdict. A field may be
@@ -16,32 +16,45 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
 from app.launchgate import require_launch_gate
+from app.verdict_words import (
+    FIELD_ONLY_TOKENS,
+    FIELD_PHRASES,
+    VALUE_ONLY_TOKENS,
+    VERDICT_WORDS,
+    forms_of,
+    normalize_text,
+    verdict_words_in_text,
+)
 
-VERDICT_TOKENS = frozenset(
-    {
-        "verdict", "verdicts", "recommendation", "recommendations", "recommend", "recommended",
-        "action", "actions", "buy", "buys", "sell", "sells", "hold", "advice", "suggestion",
-        "suggestions", "stance", "conviction", "upgrade", "downgrade",
-        # Added in Phase 2.0 after the re-review showed these all slipped through:
-        "rating", "ratings", "outlook", "target", "targets", "bullish", "bearish", "trim",
-        "add", "strong", "opinion", "opinions", "call", "calls", "signal", "grade", "grades",
-    }
-)  # fmt: skip
-VERDICT_PHRASES = ("signal_strength", "signalstrength", "buy_idea", "buyidea")
+# One source of truth: `app.verdict_words` (the outbound gate scans text with the same words).
+# Field names and enum values also use the words that are only verdicts as names (`side`, `pick`,
+# `decision`, `bias` ...) and, for enum values, `long`, `short`, `exit`.
+VERDICT_TOKENS = frozenset({f for w in VERDICT_WORDS for f in forms_of(w)} | set(FIELD_ONLY_TOKENS))
+VALUE_TOKENS = VERDICT_TOKENS | frozenset(VALUE_ONLY_TOKENS)
+VERDICT_PHRASES = FIELD_PHRASES
 # Words glued together or in capitals (`STRONGBUY`, `bullish`, `sellnow`) never split into tokens, so
 # these stems are also searched inside the flattened name. `hold` is not here (it is in `holding`).
-VERDICT_STEMS = ("buy", "sell", "bullish", "bearish")
+VERDICT_STEMS = (
+    "buy", "sell", "bullish", "bearish", "accumulat", "outperform", "overweight", "underweight",
+)  # fmt: skip
 _WORD = re.compile(r"[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])")
 
 
 def value_token(value: str) -> str | None:
     """The offending token if an enum/const VALUE (not a field name) reads like a verdict."""
-    return verdict_token(value)
+    token = verdict_token(value)
+    if token is not None:
+        return token
+    for part in _WORD.findall(re.sub(r"[^A-Za-z0-9]+", " ", normalize_text(value, lower=False))):
+        if part.lower() in VALUE_TOKENS:
+            return part.lower()
+    return None
 
 
 def verdict_token(field: str) -> str | None:
     """The offending token if `field` looks like a verdict, else None."""
-    flat = field.lower().replace("-", "_")
+    field = normalize_text(field, lower=False)  # NFKC, zero-width characters, look-alike letters
+    flat = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", field).lower().replace("-", "_")
     for phrase in VERDICT_PHRASES:
         if phrase in flat:
             return phrase
@@ -258,4 +271,79 @@ def find_violations(
                             "; allowlisted, but the route does not depend on require_launch_gate"
                         )
                     out.append(Violation(method.upper(), path, schema, where, reason))
+    return out
+
+
+# ---------------------------------------------------------------- values and channels (2.0-F)
+def find_text_violations(payload: Any, where: str = "$", ignore: tuple[str, ...] = ()) -> list[str]:
+    """Verdict words in any string VALUE (and any dict key) of a recorded response.
+
+    This covers what the schema cannot: `Explanation.summary`, `invalidation_risks`, reasons and the
+    string values inside `raw: dict[str, float | str | None]`. The text scanner is the outbound
+    gate's (`app.verdict_words`): NFKC, zero-width characters, -ing forms, Hebrew, and `bullish` /
+    `bearish` allowed inside an indicator description ("MACD bullish cross").
+    """
+    out: list[str] = []
+    if isinstance(payload, str):
+        words = verdict_words_in_text(payload, ignore=ignore)
+        if words:
+            out.append(f"{where}: {words} in {payload[:60]!r}")
+    elif isinstance(payload, dict):
+        for k, v in payload.items():
+            out.extend(find_text_violations(str(k), f"{where}.<key {k!r}>", ignore))
+            out.extend(find_text_violations(v, f"{where}.{k}", ignore))
+    elif isinstance(payload, (list, tuple)):
+        for i, v in enumerate(payload):
+            out.extend(find_text_violations(v, f"{where}[{i}]", ignore))
+    return out
+
+
+def find_channel_violations(app: FastAPI, allowlist: dict[str, str] | None = None) -> list[str]:
+    """Channels the OpenAPI schema does not describe: WebSocket routes and non-JSON responses.
+
+    A WebSocket, a CSV/plain-text `Response` or a streaming route could carry a verdict past the
+    schema scan, so each needs an allowlist entry (`"WS /path"` / `"GET /path"`) with a reason.
+    """
+    from fastapi.responses import JSONResponse
+    from fastapi.routing import APIWebSocketRoute
+    from starlette.responses import Response
+    from starlette.routing import WebSocketRoute
+
+    allow = allowlist or {}
+    out: list[str] = []
+    for route in app.routes:
+        if isinstance(route, (WebSocketRoute, APIWebSocketRoute)):
+            key = f"WS {route.path}"
+            if key not in allow:
+                out.append(f"{key}: WebSocket channel is outside the schema scan")
+        elif isinstance(route, APIRoute):
+            cls = route.response_class
+            raw = isinstance(cls, type) and issubclass(cls, Response)
+            is_json = isinstance(cls, type) and issubclass(cls, JSONResponse)
+            if raw and not is_json and getattr(cls, "__name__", "") != "DefaultPlaceholder":
+                for method in route.methods:
+                    key = f"{method} {route.path}"
+                    if key not in allow:
+                        out.append(f"{key}: {cls.__name__} (non-JSON body) is outside the scan")
+    return out
+
+
+def find_error_text_violations(source: str, filename: str = "<src>") -> list[str]:
+    """Verdict words in the literal text of `HTTPException(...)` / `ApiError(...)` calls."""
+    import ast
+
+    out: list[str] = []
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, ast.Call):
+            continue
+        name = getattr(node.func, "id", getattr(node.func, "attr", None))
+        if name not in ("HTTPException", "ApiError"):
+            continue
+        parts: list[ast.expr] = list(node.args) + [k.value for k in node.keywords]
+        for arg in parts:
+            for sub in ast.walk(arg):
+                if isinstance(sub, ast.Constant) and isinstance(sub.value, str):
+                    words = verdict_words_in_text(sub.value)
+                    if words:
+                        out.append(f"{filename}:{sub.lineno}: {words} in {sub.value[:60]!r}")
     return out

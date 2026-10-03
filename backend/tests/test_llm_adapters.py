@@ -65,7 +65,7 @@ GROQ_OK = {
 
 
 def no_names() -> PersonalDataScrubber:
-    return PersonalDataScrubber(S, names=lambda: [])
+    return PersonalDataScrubber(S, names=lambda uid: [])
 
 
 def test_gemini_request_and_response() -> None:
@@ -83,7 +83,8 @@ def test_gemini_request_and_response() -> None:
     assert req.headers["x-goog-api-key"] == "gem-key-123"
     body = rec.sent
     assert (
-        body["contents"][0]["parts"][0]["text"] == "owner [email], [number], AAPL 1,234.56"
+        body["contents"][0]["parts"][0]["text"]
+        == "owner [email], 1234567, AAPL 1,234.56"  # facts stay; secrets go
     )  # scrubbed
     assert body["systemInstruction"]["parts"][0]["text"] == "be brief"
     cfg = body["generationConfig"]
@@ -107,7 +108,9 @@ def test_groq_request_and_response() -> None:
     body = rec.sent
     assert body["model"] == "groq-test-1"
     assert body["response_format"] == {"type": "json_object"}
-    assert body["messages"][1]["content"] == "owner [email], [number], AAPL 1,234.56"
+    assert (
+        body["messages"][1]["content"] == "owner [email], 1234567, AAPL 1,234.56"
+    )  # facts stay; secrets go
     assert (
         "JSON schema" in body["messages"][0]["content"] and '"ok"' in body["messages"][0]["content"]
     )
@@ -189,16 +192,18 @@ def test_structured_call_over_the_http_adapters_end_to_end(env: None) -> None:
         GroqProvider(S, no_names(), client=groq.client()),
     ]
     res = structured_call(
+        cache_scope="global",
         role="t",
         model_cls=Verdict,
         system="s",
-        prompt="p 1234567",
+        prompt="p a@b.co 1234567",
         template=lambda: Verdict(ok=False),
         providers=providers,
         settings=S,
     )
     assert res.source == "llm" and res.provider == "groq" and res.value.ok is True
     assert len(gem.calls) == 1 and len(groq.calls) == 1
-    assert "[number]" in groq.sent["messages"][1]["content"]
+    sent = groq.sent["messages"][1]["content"]
+    assert "[email]" in sent and "1234567" in sent  # provider data: numbers are facts
     rows = {r.provider: (r.requests, r.tokens) for r in usage_for_day()}
     assert rows == {"gemini": (1, 0), "groq": (1, 55)}

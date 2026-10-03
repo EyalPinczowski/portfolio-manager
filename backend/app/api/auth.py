@@ -12,7 +12,12 @@ from sqlmodel import Session, col, select
 from app.api.schemas import LoginIn, MeOut, PasswordBody, SessionOut, SignupIn
 from app.auth import account
 from app.auth.deps import AuthContext, AuthDep, DbDep, SettingsDep
-from app.auth.device import is_known_device, remember_device
+from app.auth.device import (
+    forget_device,
+    is_known_device,
+    remember_device,
+    rotate_device_nonce,
+)
 from app.auth.passwords import burn_verify, hash_password, needs_rehash, verify_password
 from app.auth.ratelimit import (
     client_ip,
@@ -138,18 +143,24 @@ def login(
         (f"ip:{ip}", free * settings.login_rate_limit_ip_multiplier),
         (pair_key, free),
     ]
-    known = user is not None and user.id is not None and is_known_device(request, settings, user.id)
+    known = user is not None and is_known_device(request, settings, user)
     if not known:
         keys.append((email_key, free * settings.login_rate_limit_email_multiplier))
     for k, k_free in keys:
         wait = login_limiter.retry_after(k, k_free, base, window)
         if wait:
             raise too_many(wait, "Too many login attempts. Try again later.")
-    if turnstile_state(settings) == "on" and (
-        login_limiter.failures(pair_key, window) >= settings.turnstile_after_failures
-    ):
+    challenge = login_limiter.failures(pair_key, window) >= settings.turnstile_after_failures or (
+        not known
+        and login_limiter.failures(email_key, window) >= settings.turnstile_email_after_failures
+    )
+    if turnstile_state(settings) == "on" and challenge:
         token = (body.turnstile_token or "").strip()
-        if not token or not turnstile.verify(token, ip):
+        verified = bool(token) and turnstile.verify(token, ip)
+        if not verified:
+            if token:  # a forged or replayed token is a failed attempt like a wrong password
+                for k in (f"ip:{ip}", pair_key, email_key):
+                    login_limiter.record_failure(k, window)
             raise ApiError(
                 status.HTTP_403_FORBIDDEN,
                 "turnstile_required",
@@ -174,16 +185,18 @@ def login(
         db.commit()
     session, cookie = create_session(db, user, settings)
     set_session_cookie(response, cookie, settings)
-    remember_device(request, response, settings, user.id)
+    remember_device(request, response, settings, db, user)
     return _me(user, session)
 
 
 @router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(auth: AuthDep, db: DbDep, settings: SettingsDep) -> Response:
     db.delete(auth.session)
+    rotate_device_nonce(db, auth.user)  # every remembered device of this user is revoked
     db.commit()
     resp = Response(status_code=status.HTTP_204_NO_CONTENT)
     clear_session_cookie(resp, settings)
+    forget_device(resp, settings)
     return resp
 
 
@@ -242,9 +255,10 @@ def delete_me(
     body: PasswordBody, request: Request, auth: AuthDep, db: DbDep, settings: SettingsDep
 ) -> Response:
     _confirm_password(auth, body.password, request, settings)
-    account.delete_user(db, auth.user)
+    account.delete_user(db, auth.user)  # the row (and its nonce) is gone: no id reuse inheritance
     resp = Response(status_code=status.HTTP_204_NO_CONTENT)
     clear_session_cookie(resp, settings)
+    forget_device(resp, settings)
     return resp
 
 
@@ -284,13 +298,21 @@ def revoke_session(session_id: int, auth: AuthDep, db: DbDep, settings: Settings
 
 
 @router.post("/auth/sessions/revoke-all", status_code=status.HTTP_204_NO_CONTENT)
-def revoke_all_sessions(auth: AuthDep, db: DbDep) -> Response:
-    """Log out everywhere else: every session of this user except the current one."""
+def revoke_all_sessions(
+    request: Request, auth: AuthDep, db: DbDep, settings: SettingsDep
+) -> Response:
+    """Log out everywhere else: every session of this user except the current one.
+
+    Other browsers also lose their "known device" status (new nonce); this one keeps it.
+    """
     for row in db.exec(
         select(AuthSession).where(
             AuthSession.user_id == auth.user.id, col(AuthSession.id) != auth.session.id
         )
     ).all():
         db.delete(row)
+    rotate_device_nonce(db, auth.user)
     db.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    resp = Response(status_code=status.HTTP_204_NO_CONTENT)
+    remember_device(request, resp, settings, db, auth.user)
+    return resp

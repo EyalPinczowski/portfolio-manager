@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,16 @@ from app.alerts import telegram
 from app.alerts.price_alerts import check_price_alerts
 from app.config import DISCLAIMER, Settings
 from app.models import Notification, PriceAlert, PriceQuote, User
-from app.outbound import OutboundBlocked, release_text, verdict_words_in
+from app.outbound import (
+    CurrencyCode,
+    Movement,
+    OutboundBlocked,
+    Symbol,
+    TemplateText,
+    release_text,
+    render,
+    verdict_words_in,
+)
 from tests.test_launch_gate import gate
 
 APP = Path(__file__).resolve().parent.parent / "app"
@@ -44,19 +54,50 @@ def test_verdict_text_is_allowed_once_the_gate_is_open() -> None:
     assert release_text("Strong BUY on AAPL", gate=OPEN, settings=S) == "Strong BUY on AAPL"
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        f"AAPL rose to or above your alert price 200 (last 201 USD). {DISCLAIMER}",
-        "Price alert: TEVA.TA",
-        "Your stop at 90 was hit (target 120 not reached)",
-        "Your holding AAPL moved; your holdings are shown in USD",
-        "Weekly P&L: +1.2% vs S&P 500 +0.8%",
-        "",
-    ],
-)
-def test_neutral_text_and_the_disclaimer_pass(text: str) -> None:
-    assert release_text(text, settings=S) == text
+def test_free_text_is_refused_while_the_gate_is_closed_even_when_it_is_neutral() -> None:
+    for text in ("Price alert: TEVA.TA", "", f"AAPL moved. {DISCLAIMER}"):
+        with pytest.raises(OutboundBlocked):
+            release_text(text, settings=S)
+    assert release_text("Price alert: TEVA.TA", gate=OPEN, settings=S) == "Price alert: TEVA.TA"
+
+
+def test_template_text_cannot_be_constructed_directly() -> None:
+    with pytest.raises(TypeError):
+        TemplateText("Buy now")
+    with pytest.raises(TypeError):
+        TemplateText("Buy now", object())
+
+
+def test_render_builds_text_from_a_fixed_template_and_typed_fields() -> None:
+    text = render(
+        "{symbol} {direction} {level} {currency} on {day}. " + DISCLAIMER,
+        symbol=Symbol("TEVA.TA"),
+        direction=Movement.ABOVE,
+        level=12.5,
+        currency=CurrencyCode("ILS"),
+        day=date(2026, 3, 2),
+        settings=S,
+    )
+    assert isinstance(text, TemplateText)
+    assert text == "TEVA.TA rose to or above 12.5 ILS on 2026-03-02. " + DISCLAIMER
+    assert release_text(text, settings=S) is text
+
+
+def test_render_refuses_free_text_fields_and_bad_templates() -> None:
+    with pytest.raises(TypeError):
+        render("{symbol}", symbol="Strong buy", settings=S)  # a plain str is free text
+    with pytest.raises(ValueError):
+        Symbol("Strong buy now")
+    with pytest.raises(ValueError):
+        render("{symbol} and {other}", symbol=Symbol("A"), settings=S)
+    with pytest.raises(ValueError):
+        render("{n}", n=float("nan"), settings=S)
+    with pytest.raises(OutboundBlocked):
+        render("Time to buy {symbol}", symbol=Symbol("A"), settings=S)
+    # a verdict word in a typed *field* is not scanned: the field cannot carry free text
+    assert render("Price alert: {symbol}", symbol=Symbol("BUY-USD"), settings=S) == (
+        "Price alert: BUY-USD"
+    )
 
 
 def test_the_disclaimer_alone_does_not_trigger() -> None:
@@ -67,8 +108,8 @@ def test_the_disclaimer_alone_does_not_trigger() -> None:
 def test_the_word_list_is_config() -> None:
     custom = Settings(_env_file=None, outbound_verdict_words=["zap"])
     with pytest.raises(OutboundBlocked):
-        release_text("zap it", settings=custom)
-    assert release_text("buy it", settings=custom) == "buy it"
+        render("zap it", settings=custom)
+    assert render("buy it", settings=custom) == "buy it"
 
 
 # ---------------------------------------------------------------- behaviour of the real senders
@@ -84,9 +125,10 @@ def test_telegram_refuses_verdict_text_and_sends_nothing(monkeypatch: pytest.Mon
 
     monkeypatch.setattr("app.alerts.telegram.httpx.post", fake_post)
     cfg = Settings(_env_file=None, telegram_bot_token="T")
-    assert telegram.send_telegram("42", "Strong buy AAPL", cfg) is False
+    assert telegram.send_telegram("42", "Strong buy AAPL", cfg) is False  # free text
     assert posted == []
-    assert telegram.send_telegram("42", "Price alert: AAPL", cfg) is True
+    ok = render("Price alert: {symbol}", symbol=Symbol("AAPL"))
+    assert telegram.send_telegram("42", ok, cfg) is True
     assert len(posted) == 1
 
 

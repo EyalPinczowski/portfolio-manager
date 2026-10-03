@@ -163,10 +163,32 @@ def enforce_limit(limiter: CountLimiter, key: str, limit: int, window: float) ->
 
 
 def _valid_ip(value: str) -> str | None:
+    """Canonical key of an address, or None when it is not one.
+
+    - an IPv4-mapped IPv6 address (`::ffff:203.0.113.5`) is the IPv4 address;
+    - a zone id (`fe80::1%eth0`) is dropped;
+    - an IPv6 address becomes its /64 network address: one subscriber usually holds a whole /64, so
+      rotating the low 64 bits must not buy fresh rate-limit keys (verified probe: 60 guesses a
+      window).
+    """
+    addr = _address(value)
+    if addr is None:
+        return None
+    if isinstance(addr, ipaddress.IPv6Address):
+        return str(ipaddress.ip_network(f"{addr}/64", strict=False).network_address)
+    return str(addr)
+
+
+def _address(value: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    """The address without zone id, brackets or IPv4-mapping (not yet bucketed)."""
+    raw = value.strip().split("%", 1)[0].strip("[]")
     try:
-        return str(ipaddress.ip_address(value.strip()))
+        addr = ipaddress.ip_address(raw)
     except ValueError:
         return None
+    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
+        return addr.ipv4_mapped
+    return addr
 
 
 def client_ip(request: Request, settings: Settings) -> str:
@@ -177,11 +199,15 @@ def client_ip(request: Request, settings: Settings) -> str:
     if `trusted_proxy_cidrs` is set, the TCP peer is inside one of those networks. Otherwise the
     optional `fallback_ip_header` (the host's own, e.g. Render's CF-Connecting-IP) and finally the
     peer address are used. A client-supplied `X-Client-IP` without the secret is ignored.
+
+    The result is a rate-limit key: IPv4-mapped IPv6 is the IPv4 address, zone ids are removed and
+    an IPv6 address is reduced to its /64 (see `_valid_ip`).
     """
-    peer = request.client.host if request.client else "unknown"
+    raw_peer = request.client.host if request.client else "unknown"
+    peer = _valid_ip(raw_peer) or raw_peer
     header = settings.trusted_proxy_header
     secret = settings.proxy_shared_secret
-    if header and secret and _peer_allowed(peer, settings):
+    if header and secret and _peer_allowed(raw_peer, settings):
         sent = request.headers.get(settings.proxy_auth_header, "")
         if sent and hmac.compare_digest(sent.encode(), secret.encode()):
             parsed = _first_ip(request.headers.get(header))
@@ -201,8 +227,7 @@ def _first_ip(raw: str | None) -> str | None:
 def _peer_allowed(peer: str, settings: Settings) -> bool:
     if not settings.trusted_proxy_cidrs:
         return True
-    try:
-        addr = ipaddress.ip_address(peer)
-    except ValueError:
+    addr = _address(peer)
+    if addr is None:
         return False
     return any(addr in ipaddress.ip_network(c, strict=False) for c in settings.trusted_proxy_cidrs)

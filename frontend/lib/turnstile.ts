@@ -7,6 +7,7 @@ import { TURNSTILE_ORIGIN } from "./security-headers";
 export interface TurnstileApi {
   render(el: HTMLElement, opts: {
     sitekey: string;
+    action?: string;
     callback: (token: string) => void;
     "expired-callback"?: () => void;
     "error-callback"?: () => void;

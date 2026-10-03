@@ -61,6 +61,8 @@ class YFinanceProvider:
         self._currency: TTLCache[str] = TTLCache(
             self.settings.currency_cache_ttl_seconds, max_entries=small
         )
+        # A changed currency seen once, waiting for a second lookup to agree ("" = nothing pending).
+        self._pending: TTLCache[str] = TTLCache(24 * 3600.0, max_entries=small)
         self._history: TTLCache[tuple[pd.DataFrame, str]] = TTLCache(
             self.settings.history_cache_ttl_seconds,
             max_entries=self.settings.history_cache_max_entries,
@@ -78,36 +80,64 @@ class YFinanceProvider:
         self._breaker_until = 0.0
 
     # -- currency -------------------------------------------------------------------------
+    def _plausible(self, symbol: str, currency: str) -> bool:
+        """Is `currency` something Yahoo can legitimately report for this symbol's market?"""
+        sym, cur = symbol.upper(), currency.strip().upper()
+        for suffix, allowed in self.settings.yahoo_currency_allowed.items():
+            if sym.endswith(suffix.upper()):
+                return cur in {a.upper() for a in allowed}
+        return True
+
     def raw_currency(self, symbol: str) -> str | None:
         """The currency Yahoo reports for the symbol (e.g. ILA for TASE stocks).
 
-        None when unknown. A successful lookup is persisted (`store_currency`). If the live lookup
-        fails (rate limits), the persisted value is used first (it survives a restart), then the
-        in-memory value even if it has expired.
+        None when unknown. The stored value (`store_currency`, survives restarts) is trusted:
+
+        - a lookup that fails, returns nothing, or returns a currency that is implausible for the
+          symbol's market (`yahoo_currency_allowed`: `.TA` accepts only ILA/ILS) is ignored and the
+          stored value is used;
+        - a plausible answer that differs from the stored value is adopted only when a second,
+          later lookup returns the same one (a flapping answer never changes it);
+        - with nothing stored, the first plausible answer is stored.
         """
         cached = self._currency.get(symbol)
         if cached is not None:
             return cached or None
         import yfinance as yf
 
+        stored = self._stored(symbol)
         try:
             info: Any = yf.Ticker(symbol).fast_info
-            cur = info.get("currency") if hasattr(info, "get") else info["currency"]
+            raw = info.get("currency") if hasattr(info, "get") else info["currency"]
         except Exception as exc:
             log.warning("currency lookup failed for %s: %s", symbol, exc)
-            stored = self._stored(symbol)
             if stored:
                 self._currency.set(symbol, stored)
                 return stored
             return self._currency.get_stale(symbol) or None
-        self._currency.set(symbol, cur or "")
-        if cur and self.store_currency is not None:
+        cur = str(raw).strip() if raw else None
+        if cur and not self._plausible(symbol, cur):
+            log.warning("ignoring implausible currency %r for %s", cur, symbol)
+            cur = None
+        if cur is None:  # empty or implausible: keep what we know, never blank the quote
+            self._currency.set(symbol, stored or "")
+            return stored
+        if stored is not None and stored != cur:
+            if self._pending.get(symbol) != cur:
+                self._pending.set(symbol, cur)  # first sighting: wait for a second lookup
+                self._currency.set(symbol, stored)
+                return stored
+            log.warning(
+                "currency of %s changed from %s to %s (two lookups agree)", symbol, stored, cur
+            )
+        self._pending.set(symbol, "")  # the answer agrees with (or replaces) the stored value
+        self._currency.set(symbol, cur)
+        if self.store_currency is not None and stored != cur:
             try:
-                if self._stored(symbol) != str(cur):
-                    self.store_currency(symbol, str(cur))
+                self.store_currency(symbol, cur)
             except Exception as exc:  # persistence must never break a quote cycle
                 log.warning("could not persist the currency of %s: %s", symbol, exc)
-        return str(cur) if cur else None
+        return cur
 
     def _stored(self, symbol: str) -> str | None:
         if self.stored_currency is None:

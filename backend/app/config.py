@@ -9,6 +9,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.verdict_words import VERDICT_WORDS
+
 DISCLAIMER = "Not financial advice."
 DEFAULT_SECRET_KEY = "change-me-in-production"
 
@@ -215,7 +217,14 @@ class Settings(BaseSettings):
     turnstile_enabled: bool | None = None
     turnstile_site_key: str | None = None
     turnstile_secret_key: str | None = None
-    turnstile_after_failures: int = 3
+    turnstile_after_failures: int = 3  # failures of one (email, IP) pair
+    # Failures of the email key (all IPs together) that also require a challenge, so a distributed
+    # guesser meets Turnstile too. A known device is exempt (as from the email backoff).
+    turnstile_email_after_failures: int = 10
+    # Cloudflare echoes the widget's hostname and action: a token minted elsewhere is refused.
+    # Empty hostnames: the hostnames of `cors_origins`. Empty action: not checked.
+    turnstile_allowed_hostnames: list[str] = Field(default_factory=list)
+    turnstile_expected_action: str = "login"
     turnstile_verify_url: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
     turnstile_timeout_seconds: float = 5.0
     max_alerts_per_user: int = 50
@@ -243,6 +252,12 @@ class Settings(BaseSettings):
     history_days: int = 420
     provider_max_retries: int = 3
     provider_backoff_base_seconds: float = 2.0
+    # Which currencies Yahoo may report per symbol suffix. A lookup outside the list is ignored (a
+    # USD answer for TEVA.TA would make the stored ILA wrong and every TASE price x100). Symbols
+    # without a matching suffix are unrestricted.
+    yahoo_currency_allowed: dict[str, list[str]] = Field(
+        default_factory=lambda: {".TA": ["ILA", "ILS"], "-USD": ["USD"]}
+    )
     currency_cache_ttl_seconds: int = 7 * 24 * 3600
     provider_breaker_threshold: int = 2  # consecutive all-empty quote fetches before backing off
     provider_breaker_cooldown_seconds: float = 300.0
@@ -366,6 +381,24 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 30.0
     llm_max_output_tokens: int = 1024
     llm_cache_ttl_hours: float = 24.0 * 7
+    llm_cache_ttl_news_hours: float = 6.0  # answers whose prompt depends on news go stale fast
+    # Free-tier quotas are per day and shared by every user: reserve them. Per-minute sub-buckets
+    # (on top of `llm_requests_per_minute` per provider) stop one user or one role from emptying the
+    # provider bucket; the daily budget is per provider (requests per UTC day), per-user daily caps
+    # apply to on-demand calls, and batch work may only use `llm_batch_daily_fraction` of the
+    # provider's day so a user's on-demand question is never starved by background jobs.
+    llm_user_rpm: int = 3
+    llm_role_rpm: int = 5
+    llm_daily_budget: int = 900
+    llm_batch_daily_fraction: float = 0.6
+    llm_user_daily_budget: int = 60
+    # Gemini 2.5/3 thinking tokens count against `maxOutputTokens` and can truncate the JSON: set the
+    # budget explicitly (0 = off; None = leave the model's default). Pro models cannot be 0.
+    gemini_thinking_budget: int | None = 0
+    # Fenced free text (news, user notes): caps applied before it is sent.
+    llm_untrusted_max_chars: int = 4000
+    llm_untrusted_max_urls: int = 3
+    llm_untrusted_url_chars: int = 100
     llm_scrub_min_digit_run: int = 6
     llm_scrub_min_name_chars: int = 4  # parts of a user's e-mail name shorter than this are kept
     model_probe_enabled: bool = True
@@ -379,20 +412,19 @@ class Settings(BaseSettings):
     # A call counts as "resolved at 1 month" once it is resolved (not an error) and this many days
     # have passed since it was made, whether the stop, the target or the horizon ended it.
     launch_paper_window_days: int = 30
+    # Only calls made with these hashes count. The weights hash is always the active weights
+    # config; the model hash is optional (None: any model) because it is set by the Phase 2
+    # committee run, not by the app config.
+    launch_paper_model_hash: str | None = None
     launch_paper_must_beat: list[str] = Field(default_factory=lambda: ["^GSPC", "^TA125.TA"])
 
     # --- alerts ---
-    # Whole words that make outgoing text (Telegram, notifications, weekly review) read as a
-    # buy/sell verdict. `app.outbound.release_text` refuses text containing one while the launch gate
-    # is closed. The disclaimer is ignored. Price-rule words (stop, target) are deliberately absent.
-    outbound_verdict_words: list[str] = Field(
-        default_factory=lambda: [
-            "buy", "sell", "hold", "accumulate", "recommend", "recommendation", "verdict",
-            "upgrade", "downgrade", "bullish", "bearish", "rating", "outlook", "trim",
-            "opinion", "stance", "conviction", "outperform", "underperform", "overweight",
-            "underweight",
-        ]
-    )  # fmt: skip
+    # Words that make outgoing text (Telegram, notifications, weekly review) read as a buy/sell
+    # verdict. The list lives in `app.verdict_words` (one list, shared with the verdict contract
+    # test); this setting can replace it. `app.outbound` refuses text containing one while the
+    # launch gate is closed (and refuses any free text: only `TemplateText` may leave then). The
+    # disclaimer is ignored. Price-rule words (stop, target) are deliberately absent.
+    outbound_verdict_words: list[str] = Field(default_factory=lambda: list(VERDICT_WORDS))
     telegram_bot_token: str | None = None
     telegram_timeout_seconds: float = 10.0
     seed_csv_path: str | None = None

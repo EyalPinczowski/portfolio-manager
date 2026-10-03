@@ -45,7 +45,16 @@ def make_call(db: Session, **kw: object) -> PaperCall:
         "is_global": True,
     }
     args.update(kw)
-    return record_call(db, **args)  # type: ignore[arg-type]
+    created = args.pop("created_at", None)
+    if created is None:
+        return record_call(db, **args)  # type: ignore[arg-type]
+    # The repository cannot backdate (2.0-F): tests that need an old call insert the row directly.
+    expl = args.pop("explanation")
+    row = PaperCall(**args, explanation=expl.model_dump(mode="json"), created_at=created)  # type: ignore[attr-defined,arg-type]
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
 
 
 # ---------------------------------------------------------------- append-only
@@ -191,9 +200,11 @@ def test_postgres_trigger_blocks_raw_sql_updates(pg_url: str) -> None:  # noqa: 
                     " VALUES (now(), true, 'AAPL', 'buy', '1m', 100, '[1]', '{}', 'm', 'p', 'w')"
                 )
             )
-        with pytest.raises(DBAPIError, match="append-only"), eng.begin() as conn:
+        # since 2.0-F the SQLAlchemy guard refuses these before the trigger sees them; the trigger
+        # itself is tested through a raw driver cursor in tests/test_append_only_2_0f.py
+        with pytest.raises((DBAPIError, AppendOnlyError), match="append-only"), eng.begin() as conn:
             conn.execute(text("UPDATE paper_call SET entry = 1"))
-        with pytest.raises(DBAPIError, match="append-only"), eng.begin() as conn:
+        with pytest.raises((DBAPIError, AppendOnlyError), match="append-only"), eng.begin() as conn:
             conn.execute(text("UPDATE paper_call SET targets = '[2]'"))
         with eng.begin() as conn:  # a resolution is allowed once
             conn.execute(
@@ -248,7 +259,7 @@ def seed_resolved(db: Session, n: int, age_days: int, edge: float) -> None:
             outcome="horizon_end",
             outcome_price=100.0 * (1 + (2.0 + edge) / 100),  # +2% + edge, benchmarks +2%
             benchmark_returns={"^GSPC": 2.0, "^TA125.TA": 2.0},
-            resolved_at=created + timedelta(days=30),
+            resolved_at=min(created + timedelta(days=30), utcnow()),  # never in the future
         )
 
 

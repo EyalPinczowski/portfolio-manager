@@ -40,7 +40,7 @@ def portfolio_points(
         return []
     values = {s.date: s.value_ils for s in all_user_snapshots(db, portfolio.id)}
     if today >= portfolio.tracking_started_at:
-        values[today] = valuation.total_ils
+        values[today] = valuation.performance_total_ils
     dates = sorted(values)
     txs = list(db.exec(select(Transaction).where(Transaction.portfolio_id == portfolio.id)).all())
     flows = flows_since_previous_point(txs, dates)  # recomputed: robust to missed snapshots
