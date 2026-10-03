@@ -130,6 +130,8 @@ cd frontend && npm run dev | npm test | npm run lint
 
 - **UI decisions** live in `docs/ui-decisions.md` (theme follows the phone, ₪ main currency, bottom tab bar, balanced cards, green/red with signs, a "+" actions menu, a guided first-run setup). Follow them when changing the frontend.
 
+- **Price-source terms (user accepted the grey area, 2026-10-03):** free price APIs are "personal, non-commercial". Safeguards are mandatory: data only behind login, no public data API, no export or redistribution of market data, a footer credit line ("Data: Yahoo Finance, Finnhub, CoinGecko, ECB / Bank of Israel, TASE" as applicable), limits and TTLs in config. Never scrape sites whose terms forbid it (investing.com, Globes, Bizportal, TASE web pages, TradingView).
+
 ## Host-agnostic deployment (user decision: free, no credit card, host chosen later)
 
 See `docs/deployment.md`. Until a host is chosen:
