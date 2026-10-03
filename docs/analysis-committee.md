@@ -26,7 +26,7 @@ Every hand-off between roles is a validated Pydantic model, never free text.
 - SEC EDGAR XBRL as a cross-check
 - MAYA scraping (TASE, best-effort)
 
-*Verify in the Phase 2 review:* defeatbeta's data freshness/lag and whether it covers `.TA` symbols. |
+**Verified in the Phase 2 review (2026-10-03): defeatbeta is US-only (~12.3k symbols), has no `.TA` symbols, and refreshes about weekly.** So it supplies US fundamentals and transcripts only. For TASE names the Scout uses yfinance plus best-effort MAYA, and returns `confidence=0` where there is nothing. Don't use defeatbeta for fresh earnings data. |
 | **Chartist** | Code (no LLM) | OHLCV | `ChartReport` | The existing `signals/technical.py` + `patterns.py`: RSI, MA 20/50/200, MACD, Bollinger, ATR, support/resistance, patterns. **All numbers are pre-computed.** The LLM never calculates indicators. |
 | **Company Profile analyst** | Code + LLM | defeatbeta revenue by segment/geography, filings (10-K/20-F business section), profile data, officer list | `CompanyProfile` | A business overview, revenue mix by segment and country, **management and key-people changes** (new CEO/CFO, departures, from 8-K item 5.02 / MAYA), and **3–5 competitors** chosen from sector + industry + market cap. Each claim cites a source. |
 | **Peer Comparator** | Code (no LLM) | Scout data for the stock + its peers | `PeerTable` | The stock vs. 3–5 peers on P/E, forward P/E, revenue growth, gross/operating margin, ROIC, FCF yield, and 6-month performance. Each value is shown as a percentile within the peer group. |

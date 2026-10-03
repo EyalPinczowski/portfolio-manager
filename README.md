@@ -280,7 +280,7 @@ The selected horizon and risk filter are applied together. If a stop that fits t
 |---|---|---|
 | Prices, history, US + TASE (`.TA` suffix) | `yfinance` (Yahoo Finance) | Polygon.io, EODHD (good TASE coverage), Twelve Data |
 | Technical indicators | Computed locally (in-house `signals/indicators.py`; pandas-ta is abandoned upstream) | — |
-| Fundamentals, SEC filings, earnings-call transcripts | `defeatbeta-api` (free, no key, no rate limits), SEC EDGAR | FMP, EODHD |
+| Fundamentals, SEC filings, earnings-call transcripts | `defeatbeta-api` (free, no key; **US stocks only, refreshed about weekly**), SEC EDGAR via `edgartools`; for TASE: yfinance and best-effort MAYA | FMP, EODHD |
 | Analyst ratings & price targets | `yfinance` recommendations/targets, Finnhub free tier | Finnhub premium, FMP, TipRanks (no official public API) |
 | Fear & Greed | CNN Fear & Greed endpoint (unofficial) + VIX from Yahoo | — |
 | Geopolitics & news | GDELT (free, global events + tone), RSS feeds (Reuters, Globes, Calcalist, TheMarker, Times of Israel business), Finnhub news | NewsAPI, Marketaux |

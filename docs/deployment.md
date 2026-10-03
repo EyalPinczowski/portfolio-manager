@@ -38,9 +38,12 @@ Required code changes (tracked in `docs/ideas.md` until chosen):
 2. Run the API and scheduler **in one process** (the in-process APScheduler mode), because Render's free tier allows one service.
 3. Fit in **512 MB**: measure the API's memory with pandas loaded, lazy-load heavy modules, and keep the screener out of the API process.
 4. In-browser OCR provider and redaction in the frontend.
-5. Static export of the frontend, with an `NEXT_PUBLIC_API_URL` setting for the API's address and CORS/cookie settings for a cross-site API.
+5. Static export of the frontend. **Do not use cross-site cookies:** a Pages site and a `*.onrender.com` API are different sites, so `SameSite=Lax` cookies are not sent and Safari blocks third-party cookies. Use a **same-origin proxy**: a Cloudflare Pages Function (`functions/api/[[path]].ts`) forwards `/api/*` to Render and passes `CF-Connecting-IP`. The cookie stays first-party, there is no CORS, and the rate limiter trusts only that header. (Review 2026-10-03.)
+6. An in-process scheduler with a Postgres advisory lock, a startup catch-up snapshot and `misfire_grace_time`, so a restart or a second instance never loses or duplicates jobs.
+7. Argon2 parameters of m = 19 MiB with a concurrency semaphore: the default 64 MiB per hash blew past 512 MB in tests (664 MB with 8 logins).
 
 Risks:
+- Measured: the idle API uses about 150 MB, so steady state fits in 512 MB. The risks are spikes (login hashing, large screenshots).
 - Render may restart the service, which loses in-memory state (alerts' dedupe state must live in the DB).
 - The 512 MB limit is tight.
 - 750 hours/month covers exactly one service, so nothing else can run there.
