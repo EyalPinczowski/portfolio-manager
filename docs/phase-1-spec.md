@@ -10,7 +10,7 @@ The user approved this on 2026-10-03, after the [Phase 1 review](reviews/phase-1
   - Portfolio X-ray
   - score card + sector heat map
   - free MAYA scraping for TASE insiders (Phase 3, best-effort)
-  - **free hosting** (Oracle Cloud Always Free, see `docs/deploy-oracle-free.md`)
+  - **free hosting without a credit card**, with the host chosen later (see `docs/deployment.md`; Oracle was dropped because it needs a card)
 - **Not picked (backlog in `docs/ideas.md`):**
   - the full Israeli data-correctness bundle: Data Hub master, manual/cash holdings, Bank of Israel FX, splits/dividends
   - the "scores-until-backtest" forward-test log
@@ -24,7 +24,7 @@ The user approved this on 2026-10-03, after the [Phase 1 review](reviews/phase-1
 ## Stack
 - Backend: Python 3.12, uv, FastAPI, SQLModel + SQLite (WAL, busy_timeout), pydantic-settings, APScheduler (a **separate process**: `python -m app.scheduler`), httpx, yfinance, pandas, numpy, argon2-cffi, itsdangerous, pytesseract + Pillow, google-genai (optional), pytest, ruff, mypy.
 - Frontend: Next.js (App Router) + TypeScript + Tailwind + next-intl (he default RTL / en), SWR polling every 60 s, `lightweight-charts`, PWA manifest + offline shell (no push yet), vitest, eslint.
-- Infra: Dockerfiles, docker-compose (`api`, `scheduler`, `web`, `caddy`), GitHub Actions CI that builds multi-arch (amd64 + arm64) images.
+- Infra: Dockerfiles and docker-compose for local development (`api`, `scheduler`, `web`), GitHub Actions CI. Host-agnostic: see `docs/deployment.md`. The Caddy/arm64 build is no longer needed.
 
 ## Backend layout
 ```

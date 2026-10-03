@@ -251,7 +251,7 @@ The selected horizon and risk filter are applied together. If a stop that fits t
 |---|---|
 | App | Web app that works on phones and can be installed to the home screen (PWA); Hebrew + English with right-to-left layout |
 | Users | You plus family/friends, each with their own login and multiple portfolios, plus a combined view |
-| Hosting | **Free**: Oracle Cloud Always Free (ARM VM), running 24/7 |
+| Hosting | **Free, no credit card.** The host is chosen at deploy time: most likely Cloudflare Pages + Render free + Supabase free database. See [docs/deployment.md](docs/deployment.md). |
 | Alerts | Telegram bot |
 | Holdings input | **Broker screenshots**, read by AI (Gemini free tier; Tesseract offline as a fallback). You always review the result before it's saved. |
 | Horizon | Swing trading (weeks to months) |

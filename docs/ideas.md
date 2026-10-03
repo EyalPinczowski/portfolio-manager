@@ -10,3 +10,7 @@ These are suggestions from the phase reviews that the user didn't pick yet. Each
 | Money-weighted return (MWR/IRR) next to TWR | [phase 1](reviews/phase-1-2026-10-03.md) | Getquin shows both; TWR alone confuses users who add money often |
 | Lawyer opinion before inviting people outside the family | [phase 1](reviews/phase-1-2026-10-03.md) | Investment Advice Law (1995) and the ISA directive on algorithmic advice |
 | MCP server exposing our portfolio + providers (ask Claude Desktop about your portfolio) | [committee design](analysis-committee.md) | User-shared article: agents built on ready-made data tools instead of hand-written API integrations |
+| In-browser OCR (tesseract.js, Hebrew + English) with client-side redaction | [deployment](deployment.md) | Option A prerequisite: no Tesseract on a 512 MB server, and screenshots never leave the phone |
+| Postgres support + Alembic migrations + tests on both databases | [deployment](deployment.md) | Option A prerequisite: Render's disk is ephemeral, so the data lives in Supabase |
+| Run the universe screener as a GitHub Actions cron | [deployment](deployment.md) | Option A: keeps the API process under 512 MB |
+| Static export of the frontend + configurable API URL (CORS/cookies) | [deployment](deployment.md) | Option A: the site is on Cloudflare Pages, the API on Render |

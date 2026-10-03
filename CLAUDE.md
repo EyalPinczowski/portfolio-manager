@@ -110,6 +110,16 @@ cd frontend && npm run dev | npm test | npm run lint
 3. **Write code with Sonnet agents** (`Agent` with `model: "sonnet"`). The main session plans, verifies (tests, lint, typecheck) and commits.
 4. Problems the review found are fixed in the same phase.
 
+## Host-agnostic deployment (user decision: free, no credit card, host chosen later)
+
+See `docs/deployment.md`. Until a host is chosen:
+- All settings come from env vars.
+- Database access goes only through SQLModel, so both SQLite (dev) and Postgres (cloud) work. No SQLite-only features outside dev and tests.
+- The server image must run in **512 MB**.
+- OCR sits behind a provider interface (server Tesseract / Gemini / in-browser tesseract.js).
+- The scheduler can run in-process or as a separate process.
+- The frontend can be served as static files and call the API at a configurable URL.
+
 ## When unsure
 
 Ask the user before you change scoring weights, the risk logic, or add a paid data source. Those choices are theirs.
