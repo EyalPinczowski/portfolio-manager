@@ -61,3 +61,11 @@ Source: `docs/reviews/phase-2.0-diff-2026-10-03.md` (each item has a verified fa
 9. **`yahoo_currency` plausibility:** a per-market allow-list (`.TA` accepts only ILA/ILS), change a stored value only after two lookups agree, and fall back to the stored value when a lookup returns empty or `None`.
 10. **Health and ops:** non-blocking try-lock in `/api/health`; Caddy `trusted_proxies` and `{client_ip}` for the tunnel case in `frontend/Caddyfile` and `compose.prod.yml` (documented per option); `PATCH`-rows with a known symbol still raise `currency_changed` when the row's currency differs from the security's.
 11. **Frontend (separate small agent step after the backend items):** `ExplanationView` uses `dir="auto"` and `<bdi>` on free text, formats the score (never prints "null"), and uses neutral bar colours while the gate is closed.
+
+
+## Block 2.1 (added 2026-10-03): quote fallback, before exit levels
+User decision: add a **second free price source** before exit levels ship (Yahoo is often blocked or rate-limited on data-center hosts). Backend only; a provider behind the existing quote interface; no network in tests (fixtures); verify candidate sources and terms before use (research first and report; do not assume a source is allowed):
+1. Candidates: Stooq (US stocks and ETFs, daily and delayed intraday), CoinGecko (crypto), Finnhub free quote (US only, 60/min). TASE: none known; keep yfinance with the last close, labelled.
+2. `QuoteProvider` chain: primary yfinance, fallback by market; each stored quote records its source and as-of; a "price disagreement" check (more than 5 % apart) flags the quote instead of storing it silently.
+3. `price_is_fresh` uses the best fresh source; the UI shows the source and age; the summary exposes `price_source`.
+4. History for indicators may come from the fallback only when it matches the primary on overlapping days within tolerance (otherwise mark `history_source_mismatch`).

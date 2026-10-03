@@ -123,6 +123,11 @@ cd frontend && npm run dev | npm test | npm run lint
 - **No TradingView data.** TradingView has no public data API and its terms prohibit scraping and non-display use, so never add `tradingview-ta`, `tvdatafeed` or similar. Only TradingView's official embeddable widgets are allowed, display-only, loaded after a user tap, never fed into scores.
 - **AI providers:** free providers first, in the configured order, with templates as the final fallback. A paid provider (Claude API) may exist behind a disabled-by-default setting (`llm_paid_enabled`); never enable or add a paid service without the user's explicit approval of the exact service.
 
+## Decisions from the Phase 2.0 review (2026-10-03)
+- **Free AI sees public stock data only.** Free-tier providers (Gemini, Groq, OpenRouter) may train on prompts and Israel is not exempt from Gemini's terms. Anything about the user's holdings, amounts, notes or chat uses templates, unless a paid or no-training provider is explicitly enabled by the user. Build prompts from a typed `PublicFacts` object so personal data cannot reach a free provider by construction (the scrubber stays as defence in depth).
+- **The track-record page is for logged-in members only** (never public): only calls whose horizon has ended, global calls only, behind auth, with its own contract-test entry.
+- **A second free quote source comes before exit levels.** Add a fallback quote provider behind the existing interface (candidates: Stooq for US stocks/ETFs, CoinGecko for crypto; TASE has no free fallback, so TASE keeps the last close, labelled "as of", and `price_is_fresh` stays false there). Exit levels never silently use a stale or cost price.
+
 ## Host-agnostic deployment (user decision: free, no credit card, host chosen later)
 
 See `docs/deployment.md`. Until a host is chosen:
