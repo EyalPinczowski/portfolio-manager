@@ -14,3 +14,6 @@ These are suggestions from the phase reviews that the user didn't pick yet. Each
 | Postgres support + Alembic migrations + tests on both databases | [deployment](deployment.md) | Option A prerequisite: Render's disk is ephemeral, so the data lives in Supabase |
 | Run the universe screener as a GitHub Actions cron | [deployment](deployment.md) | Option A: keeps the API process under 512 MB |
 | Static export of the frontend + configurable API URL (CORS/cookies) | [deployment](deployment.md) | Option A: the site is on Cloudflare Pages, the API on Render |
+| Thesis notes per holding, with alerts when data contradicts the thesis | [phase 2 review](reviews/phase-2-2026-10-03.md) | Simply Wall St Narratives, Finviz Portfolio Notes; a home for the Analyze "notes" and the Bear's invalidation points |
+| Alert schedules, quiet hours and valuation-metric alerts | [phase 2 review](reviews/phase-2-2026-10-03.md) | TradingView 2026 alert features |
+| Watchlist scans on our own indicators | [phase 2 review](reviews/phase-2-2026-10-03.md) | TradingView Pine Screener |

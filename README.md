@@ -268,6 +268,9 @@ The selected horizon and risk filter are applied together. If a stop that fits t
 | New buys | Screener across US + TASE + ETFs + crypto; asks amount, holding period, risk and markets every time |
 | Explanations | A **Why?** button on every suggestion |
 | Buy alerts | Telegram + phone push when a new buy matches your Buy alerts filter (no alerts until you set it) |
+| Week | Sunday to Saturday (a setting) |
+| Extra Phase 2 features | Public **track-record page** (paper calls vs S&P 500 / TA-125), **toggleable X-ray rules**, **fund tracking + dividend calendar** |
+| Screenshots | **Never kept.** Read on your phone (on-device OCR); only the stock rows reach the server. See [docs/security.md](docs/security.md). |
 | Tax | Not considered |
 | Backtesting | **Required before launch**: recommendations stay hidden until the scoring has been tested on historical data |
 | Paper trading | **Goal-based gate**: ≥4 weeks with no errors, ≥50 calls finished their 1-month window, and beating the S&P 500 / TA-125 (about 6–10 weeks). The live track record is shown meanwhile. |

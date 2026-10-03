@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repository.
 
 A personal portfolio analysis and recommendation assistant for **US and Israeli (TASE)** stocks. It combines technical/chart analysis, analyst consensus, geopolitical/news signals and market sentiment (Fear & Greed, VIX) into buy/sell/hold suggestions. Every suggestion is filtered through **risk limits the user sets**. The output goes to a web app that refreshes continuously. See `README.md` for the feature spec.
 
-Status: **Phase 1 in progress** (see `docs/phase-1-spec.md` and README → "Decisions so far"). Follow the layout and conventions below when adding code.
+Status: **Phase 1 built; Phase 1.5 hardening in progress** (see `docs/phase-1.5-spec.md`, `docs/reviews/phase-2-2026-10-03.md`, `docs/phase-1-spec.md` and README → "Decisions so far"). Follow the layout and conventions below when adding code.
 
 ## Stack
 
@@ -109,6 +109,8 @@ cd frontend && npm run dev | npm test | npm run lint
 2. Save the report to `docs/reviews/phase-<n>-<YYYY-MM-DD>.md` and show it to the user. The user chooses which suggestions to include. The rest go to `docs/ideas.md`.
 3. **Write code with Sonnet agents** (`Agent` with `model: "sonnet"`). The main session plans, verifies (tests, lint, typecheck) and commits.
 4. Problems the review found are fixed in the same phase.
+
+- **Week = Sunday to Saturday** (`week_start_day` setting, Asia/Jerusalem); backend and frontend must agree.
 
 ## Security rules (user decision; details in `docs/security.md`)
 
