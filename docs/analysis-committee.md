@@ -19,13 +19,26 @@ Every hand-off between roles is a validated Pydantic model, never free text.
 
 | Role | Type | Input | Output model | Notes |
 |---|---|---|---|---|
-| **Data Scout** | Code (no LLM) | provider layer | `ScoutReport` | Price, market cap, P/E (trailing + forward), EPS consensus and surprises, FCF yield, ROIC, debt/equity, margins trend, analyst consensus and targets, insiders, earnings date. Each field has `value`, `source`, `as_of`, or `missing`. Sources: yfinance (free), Finnhub free (US), SEC EDGAR XBRL "companyfacts" (free, US fundamentals), MAYA scraping (TASE, best-effort). |
+| **Data Scout** | Code (no LLM) | provider layer | `ScoutReport` | Price, market cap, P/E (trailing + forward), EPS consensus and surprises, FCF yield, ROIC, debt/equity, margins trend, analyst consensus and targets, insiders, earnings date. Each field has `value`, `source`, `as_of`, or `missing`. Sources:
+- **defeatbeta-api** (free, Apache-2.0, no API key, no rate limits; a Yahoo-derived dataset on Hugging Face queried through DuckDB) for TTM EPS/PE, PS/PB/PEG, ROE/ROIC/WACC, statements, revenue by segment, SEC filings and earnings-call transcripts.
+- yfinance for live prices and analyst targets
+- Finnhub free (US)
+- SEC EDGAR XBRL as a cross-check
+- MAYA scraping (TASE, best-effort)
+
+*Verify in the Phase 2 review:* defeatbeta's data freshness/lag and whether it covers `.TA` symbols. |
 | **Chartist** | Code (no LLM) | OHLCV | `ChartReport` | The existing `signals/technical.py` + `patterns.py`: RSI, MA 20/50/200, MACD, Bollinger, ATR, support/resistance, patterns. **All numbers are pre-computed.** The LLM never calculates indicators. |
-| **News & Macro analyst** | Code + LLM | news/filings search results, GDELT tone, F&G, VIX | `NewsReport` | The LLM only *classifies and summarises* retrieved items, and every claim must cite an item id. Sources: Finnhub company news, SEC EDGAR full-text search (free), RSS (Reuters, Globes, Calcalist, TheMarker), and optionally **Exa** semantic search restricted to primary sources (Reuters, Bloomberg, SEC, TASE/MAYA) when `EXA_API_KEY` is set. |
+| **News & Macro analyst** | Code + LLM | news/filings search results, **earnings-call transcripts (defeatbeta)**, GDELT tone, F&G, VIX | `NewsReport` | The LLM only *classifies and summarises* retrieved items, and every claim must cite an item id. Sources: Finnhub company news, SEC EDGAR full-text search (free), RSS (Reuters, Globes, Calcalist, TheMarker), and optionally **Exa** semantic search restricted to primary sources (Reuters, Bloomberg, SEC, TASE/MAYA) when `EXA_API_KEY` is set. |
 | **Bear** | LLM | Scout + Chartist + News reports | `BearCase` | The system prompt is hard-wired to argue **against** buying: overvaluation, falling margins, debt, regulation, geopolitics (Israel/region), dilution, insider selling, technical breakdown. It must cite fields from the reports and may not invent numbers. It outputs ranked risks, each with `severity` (1–5), `evidence_refs[]` and `what_would_invalidate`. |
 | **CIO** | LLM | all reports + BearCase + user's risk filter, horizon and portfolio fit | `CIOVerdict` | Weighs the bull evidence (signal scores) against the Bear. It **can only adjust the deterministic score within ±15 points**, and must give a reason for every adjustment and answer each Bear risk with `rebutted` / `accepted` / `unresolved`. The final verdict then passes through `scoring/risk.py`, which can still block or downgrade. |
 
 The **"Why?" button** shows this committee view: each role's report, the Bear's case, and how the CIO resolved each point.
+
+## "No hand-written API integrations" (user-shared article, 2026-10-03)
+The idea from the article: give the agents **ready-made data tools** instead of hand-coding an integration for each API. How we apply it:
+- Use maintained Python data packages (`defeatbeta-api`, `yfinance`, `edgartools`) behind thin provider adapters. We don't write raw HTTP clients unless no package exists, as with MAYA or the CNN F&G endpoint.
+- The committee's LLM roles never fetch data themselves. Our code fetches it first and passes it in as structured reports. This keeps every number grounded and testable.
+- **Nice-to-have:** expose our own provider layer and portfolio as an **MCP server** (`backend/app/mcp/`). The user can then ask Claude Desktop or another MCP client questions about their portfolio. defeatbeta ships its own MCP server, which can sit next to ours.
 
 ## Structured outputs (Pydantic)
 - Every role output is a Pydantic v2 model in `backend/app/committee/schemas.py`. The LLM is called with a JSON response schema (Gemini `response_schema`, Groq JSON mode), then the result is validated with `Model.model_validate_json`.

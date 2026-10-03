@@ -9,3 +9,4 @@ These are suggestions from the phase reviews that the user didn't pick yet. Each
 | Broker Excel/CSV import (IBI, Meitav, Excellence, IBKR) | [phase 1](reviews/phase-1-2026-10-03.md) | More accurate than OCR |
 | Money-weighted return (MWR/IRR) next to TWR | [phase 1](reviews/phase-1-2026-10-03.md) | Getquin shows both; TWR alone confuses users who add money often |
 | Lawyer opinion before inviting people outside the family | [phase 1](reviews/phase-1-2026-10-03.md) | Investment Advice Law (1995) and the ISA directive on algorithmic advice |
+| MCP server exposing our portfolio + providers (ask Claude Desktop about your portfolio) | [committee design](analysis-committee.md) | User-shared article: agents built on ready-made data tools instead of hand-written API integrations |
