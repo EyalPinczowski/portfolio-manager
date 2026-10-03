@@ -1,0 +1,248 @@
+{
+  "app": {
+    "name": "מנהל תיק",
+    "tagline": "ניתוח למניות בארה״ב ובישראל"
+  },
+  "common": {
+    "loading": "טוען…",
+    "errorLoad": "לא ניתן לטעון נתונים.",
+    "retry": "נסו שוב",
+    "save": "שמירה",
+    "saved": "נשמר",
+    "cancel": "ביטול",
+    "confirm": "אישור",
+    "delete": "מחיקה",
+    "back": "חזרה",
+    "close": "סגירה",
+    "optional": "אופציונלי",
+    "empty": "—"
+  },
+  "nav": {
+    "portfolio": "תיק",
+    "xray": "צילום רנטגן",
+    "import": "ייבוא",
+    "settings": "הגדרות",
+    "logout": "התנתקות",
+    "main": "ניווט ראשי"
+  },
+  "disclaimer": {
+    "footer": "אין בכך ייעוץ פיננסי. האפליקציה מספקת ניתוח ומידע בלבד. הציונים ניסיוניים ולא עברו תיקוף. כל החלטות ההשקעה הן שלכם."
+  },
+  "header": {
+    "totalValue": "שווי התיק",
+    "dayPnl": "היום",
+    "sinceStart": "מאז שהתחלת להשתמש באפליקציה ({date})",
+    "lastUpdated": "עודכן לאחרונה {time}",
+    "markets": "שווקים",
+    "market": {
+      "TASE": "ת״א",
+      "US": "ארה״ב",
+      "CRYPTO": "קריפטו"
+    },
+    "open": "פתוח",
+    "closed": "סגור"
+  },
+  "switcher": {
+    "label": "תיק",
+    "combined": "כל התיקים יחד"
+  },
+  "pnl": {
+    "title": "ביצועים",
+    "week": "השבוע",
+    "month": "החודש",
+    "weekly": "רווח/הפסד שבועי (%)",
+    "monthly": "רווח/הפסד חודשי (%)",
+    "sinceStartChart": "מאז שהתחלת להשתמש באפליקציה ({date})",
+    "you": "התיק שלי",
+    "sp500": "S&P 500",
+    "ta125": "ת״א-125",
+    "up": "רווח",
+    "down": "הפסד"
+  },
+  "actions": {
+    "label": "פעולות עיקריות",
+    "review": "סקירת התיק שלי",
+    "suggest": "הצעת מניות חדשות",
+    "analyze": "ניתוח מניה",
+    "soon": "בקרוב",
+    "soonNote": "היכולות האלה יגיעו בשלב מאוחר יותר."
+  },
+  "holdings": {
+    "title": "ההחזקות שלך",
+    "empty": "אין עדיין החזקות. ייבאו צילום מסך מהברוקר כדי להתחיל.",
+    "importCta": "ייבוא החזקות",
+    "name": "נייר ערך",
+    "price": "מחיר",
+    "dayChange": "יומי",
+    "pnl": "רווח/הפסד",
+    "weight": "משקל",
+    "status": "סטופ/יעד",
+    "score": "ציון",
+    "stopMissing": "חסר סטופ/יעד",
+    "needsHorizon": "נדרש אופק החזקה",
+    "scoreValue": "ציון {score}",
+    "open": "פתיחת {name}"
+  },
+  "holding": {
+    "notFound": "ההחזקה לא נמצאה.",
+    "scoreCard": "כרטיס ציון",
+    "notValidated": "טרם אומת. הציונים ניסיוניים ואינם המלצת קנייה או מכירה.",
+    "notValidatedLabel": "טרם אומת",
+    "total": "ציון כולל",
+    "confidence": "ביטחון {pct}",
+    "weight": "משקל {pct}",
+    "signal": {
+      "technical": "טכני",
+      "patterns": "תבניות גרף"
+    },
+    "why": "למה?",
+    "whyHide": "הסתרת ההסבר",
+    "whySummary": "סיכום",
+    "whyInputs": "נתוני קלט",
+    "whyRules": "כללים שהופעלו",
+    "whyReasons": "סיבות",
+    "asOf": "נתונים נכון ל-{time}",
+    "horizonTitle": "אופק החזקה",
+    "horizonPrompt": "כמה זמן אתם מתכננים להחזיק בנייר הזה?",
+    "horizonCurrent": "אופק החזקה מתוכנן: {value}",
+    "horizons": {
+      "1w": "שבוע",
+      "1m": "חודש",
+      "3m": "3 חודשים",
+      "6m": "6 חודשים",
+      "1y": "שנה"
+    },
+    "alertsTitle": "התראות מחיר",
+    "alertsNone": "אין התראות לנייר הזה.",
+    "alertOp": "התראה כשהמחיר",
+    "above": "מעל",
+    "below": "מתחת",
+    "alertPrice": "מחיר",
+    "alertAdd": "הוספת התראה",
+    "alertSummary": "{op} {price}",
+    "alertDelete": "מחיקת התראה",
+    "exitTitle": "רמות יציאה (סטופ-לוס / יעד רווח)",
+    "exitSoon": "יגיע בשלב 2."
+  },
+  "auth": {
+    "loginTitle": "התחברות",
+    "signupTitle": "יצירת חשבון",
+    "email": "אימייל",
+    "password": "סיסמה",
+    "inviteCode": "קוד הזמנה",
+    "acceptDisclaimer": "אני מבין/ה שהאפליקציה אינה ייעוץ פיננסי ושכל החלטות ההשקעה הן שלי.",
+    "login": "התחברות",
+    "signup": "הרשמה",
+    "haveAccount": "כבר יש לך חשבון?",
+    "noAccount": "יש לך קוד הזמנה?",
+    "failed": "משהו השתבש. בדקו את הפרטים ונסו שוב.",
+    "invalidCredentials": "אימייל או סיסמה שגויים.",
+    "tooMany": "יותר מדי ניסיונות. המתינו רגע ונסו שוב.",
+    "working": "רגע…"
+  },
+  "import": {
+    "title": "ייבוא החזקות",
+    "intro": "העלו צילום מסך של ההחזקות מהברוקר. תבדקו כל שורה לפני ששום דבר נשמר.",
+    "portfolio": "ייבוא אל",
+    "chooseFile": "בחירת צילום מסך",
+    "upload": "העלאה וקריאה",
+    "uploading": "קורא את צילום המסך…",
+    "consentTitle": "לאפשר קריאת צילום מסך (OCR)?",
+    "consentBody": "צילום המסך מעובד כדי לחלץ טקסט. רצפי ספרות ארוכים ואזור הכותרת מטושטשים מקומית קודם, והתמונה נמחקת מיד אחרי הפענוח. אם מוגדר שירות ראייה בענן, התמונה המוסתרת עשויה להישלח אליו.",
+    "consentAccept": "אני מסכים/ה",
+    "consentDecline": "לא, תודה",
+    "reviewTitle": "בדיקת השורות",
+    "reviewHint": "תקנו כל דבר שנראה שגוי. שורות מסומנות דורשות את תשומת לבכם.",
+    "flagged": "דורש בדיקה",
+    "flags": {
+      "value_mismatch": "כמות × מחיר לא תואם לשווי",
+      "no_match": "לא ניתן היה לזהות את נייר הערך",
+      "low_confidence": "קריאה בביטחון נמוך"
+    },
+    "col": {
+      "name": "שם",
+      "symbol": "סימול",
+      "quantity": "כמות",
+      "price": "מחיר",
+      "value": "שווי",
+      "currency": "מטבע",
+      "change": "סוג שינוי",
+      "changeAmount": "כמות / סכום השינוי"
+    },
+    "changeType": {
+      "buy": "קנייה",
+      "sell": "מכירה",
+      "deposit": "הפקדה",
+      "withdrawal": "משיכה"
+    },
+    "confirm": "אישור הייבוא",
+    "confirming": "שומר…",
+    "done": "הייבוא נשמר.",
+    "backHome": "חזרה לתיק",
+    "again": "ייבוא נוסף"
+  },
+  "xray": {
+    "title": "צילום רנטגן לתיק",
+    "breaches": "חריגות ממגבלות הסיכון",
+    "noBreaches": "אין חריגות ממגבלות.",
+    "breachDetail": "{value} מול מגבלה {limit}",
+    "concentration": "הפוזיציות הגדולות",
+    "currency": "חשיפה למטבעות",
+    "country": "חשיפה למדינות",
+    "sector": "חשיפה לסקטורים",
+    "homeBias": "חשיפה לישראל",
+    "heatmap": "מפת חום של סקטורים",
+    "heatmapHint": "גודל האריח הוא משקל בתיק. הצבע והסימן מציגים את השינוי היומי.",
+    "rule": {
+      "max_position_pct": "גודל פוזיציה",
+      "max_sector_pct": "חשיפה לסקטור",
+      "max_country_pct": "חשיפה למדינה"
+    }
+  },
+  "settings": {
+    "title": "הגדרות",
+    "risk": "מסנן סיכון",
+    "riskIntro": "מגבלות שכל הצעה נבדקת מולן.",
+    "portfolio": "תיק",
+    "preset": "פרופיל",
+    "presets": {
+      "very_conservative": "שמרני מאוד",
+      "conservative": "שמרני",
+      "balanced": "מאוזן",
+      "balanced_aggressive": "מאוזן-אגרסיבי",
+      "aggressive": "אגרסיבי",
+      "very_aggressive": "אגרסיבי מאוד"
+    },
+    "custom": "מותאם אישית",
+    "fields": {
+      "max_position_pct": "גודל פוזיציה מרבי (%)",
+      "max_sector_pct": "חשיפה מרבית לסקטור (%)",
+      "max_country_pct": "חשיפה מרבית למדינה (%)",
+      "max_loss_per_position_pct": "הפסד מרבי לפוזיציה (%)",
+      "max_portfolio_risk_per_trade_pct": "סיכון מרבי לתיק בעסקה (%)",
+      "max_total_portfolio_risk_pct": "סיכון כולל מרבי לתיק (%)",
+      "min_rr": "יחס סיכוי/סיכון מינימלי",
+      "stop_type": "סוג סטופ",
+      "drawdown_defensive_pct": "מצב הגנתי בירידה של (%)"
+    },
+    "stopTypes": {
+      "fixed": "קבוע",
+      "trailing": "נגרר",
+      "both": "שניהם"
+    },
+    "language": "שפה",
+    "languages": {
+      "he": "עברית",
+      "en": "English"
+    },
+    "data": "המידע שלך",
+    "export": "ייצוא המידע שלי",
+    "exportDesc": "הורדת כל מה ששמור עליך כקובץ JSON.",
+    "danger": "אזור מסוכן",
+    "deleteAccount": "מחיקת החשבון שלי",
+    "deleteWarn": "פעולה זו מוחקת לצמיתות את החשבון, התיקים וההתראות.",
+    "deleteTitle": "למחוק את החשבון?",
+    "deleteBody": "לא ניתן לבטל. כל המידע שלך יימחק.",
+    "deleteYes": "כן, למחוק הכול"
+  }
+}

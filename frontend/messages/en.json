@@ -1,0 +1,248 @@
+{
+  "app": {
+    "name": "Portfolio Manager",
+    "tagline": "Analysis for US and Israeli stocks"
+  },
+  "common": {
+    "loading": "Loading…",
+    "errorLoad": "Could not load data.",
+    "retry": "Try again",
+    "save": "Save",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "back": "Back",
+    "close": "Close",
+    "optional": "optional",
+    "empty": "—"
+  },
+  "nav": {
+    "portfolio": "Portfolio",
+    "xray": "X-ray",
+    "import": "Import",
+    "settings": "Settings",
+    "logout": "Sign out",
+    "main": "Main navigation"
+  },
+  "disclaimer": {
+    "footer": "Not financial advice. This app provides analysis and information only. Scores are experimental and have not been validated. All investment decisions are yours."
+  },
+  "header": {
+    "totalValue": "Portfolio value",
+    "dayPnl": "Today",
+    "sinceStart": "Since you started using the app ({date})",
+    "lastUpdated": "Last updated {time}",
+    "markets": "Markets",
+    "market": {
+      "TASE": "TASE",
+      "US": "US",
+      "CRYPTO": "Crypto"
+    },
+    "open": "Open",
+    "closed": "Closed"
+  },
+  "switcher": {
+    "label": "Portfolio",
+    "combined": "All portfolios combined"
+  },
+  "pnl": {
+    "title": "Performance",
+    "week": "This week",
+    "month": "This month",
+    "weekly": "Weekly P&L (%)",
+    "monthly": "Monthly P&L (%)",
+    "sinceStartChart": "Since you started using the app ({date})",
+    "you": "My portfolio",
+    "sp500": "S&P 500",
+    "ta125": "TA-125",
+    "up": "Gain",
+    "down": "Loss"
+  },
+  "actions": {
+    "label": "Main actions",
+    "review": "Review my portfolio",
+    "suggest": "Suggest new stocks",
+    "analyze": "Analyze a stock",
+    "soon": "Coming soon",
+    "soonNote": "These features arrive in a later phase."
+  },
+  "holdings": {
+    "title": "Your holdings",
+    "empty": "No holdings yet. Import a screenshot from your broker to get started.",
+    "importCta": "Import holdings",
+    "name": "Security",
+    "price": "Price",
+    "dayChange": "Day",
+    "pnl": "P&L",
+    "weight": "Weight",
+    "status": "Stop/TP",
+    "score": "Score",
+    "stopMissing": "Stop/TP missing",
+    "needsHorizon": "Needs holding period",
+    "scoreValue": "Score {score}",
+    "open": "Open {name}"
+  },
+  "holding": {
+    "notFound": "Holding not found.",
+    "scoreCard": "Score card",
+    "notValidated": "Not yet validated. Scores are experimental and are not a buy or sell recommendation.",
+    "notValidatedLabel": "Not yet validated",
+    "total": "Total score",
+    "confidence": "Confidence {pct}",
+    "weight": "Weight {pct}",
+    "signal": {
+      "technical": "Technical",
+      "patterns": "Chart patterns"
+    },
+    "why": "Why?",
+    "whyHide": "Hide explanation",
+    "whySummary": "Summary",
+    "whyInputs": "Inputs",
+    "whyRules": "Rules applied",
+    "whyReasons": "Reasons",
+    "asOf": "Data as of {time}",
+    "horizonTitle": "Holding period",
+    "horizonPrompt": "How long do you plan to hold this?",
+    "horizonCurrent": "Planned holding period: {value}",
+    "horizons": {
+      "1w": "1 week",
+      "1m": "1 month",
+      "3m": "3 months",
+      "6m": "6 months",
+      "1y": "1 year"
+    },
+    "alertsTitle": "Price alerts",
+    "alertsNone": "No alerts for this security.",
+    "alertOp": "Alert when price is",
+    "above": "Above",
+    "below": "Below",
+    "alertPrice": "Price",
+    "alertAdd": "Add alert",
+    "alertSummary": "{op} {price}",
+    "alertDelete": "Delete alert",
+    "exitTitle": "Exit levels (stop-loss / take-profit)",
+    "exitSoon": "Coming in Phase 2."
+  },
+  "auth": {
+    "loginTitle": "Sign in",
+    "signupTitle": "Create account",
+    "email": "Email",
+    "password": "Password",
+    "inviteCode": "Invite code",
+    "acceptDisclaimer": "I understand this app is not financial advice and that all investment decisions are mine.",
+    "login": "Sign in",
+    "signup": "Sign up",
+    "haveAccount": "Already have an account?",
+    "noAccount": "Have an invite code?",
+    "failed": "Something went wrong. Check your details and try again.",
+    "invalidCredentials": "Wrong email or password.",
+    "tooMany": "Too many attempts. Wait a moment and try again.",
+    "working": "Please wait…"
+  },
+  "import": {
+    "title": "Import holdings",
+    "intro": "Upload a screenshot of your holdings from your broker. You will review every row before anything is saved.",
+    "portfolio": "Import into",
+    "chooseFile": "Choose a screenshot",
+    "upload": "Upload and read",
+    "uploading": "Reading the screenshot…",
+    "consentTitle": "Allow screenshot reading (OCR)?",
+    "consentBody": "Your screenshot is processed to extract text. Long digit sequences and the header area are blurred locally first, and the image is deleted right after parsing. If a cloud vision service is configured, the redacted image may be sent to it.",
+    "consentAccept": "I agree",
+    "consentDecline": "No thanks",
+    "reviewTitle": "Review the rows",
+    "reviewHint": "Fix anything that looks wrong. Highlighted rows need your attention.",
+    "flagged": "Needs review",
+    "flags": {
+      "value_mismatch": "Quantity × price does not match the value",
+      "no_match": "Could not match this security",
+      "low_confidence": "Low confidence reading"
+    },
+    "col": {
+      "name": "Name",
+      "symbol": "Symbol",
+      "quantity": "Quantity",
+      "price": "Price",
+      "value": "Value",
+      "currency": "Currency",
+      "change": "Change type",
+      "changeAmount": "Change qty / amount"
+    },
+    "changeType": {
+      "buy": "Buy",
+      "sell": "Sell",
+      "deposit": "Deposit",
+      "withdrawal": "Withdrawal"
+    },
+    "confirm": "Confirm import",
+    "confirming": "Saving…",
+    "done": "Import saved.",
+    "backHome": "Back to portfolio",
+    "again": "Import another"
+  },
+  "xray": {
+    "title": "Portfolio X-ray",
+    "breaches": "Risk limit breaches",
+    "noBreaches": "No limit breaches.",
+    "breachDetail": "{value} vs limit {limit}",
+    "concentration": "Top positions",
+    "currency": "Currency exposure",
+    "country": "Country exposure",
+    "sector": "Sector exposure",
+    "homeBias": "Israel exposure",
+    "heatmap": "Sector heat map",
+    "heatmapHint": "Tile size is portfolio weight. Colour and sign show today's change.",
+    "rule": {
+      "max_position_pct": "Position size",
+      "max_sector_pct": "Sector exposure",
+      "max_country_pct": "Country exposure"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "risk": "Risk filter",
+    "riskIntro": "Limits that every suggestion is checked against.",
+    "portfolio": "Portfolio",
+    "preset": "Preset",
+    "presets": {
+      "very_conservative": "Very conservative",
+      "conservative": "Conservative",
+      "balanced": "Balanced",
+      "balanced_aggressive": "Balanced-aggressive",
+      "aggressive": "Aggressive",
+      "very_aggressive": "Very aggressive"
+    },
+    "custom": "Custom",
+    "fields": {
+      "max_position_pct": "Max position size (%)",
+      "max_sector_pct": "Max sector exposure (%)",
+      "max_country_pct": "Max country exposure (%)",
+      "max_loss_per_position_pct": "Max loss per position (%)",
+      "max_portfolio_risk_per_trade_pct": "Max portfolio risk per trade (%)",
+      "max_total_portfolio_risk_pct": "Max total portfolio risk (%)",
+      "min_rr": "Minimum reward/risk",
+      "stop_type": "Stop type",
+      "drawdown_defensive_pct": "Defensive mode at drawdown (%)"
+    },
+    "stopTypes": {
+      "fixed": "Fixed",
+      "trailing": "Trailing",
+      "both": "Both"
+    },
+    "language": "Language",
+    "languages": {
+      "he": "עברית",
+      "en": "English"
+    },
+    "data": "Your data",
+    "export": "Export my data",
+    "exportDesc": "Download everything stored about you as a JSON file.",
+    "danger": "Danger zone",
+    "deleteAccount": "Delete my account",
+    "deleteWarn": "This permanently deletes your account, portfolios and alerts.",
+    "deleteTitle": "Delete your account?",
+    "deleteBody": "This cannot be undone. All your data will be erased.",
+    "deleteYes": "Yes, delete everything"
+  }
+}
