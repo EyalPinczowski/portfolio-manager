@@ -271,6 +271,9 @@ The selected horizon and risk filter are applied together. If a stop that fits t
 | Week | Sunday to Saturday (a setting) |
 | Extra Phase 2 features | Public **track-record page** (paper calls vs S&P 500 / TA-125), **toggleable X-ray rules**, **fund tracking + dividend calendar** |
 | Screenshots | **Never kept.** Read on your phone (on-device OCR); only the stock rows reach the server. See [docs/security.md](docs/security.md). |
+| Deployment timing | **After all Phase 2 features** (that is when the paper-trading clock starts) |
+| TASE data | Free sources only; the app says "no data" where there is none. **TradingView is not used as a data source** (no public API; its terms forbid automated collection). An optional TradingView chart widget may be shown, display-only, after a tap. |
+| AI | Several free providers (Gemini, Groq, others) with templates as the final fallback; a paid option (Claude API) can be switched on later and is off by default |
 | Tax | Not considered |
 | Backtesting | **Required before launch**: recommendations stay hidden until the scoring has been tested on historical data |
 | Paper trading | **Goal-based gate**: ≥4 weeks with no errors, ≥50 calls finished their 1-month window, and beating the S&P 500 / TA-125 (about 6–10 weeks). The live track record is shown meanwhile. |

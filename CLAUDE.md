@@ -120,6 +120,9 @@ cd frontend && npm run dev | npm test | npm run lint
 - Purge unconfirmed import drafts after 24 hours, and clear a draft's rows once it is confirmed.
 - Production must run with secure cookies. Never log bodies, OCR text, tokens, passwords or emails.
 
+- **No TradingView data.** TradingView has no public data API and its terms prohibit scraping and non-display use, so never add `tradingview-ta`, `tvdatafeed` or similar. Only TradingView's official embeddable widgets are allowed, display-only, loaded after a user tap, never fed into scores.
+- **AI providers:** free providers first, in the configured order, with templates as the final fallback. A paid provider (Claude API) may exist behind a disabled-by-default setting (`llm_paid_enabled`); never enable or add a paid service without the user's explicit approval of the exact service.
+
 ## Host-agnostic deployment (user decision: free, no credit card, host chosen later)
 
 See `docs/deployment.md`. Until a host is chosen:
