@@ -64,6 +64,8 @@ Source: `docs/reviews/phase-2.0-diff-2026-10-03.md` (each item has a verified fa
 
 
 ## Block 2.1 (added 2026-10-03): quote fallback, before exit levels
+**Research done:** `docs/reviews/quote-sources-2026-10-03.md` (chain, endpoints, TTLs, terms). Implement exactly that chain: Finnhub `/quote` (US), FMP free EOD or Stooq CSV (US history), CoinGecko demo (crypto), Bank of Israel / Frankfurter (USD/ILS), TASE Data Hub EOD (TASE, optional, needs signup), last close labelled with its date as the final fallback. Each provider is key-gated by env (no key = provider disabled, never an error); tests use fixtures only.
+
 User decision: add a **second free price source** before exit levels ship (Yahoo is often blocked or rate-limited on data-center hosts). Backend only; a provider behind the existing quote interface; no network in tests (fixtures); verify candidate sources and terms before use (research first and report; do not assume a source is allowed):
 1. Candidates: Stooq (US stocks and ETFs, daily and delayed intraday), CoinGecko (crypto), Finnhub free quote (US only, 60/min). TASE: none known; keep yfinance with the last close, labelled.
 2. `QuoteProvider` chain: primary yfinance, fallback by market; each stored quote records its source and as-of; a "price disagreement" check (more than 5 % apart) flags the quote instead of storing it silently.
