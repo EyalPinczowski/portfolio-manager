@@ -1,0 +1,45 @@
+"""FastAPI dependencies: the authenticated user, with the CSRF header enforced on mutations."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Annotated
+
+from fastapi import Depends, HTTPException, Request, status
+from sqlmodel import Session
+
+from app.auth.sessions import csrf_ok, load_session
+from app.config import Settings, get_settings
+from app.db import get_db
+from app.models import AuthSession, User
+
+DbDep = Annotated[Session, Depends(get_db)]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+
+@dataclass
+class AuthContext:
+    user: User
+    session: AuthSession
+
+
+def get_auth(request: Request, db: DbDep, settings: SettingsDep) -> AuthContext:
+    session = load_session(db, request, settings)
+    if session is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
+    user = db.get(User, session.user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
+    if not csrf_ok(request, session):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Missing or invalid CSRF token")
+    return AuthContext(user, session)
+
+
+AuthDep = Annotated[AuthContext, Depends(get_auth)]
+
+
+def get_current_user(auth: AuthDep) -> User:
+    return auth.user
+
+
+UserDep = Annotated[User, Depends(get_current_user)]

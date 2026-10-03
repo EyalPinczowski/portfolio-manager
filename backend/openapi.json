@@ -1,0 +1,2841 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Portfolio Manager API",
+    "description": "Phase 1 backend. Not financial advice.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/auth/signup": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Signup",
+        "operationId": "signup_api_auth_signup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/consent/ocr": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Consent Ocr",
+        "operationId": "consent_ocr_api_auth_consent_ocr_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/export": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Export Me",
+        "operationId": "export_me_api_me_export_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Export Me Api Me Export Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Delete Me",
+        "operationId": "delete_me_api_me_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/portfolios": {
+      "get": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Get Portfolios",
+        "operationId": "get_portfolios_api_portfolios_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PortfolioOut"
+                  },
+                  "type": "array",
+                  "title": "Response Get Portfolios Api Portfolios Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Create Portfolio",
+        "operationId": "create_portfolio_api_portfolios_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortfolioCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolios/combined/summary": {
+      "get": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Combined Summary",
+        "operationId": "combined_summary_api_portfolios_combined_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolios/{portfolio_id}": {
+      "get": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Get One",
+        "operationId": "get_one_api_portfolios__portfolio_id__get",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Patch Portfolio",
+        "operationId": "patch_portfolio_api_portfolios__portfolio_id__patch",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortfolioPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Delete Portfolio",
+        "operationId": "delete_portfolio_api_portfolios__portfolio_id__delete",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolios/{portfolio_id}/summary": {
+      "get": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Summary",
+        "operationId": "summary_api_portfolios__portfolio_id__summary_get",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolios/{portfolio_id}/holdings": {
+      "get": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Holdings",
+        "operationId": "holdings_api_portfolios__portfolio_id__holdings_get",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HoldingOut"
+                  },
+                  "title": "Response Holdings Api Portfolios  Portfolio Id  Holdings Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Add Holding",
+        "operationId": "add_holding_api_portfolios__portfolio_id__holdings_post",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HoldingCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoldingOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolios/{portfolio_id}/xray": {
+      "get": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Xray",
+        "operationId": "xray_api_portfolios__portfolio_id__xray_get",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/XrayOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolios/{portfolio_id}/heatmap": {
+      "get": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Heatmap",
+        "operationId": "heatmap_api_portfolios__portfolio_id__heatmap_get",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HeatmapItem"
+                  },
+                  "title": "Response Heatmap Api Portfolios  Portfolio Id  Heatmap Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolios/{portfolio_id}/holdings/{holding_id}": {
+      "patch": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Patch Holding",
+        "operationId": "patch_holding_api_portfolios__portfolio_id__holdings__holding_id__patch",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          },
+          {
+            "name": "holding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Holding Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HoldingPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoldingOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Delete Holding",
+        "operationId": "delete_holding_api_portfolios__portfolio_id__holdings__holding_id__delete",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          },
+          {
+            "name": "holding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Holding Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolios/{portfolio_id}/imports": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Create Import",
+        "operationId": "create_import_api_portfolios__portfolio_id__imports_post",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_import_api_portfolios__portfolio_id__imports_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDraftOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/imports/{draft_id}": {
+      "get": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Get Import",
+        "operationId": "get_import_api_imports__draft_id__get",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDraftOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Patch Import",
+        "operationId": "patch_import_api_imports__draft_id__patch",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDraftOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/imports/{draft_id}/confirm": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Confirm Import",
+        "operationId": "confirm_import_api_imports__draft_id__confirm_post",
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDraftOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/risk/presets": {
+      "get": {
+        "tags": [
+          "misc"
+        ],
+        "summary": "Risk Presets",
+        "operationId": "risk_presets_api_risk_presets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RiskPresetOut"
+                  },
+                  "type": "array",
+                  "title": "Response Risk Presets Api Risk Presets Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/securities/search": {
+      "get": {
+        "tags": [
+          "misc"
+        ],
+        "summary": "Securities Search",
+        "operationId": "securities_search_api_securities_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SecurityHit"
+                  },
+                  "title": "Response Securities Search Api Securities Search Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/holdings/{holding_id}/scorecard": {
+      "get": {
+        "tags": [
+          "misc"
+        ],
+        "summary": "Scorecard",
+        "operationId": "scorecard_api_holdings__holding_id__scorecard_get",
+        "parameters": [
+          {
+            "name": "holding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Holding Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreCardDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts": {
+      "get": {
+        "tags": [
+          "misc"
+        ],
+        "summary": "Alerts",
+        "operationId": "alerts_api_alerts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlertOut"
+                  },
+                  "type": "array",
+                  "title": "Response Alerts Api Alerts Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "misc"
+        ],
+        "summary": "Create Alert",
+        "operationId": "create_alert_api_alerts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/{alert_id}": {
+      "delete": {
+        "tags": [
+          "misc"
+        ],
+        "summary": "Delete Alert",
+        "operationId": "delete_alert_api_alerts__alert_id__delete",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": [
+          "misc"
+        ],
+        "summary": "Notifications",
+        "operationId": "notifications_api_notifications_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationOut"
+                  },
+                  "type": "array",
+                  "title": "Response Notifications Api Notifications Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/{notification_id}/read": {
+      "post": {
+        "tags": [
+          "misc"
+        ],
+        "summary": "Read Notification",
+        "operationId": "read_notification_api_notifications__notification_id__read_post",
+        "parameters": [
+          {
+            "name": "notification_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Notification Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Health",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Api Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AlertCreate": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Symbol"
+          },
+          "op": {
+            "type": "string",
+            "enum": [
+              "above",
+              "below"
+            ],
+            "title": "Op"
+          },
+          "price": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Price"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "op",
+          "price"
+        ],
+        "title": "AlertCreate"
+      },
+      "AlertOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "op": {
+            "type": "string",
+            "title": "Op"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "triggered_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triggered At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "op",
+          "price",
+          "active"
+        ],
+        "title": "AlertOut"
+      },
+      "Body_create_import_api_portfolios__portfolio_id__imports_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_create_import_api_portfolios__portfolio_id__imports_post"
+      },
+      "Breach": {
+        "properties": {
+          "rule": {
+            "type": "string",
+            "title": "Rule"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "limit": {
+            "type": "number",
+            "title": "Limit"
+          },
+          "why": {
+            "type": "string",
+            "title": "Why"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule",
+          "value",
+          "limit",
+          "why"
+        ],
+        "title": "Breach"
+      },
+      "ExposureItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "weight_pct": {
+            "type": "number",
+            "title": "Weight Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "weight_pct"
+        ],
+        "title": "ExposureItem"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HeatmapItem": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "sector": {
+            "type": "string",
+            "title": "Sector"
+          },
+          "weight_pct": {
+            "type": "number",
+            "title": "Weight Pct"
+          },
+          "day_change_pct": {
+            "type": "number",
+            "title": "Day Change Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "sector",
+          "weight_pct",
+          "day_change_pct"
+        ],
+        "title": "HeatmapItem"
+      },
+      "HoldingCreate": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Symbol"
+          },
+          "quantity": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity"
+          },
+          "avg_cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Cost"
+          },
+          "cost_currency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ILS",
+                  "USD"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Currency"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "1w",
+                  "1m",
+                  "3m",
+                  "6m",
+                  "1y"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "quantity"
+        ],
+        "title": "HoldingCreate"
+      },
+      "HoldingOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name_en": {
+            "type": "string",
+            "title": "Name En"
+          },
+          "name_he": {
+            "type": "string",
+            "title": "Name He"
+          },
+          "asset_type": {
+            "type": "string",
+            "title": "Asset Type"
+          },
+          "market": {
+            "type": "string",
+            "title": "Market"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "day_change_pct": {
+            "type": "number",
+            "title": "Day Change Pct"
+          },
+          "value_ils": {
+            "type": "number",
+            "title": "Value Ils"
+          },
+          "pnl": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pnl"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weight_pct": {
+            "type": "number",
+            "title": "Weight Pct"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "1w",
+                  "1m",
+                  "3m",
+                  "6m",
+                  "1y"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          },
+          "stop_tp_status": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "needs_horizon"
+            ],
+            "title": "Stop Tp Status"
+          },
+          "score_card": {
+            "$ref": "#/components/schemas/ScoreCardMini"
+          },
+          "price_stale": {
+            "type": "boolean",
+            "title": "Price Stale",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "name_en",
+          "name_he",
+          "asset_type",
+          "market",
+          "quantity",
+          "price",
+          "currency",
+          "day_change_pct",
+          "value_ils",
+          "weight_pct",
+          "stop_tp_status",
+          "score_card"
+        ],
+        "title": "HoldingOut"
+      },
+      "HoldingPatch": {
+        "properties": {
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "avg_cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Cost"
+          },
+          "cost_currency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ILS",
+                  "USD"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Currency"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "1w",
+                  "1m",
+                  "3m",
+                  "6m",
+                  "1y"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          },
+          "risk_override": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Override"
+          }
+        },
+        "type": "object",
+        "title": "HoldingPatch"
+      },
+      "ImportDraftOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "portfolio_id": {
+            "type": "integer",
+            "title": "Portfolio Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "confirmed",
+              "discarded"
+            ],
+            "title": "Status"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRowModel"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "proposed_changes": {
+            "items": {
+              "$ref": "#/components/schemas/ProposedChange"
+            },
+            "type": "array",
+            "title": "Proposed Changes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "portfolio_id",
+          "status",
+          "rows",
+          "proposed_changes"
+        ],
+        "title": "ImportDraftOut"
+      },
+      "ImportPatch": {
+        "properties": {
+          "rows": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ImportRowModel"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rows"
+          },
+          "proposed_changes": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProposedChange"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposed Changes"
+          }
+        },
+        "type": "object",
+        "title": "ImportPatch"
+      },
+      "ImportRowModel": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index",
+            "default": 0
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          },
+          "tase_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tase Number"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "ILS"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "ILS",
+              "agorot",
+              "USD"
+            ],
+            "title": "Unit",
+            "default": "ILS"
+          },
+          "matched_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Name"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Flags"
+          }
+        },
+        "type": "object",
+        "title": "ImportRowModel"
+      },
+      "LoginIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginIn"
+      },
+      "MarketOpen": {
+        "properties": {
+          "open": {
+            "type": "boolean",
+            "title": "Open"
+          }
+        },
+        "type": "object",
+        "required": [
+          "open"
+        ],
+        "title": "MarketOpen"
+      },
+      "Markets": {
+        "properties": {
+          "US": {
+            "$ref": "#/components/schemas/MarketOpen"
+          },
+          "TASE": {
+            "$ref": "#/components/schemas/MarketOpen"
+          },
+          "CRYPTO": {
+            "$ref": "#/components/schemas/MarketOpen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "US",
+          "TASE",
+          "CRYPTO"
+        ],
+        "title": "Markets"
+      },
+      "MeOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "locale": {
+            "type": "string",
+            "title": "Locale"
+          },
+          "disclaimer_accepted": {
+            "type": "boolean",
+            "title": "Disclaimer Accepted"
+          },
+          "ocr_consent": {
+            "type": "boolean",
+            "title": "Ocr Consent"
+          },
+          "csrf_token": {
+            "type": "string",
+            "title": "Csrf Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "locale",
+          "disclaimer_accepted",
+          "ocr_consent",
+          "csrf_token"
+        ],
+        "title": "MeOut"
+      },
+      "Money": {
+        "properties": {
+          "ils": {
+            "type": "number",
+            "title": "Ils"
+          },
+          "usd": {
+            "type": "number",
+            "title": "Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ils",
+          "usd"
+        ],
+        "title": "Money"
+      },
+      "MonthlyBar": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month"
+          },
+          "pnl_ils": {
+            "type": "number",
+            "title": "Pnl Ils"
+          },
+          "pct": {
+            "type": "number",
+            "title": "Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "pnl_ils",
+          "pct"
+        ],
+        "title": "MonthlyBar"
+      },
+      "NotificationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "read": {
+            "type": "boolean",
+            "title": "Read"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "body",
+          "created_at",
+          "read"
+        ],
+        "title": "NotificationOut"
+      },
+      "Pnl": {
+        "properties": {
+          "ils": {
+            "type": "number",
+            "title": "Ils"
+          },
+          "usd": {
+            "type": "number",
+            "title": "Usd"
+          },
+          "pct": {
+            "type": "number",
+            "title": "Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ils",
+          "usd",
+          "pct"
+        ],
+        "title": "Pnl"
+      },
+      "PortfolioCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "base_currency": {
+            "type": "string",
+            "enum": [
+              "ILS",
+              "USD"
+            ],
+            "title": "Base Currency",
+            "default": "ILS"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "PortfolioCreate"
+      },
+      "PortfolioOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "base_currency": {
+            "type": "string",
+            "title": "Base Currency"
+          },
+          "risk_filter": {
+            "$ref": "#/components/schemas/RiskFilterOut"
+          },
+          "tracking_started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracking Started At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "base_currency",
+          "risk_filter",
+          "created_at"
+        ],
+        "title": "PortfolioOut"
+      },
+      "PortfolioPatch": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "base_currency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ILS",
+                  "USD"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Currency"
+          },
+          "risk_filter": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Filter"
+          }
+        },
+        "type": "object",
+        "title": "PortfolioPatch"
+      },
+      "ProposedChange": {
+        "properties": {
+          "row_index": {
+            "type": "integer",
+            "title": "Row Index"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "sell",
+              "deposit",
+              "withdrawal"
+            ],
+            "title": "Type"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "row_index",
+          "symbol",
+          "type",
+          "quantity",
+          "amount",
+          "currency"
+        ],
+        "title": "ProposedChange"
+      },
+      "RiskFilterOut": {
+        "properties": {
+          "preset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset"
+          },
+          "max_position_pct": {
+            "type": "number",
+            "title": "Max Position Pct"
+          },
+          "max_sector_pct": {
+            "type": "number",
+            "title": "Max Sector Pct"
+          },
+          "max_country_pct": {
+            "type": "number",
+            "title": "Max Country Pct"
+          },
+          "max_loss_per_position_pct": {
+            "type": "number",
+            "title": "Max Loss Per Position Pct"
+          },
+          "max_portfolio_risk_per_trade_pct": {
+            "type": "number",
+            "title": "Max Portfolio Risk Per Trade Pct"
+          },
+          "max_total_portfolio_risk_pct": {
+            "type": "number",
+            "title": "Max Total Portfolio Risk Pct"
+          },
+          "min_rr": {
+            "type": "number",
+            "title": "Min Rr"
+          },
+          "stop_type": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "trailing",
+              "both"
+            ],
+            "title": "Stop Type"
+          },
+          "drawdown_defensive_pct": {
+            "type": "number",
+            "title": "Drawdown Defensive Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "max_position_pct",
+          "max_sector_pct",
+          "max_country_pct",
+          "max_loss_per_position_pct",
+          "max_portfolio_risk_per_trade_pct",
+          "max_total_portfolio_risk_pct",
+          "min_rr",
+          "stop_type",
+          "drawdown_defensive_pct"
+        ],
+        "title": "RiskFilterOut"
+      },
+      "RiskPresetOut": {
+        "properties": {
+          "preset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset"
+          },
+          "max_position_pct": {
+            "type": "number",
+            "title": "Max Position Pct"
+          },
+          "max_sector_pct": {
+            "type": "number",
+            "title": "Max Sector Pct"
+          },
+          "max_country_pct": {
+            "type": "number",
+            "title": "Max Country Pct"
+          },
+          "max_loss_per_position_pct": {
+            "type": "number",
+            "title": "Max Loss Per Position Pct"
+          },
+          "max_portfolio_risk_per_trade_pct": {
+            "type": "number",
+            "title": "Max Portfolio Risk Per Trade Pct"
+          },
+          "max_total_portfolio_risk_pct": {
+            "type": "number",
+            "title": "Max Total Portfolio Risk Pct"
+          },
+          "min_rr": {
+            "type": "number",
+            "title": "Min Rr"
+          },
+          "stop_type": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "trailing",
+              "both"
+            ],
+            "title": "Stop Type"
+          },
+          "drawdown_defensive_pct": {
+            "type": "number",
+            "title": "Drawdown Defensive Pct"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "max_position_pct",
+          "max_sector_pct",
+          "max_country_pct",
+          "max_loss_per_position_pct",
+          "max_portfolio_risk_per_trade_pct",
+          "max_total_portfolio_risk_pct",
+          "min_rr",
+          "stop_type",
+          "drawdown_defensive_pct",
+          "name"
+        ],
+        "title": "RiskPresetOut"
+      },
+      "ScoreCardDetail": {
+        "properties": {
+          "holding_id": {
+            "type": "integer",
+            "title": "Holding Id"
+          },
+          "portfolio_id": {
+            "type": "integer",
+            "title": "Portfolio Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name_en": {
+            "type": "string",
+            "title": "Name En"
+          },
+          "name_he": {
+            "type": "string",
+            "title": "Name He"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "1w",
+                  "1m",
+                  "3m",
+                  "6m",
+                  "1y"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          },
+          "total": {
+            "type": "number",
+            "title": "Total"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "validated": {
+            "type": "boolean",
+            "title": "Validated"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/SignalBreakdownOut"
+            },
+            "type": "array",
+            "title": "Signals"
+          },
+          "explanation": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Explanation"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "holding_id",
+          "portfolio_id",
+          "symbol",
+          "name_en",
+          "name_he",
+          "total",
+          "confidence",
+          "available",
+          "validated",
+          "signals",
+          "explanation",
+          "disclaimer"
+        ],
+        "title": "ScoreCardDetail"
+      },
+      "ScoreCardMini": {
+        "properties": {
+          "total": {
+            "type": "number",
+            "title": "Total"
+          },
+          "technical": {
+            "type": "number",
+            "title": "Technical"
+          },
+          "patterns": {
+            "type": "number",
+            "title": "Patterns"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "technical",
+          "patterns",
+          "confidence"
+        ],
+        "title": "ScoreCardMini"
+      },
+      "SecurityHit": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name_en": {
+            "type": "string",
+            "title": "Name En"
+          },
+          "name_he": {
+            "type": "string",
+            "title": "Name He"
+          },
+          "market": {
+            "type": "string",
+            "title": "Market"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name_en",
+          "name_he",
+          "market"
+        ],
+        "title": "SecurityHit"
+      },
+      "SeriesPoint": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "pct": {
+            "type": "number",
+            "title": "Pct"
+          },
+          "sp500_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sp500 Pct"
+          },
+          "ta125_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ta125 Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "pct"
+        ],
+        "title": "SeriesPoint"
+      },
+      "SignalBreakdownOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight"
+          },
+          "nominal_weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nominal Weight"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "data_as_of": {
+            "type": "string",
+            "title": "Data As Of"
+          },
+          "explanation": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "score",
+          "confidence",
+          "weight",
+          "reasons",
+          "data_as_of",
+          "explanation"
+        ],
+        "title": "SignalBreakdownOut"
+      },
+      "SignupIn": {
+        "properties": {
+          "invite_code": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Invite Code"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "accept_disclaimer": {
+            "type": "boolean",
+            "title": "Accept Disclaimer"
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "he",
+              "en"
+            ],
+            "title": "Locale",
+            "default": "he"
+          }
+        },
+        "type": "object",
+        "required": [
+          "invite_code",
+          "email",
+          "password",
+          "accept_disclaimer"
+        ],
+        "title": "SignupIn"
+      },
+      "SummaryOut": {
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "day_pnl": {
+            "$ref": "#/components/schemas/Pnl"
+          },
+          "week_pnl": {
+            "$ref": "#/components/schemas/Pnl"
+          },
+          "month_pnl": {
+            "$ref": "#/components/schemas/Pnl"
+          },
+          "since_start_pnl": {
+            "$ref": "#/components/schemas/Pnl"
+          },
+          "since_start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Since Start Date"
+          },
+          "weekly_bars": {
+            "items": {
+              "$ref": "#/components/schemas/WeeklyBar"
+            },
+            "type": "array",
+            "title": "Weekly Bars"
+          },
+          "monthly_bars": {
+            "items": {
+              "$ref": "#/components/schemas/MonthlyBar"
+            },
+            "type": "array",
+            "title": "Monthly Bars"
+          },
+          "since_start_series": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesPoint"
+            },
+            "type": "array",
+            "title": "Since Start Series"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "markets": {
+            "$ref": "#/components/schemas/Markets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "day_pnl",
+          "week_pnl",
+          "month_pnl",
+          "since_start_pnl",
+          "weekly_bars",
+          "monthly_bars",
+          "since_start_series",
+          "as_of",
+          "markets"
+        ],
+        "title": "SummaryOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WeeklyBar": {
+        "properties": {
+          "week_start": {
+            "type": "string",
+            "title": "Week Start"
+          },
+          "pnl_ils": {
+            "type": "number",
+            "title": "Pnl Ils"
+          },
+          "pct": {
+            "type": "number",
+            "title": "Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "week_start",
+          "pnl_ils",
+          "pct"
+        ],
+        "title": "WeeklyBar"
+      },
+      "XrayOut": {
+        "properties": {
+          "concentration": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Concentration"
+          },
+          "currency_exposure": {
+            "items": {
+              "$ref": "#/components/schemas/ExposureItem"
+            },
+            "type": "array",
+            "title": "Currency Exposure"
+          },
+          "country_exposure": {
+            "items": {
+              "$ref": "#/components/schemas/ExposureItem"
+            },
+            "type": "array",
+            "title": "Country Exposure"
+          },
+          "sector_exposure": {
+            "items": {
+              "$ref": "#/components/schemas/ExposureItem"
+            },
+            "type": "array",
+            "title": "Sector Exposure"
+          },
+          "home_bias": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Home Bias"
+          },
+          "breaches": {
+            "items": {
+              "$ref": "#/components/schemas/Breach"
+            },
+            "type": "array",
+            "title": "Breaches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "concentration",
+          "currency_exposure",
+          "country_exposure",
+          "sector_exposure",
+          "home_bias",
+          "breaches"
+        ],
+        "title": "XrayOut"
+      }
+    }
+  }
+}
