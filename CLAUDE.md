@@ -128,6 +128,8 @@ cd frontend && npm run dev | npm test | npm run lint
 - **The track-record page is for logged-in members only** (never public): only calls whose horizon has ended, global calls only, behind auth, with its own contract-test entry.
 - **A second free quote source comes before exit levels.** Add a fallback quote provider behind the existing interface (candidates: Stooq for US stocks/ETFs, CoinGecko for crypto; TASE has no free fallback, so TASE keeps the last close, labelled "as of", and `price_is_fresh` stays false there). Exit levels never silently use a stale or cost price.
 
+- **UI decisions** live in `docs/ui-decisions.md` (theme follows the phone, ₪ main currency, bottom tab bar, balanced cards, green/red with signs, a "+" actions menu, a guided first-run setup). Follow them when changing the frontend.
+
 ## Host-agnostic deployment (user decision: free, no credit card, host chosen later)
 
 See `docs/deployment.md`. Until a host is chosen:
