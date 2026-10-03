@@ -36,6 +36,20 @@ A recommendation is shown only if it passes every rule. When a rule blocks a str
 ### The app
 
 - **Dashboard**: portfolio value in ILS and USD, P&L, allocation by market, sector and currency, and the risk gauges.
+- **Performance (P&L)**, with three views:
+  - **Weekly**: a bar chart of profit/loss per week, plus this week so far.
+  - **Monthly**: a bar chart per month, plus a calendar heat-map (green or red by month).
+  - **Since start**: a cumulative P&L line from the first day you used the app.
+
+  Each view shows:
+  - ₪ and $ amounts and %
+  - realized vs. unrealized P&L
+  - a comparison with the S&P 500 and TA-125 over the same period
+  - which stocks contributed most and least
+  - the best and worst week/month
+  - the maximum drawdown
+
+  It's available per portfolio and as a combined view. Deposits and withdrawals are not counted as profit: returns are time-weighted.
 - **Recommendations feed**: ranked buy / sell / trim / add / hold cards. Each card shows its confidence, the signal breakdown and a plain-language reason.
 - **Watchlist**: candidates to buy, scored the same way.
 - **Market pulse**: the Fear & Greed meter, VIX, TA-35 / S&P 500 / NASDAQ, USD/ILS, and the top geopolitical headlines with their tone.
@@ -76,7 +90,20 @@ There are two ways to get them, both from the **My Portfolio** page:
   - positions with no stop
   - stops that are too tight or too loose for the chosen horizon
 
-  From the table you can **accept all**, accept selected rows, or edit any row. The review can also run on a schedule and be sent to Telegram, e.g. a weekly summary.
+  From the table you can **accept all**, accept selected rows, or edit any row. The review also runs automatically every week (see below).
+
+#### Weekly review in Telegram (on by default)
+
+- **When:** **Sunday at 20:00 Israel time** by default, and you can change it in settings. Since January 2026 both TASE and the US markets are closed on Sunday, so by then the week's prices are final, the weekend's news is known, and you have the evening to decide before both markets open on Monday.
+- **Contents:**
+  - last week's P&L
+  - stops and take-profits that were hit or are close
+  - suggested stop raises (trailing)
+  - new sell / trim warnings
+  - holdings that still have no holding period
+  - total portfolio risk vs. your limit
+  - a link to the full review in the app
+- **Urgent alerts don't wait for Sunday:** a stop hit, or a sharp move, still triggers an immediate Telegram message.
 
 #### Filters (apply to both modes)
 
@@ -92,7 +119,7 @@ The panel and the review share a filter bar. Changing a filter recalculates the 
 | **6 months** | Weekly, weekly ATR | ~2× weekly ATR, SMA 100 / weekly swing low | Analyst mean/high target, 3R, Fibonacci extensions |
 | **1 year+** | Weekly / monthly | Below SMA 200 / major multi-month support | Analyst high target, long-term resistance, trailing only |
 
-Each holding can have its own default horizon, e.g. a long-term core position and a 1-month trade. A filter can override all of them at once for a "what if" view.
+**There is no default holding period. The app always asks.** When you add a holding (or confirm it from a screenshot), the app asks "How long do you plan to hold this?". No stop-loss or take-profit is calculated until you answer. In the full portfolio review, holdings without an answer are listed first with a quick picker. Each holding keeps its own answer, e.g. a long-term core position next to a 1-month trade, and you can change it at any time. A filter can override all of them at once for a "what if" view.
 
 **2. Risk level.** You choose how much risk you accept, and there are several ways to set it:
 - **Presets**: Very Conservative / Conservative / Balanced / Balanced-Aggressive / Aggressive / Very Aggressive.
@@ -142,6 +169,9 @@ The selected horizon and risk filter are applied together. If a stop that fits t
 | Analysts | Wall Street consensus + insider trading (SEC Form 4, MAYA) |
 | AI text | Free LLM tier (Gemini / Groq), with fixed-template explanations as a fallback |
 | Refresh | About every 5 minutes, free data |
+| Holding period | **No default**: the app asks for each holding before suggesting exit levels |
+| Weekly review | On by default, Telegram, **Sunday 20:00 Israel time** (configurable) |
+| P&L view | Weekly, monthly and since start, compared with S&P 500 / TA-125 |
 | Tax | Not considered |
 | Backtesting | **Required before launch**: recommendations stay hidden until the scoring has been tested on historical data |
 
@@ -244,8 +274,9 @@ TELEGRAM_BOT_TOKEN=    # optional: alerts to your phone
 2. **Analyze a stock** page and **Exit levels** (stop-loss / take-profit by holding period + risk filter) for one stock or a full portfolio review.
 3. Analyst consensus + insider trading, Fear & Greed (stocks + crypto), VIX.
 4. Geopolitical/news signal (GDELT + RSS, Hebrew + English sources) and free-LLM summaries.
-5. **Backtesting** of the scoring and the exit levels. This must pass before live recommendations are shown.
-6. Telegram alerts, auto-refresh over WebSocket, PWA install, deployment to a cloud server.
+5. Performance page (weekly / monthly / since start P&L) and the weekly Telegram review.
+6. **Backtesting** of the scoring and the exit levels. This must pass before live recommendations are shown.
+7. Telegram alerts, auto-refresh over WebSocket, PWA install, deployment to a cloud server.
 
 ## License
 

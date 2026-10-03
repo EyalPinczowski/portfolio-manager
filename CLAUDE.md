@@ -63,6 +63,9 @@ cd frontend && npm run dev | npm test | npm run lint
 - **Exit levels** (`scoring/exit_levels.py`): stop-loss / take-profit suggestions. They are computed from a `Horizon` (1w / 1m / 3m / 6m / 1y+) and a `RiskFilter`, which drive the chart timeframe, ATR multiple, moving average and take-profit sources. The horizon table in the README is the spec, and its numbers live in config. Two entry points:
   - single holding: `GET /api/holdings/{id}/exit-levels?horizon=&risk=`
   - full portfolio review: `POST /api/portfolios/{id}/exit-review`, which returns per-holding rows plus portfolio totals (total risk to stops, top contributors, positions with no stop)
+- **There is no default horizon.** `Holding.horizon` is nullable. When it is null, the exit-levels endpoints return `needs_horizon` instead of guessing, and the UI asks the user. Never fill it in automatically.
+- **Weekly review**: a scheduled job, on by default, Sunday 20:00 `Asia/Jerusalem` (configurable per user), sent via Telegram. Urgent stop/target alerts are still sent immediately.
+- **Performance / P&L** (`portfolio/performance.py`): store a daily `PortfolioSnapshot` (value, cash, flows) for each portfolio, starting from its first import. Compute weekly, monthly and since-start P&L as **time-weighted** returns, so deposits and withdrawals are not counted as profit. Split realized and unrealized P&L and compare with `^GSPC` / `^TA125.TA`. Because holdings arrive as screenshots, the import review screen must ask whether a change in quantity or cash was a trade or a deposit/withdrawal.
 - Never quietly tighten a stop to fit the risk filter. Suggest a smaller position size instead.
 - A trailing stop only moves up (for longs). Every level carries a reason.
 - `RiskFilter`: preset + max loss % per position + max % of portfolio per trade + max total portfolio risk + min R:R + stop type. Presets fill in the fields, and users can save named filters.
