@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, status
-from pydantic import ValidationError
 from sqlmodel import Session, col, select
 
 from app.api.schemas import (
@@ -16,6 +15,7 @@ from app.api.schemas import (
     PortfolioCreate,
     PortfolioOut,
     PortfolioPatch,
+    RiskFilterIn,
     ScoreCardMini,
     SummaryOut,
     XrayOut,
@@ -39,7 +39,7 @@ from app.portfolio.xray import build_xray
 from app.providers.fx_provider import get_usd_ils
 from app.providers.registry import get_providers
 from app.repo import get_holding_in_portfolio, get_portfolio, list_portfolios
-from app.scoring.risk import PRESETS, resolve_risk_filter
+from app.scoring.risk import resolve_risk_filter
 from app.scoring.scorecard import get_cached_scorecard, is_fresh, refresh_scorecard
 from app.securities import get_or_create_security
 from app.timeutil import as_utc, local_today
@@ -60,17 +60,12 @@ def portfolio_out(p: Portfolio, settings: Settings) -> PortfolioOut:
     )
 
 
-def _clean_risk_filter(raw: dict[str, Any], settings: Settings) -> dict[str, Any]:
-    preset = raw.get("preset")
-    if preset is not None and preset not in PRESETS:
-        raise HTTPException(422, f"Unknown risk preset '{preset}'")
-    try:
-        resolved = resolve_risk_filter(raw, settings)
-    except ValidationError as exc:
-        raise HTTPException(422, "Invalid risk filter") from exc
-    keys = set(resolved.model_dump()) - {"preset"}
+def _clean_risk_filter(body: RiskFilterIn, settings: Settings) -> dict[str, Any]:
+    """Validated input (bounds and enums are enforced by `RiskFilterIn`) -> the stored dict."""
+    raw = body.model_dump(exclude_none=True)
+    resolved = resolve_risk_filter(raw, settings)
     out: dict[str, Any] = {"preset": resolved.preset}
-    out.update({k: v for k, v in raw.items() if k in keys and v is not None})
+    out.update({k: v for k, v in raw.items() if k != "preset"})
     return out
 
 
@@ -295,7 +290,7 @@ def add_holding(
     assert user.id is not None
     p = get_portfolio(db, user.id, portfolio_id)
     assert p.id is not None
-    symbol = body.symbol.strip().upper()
+    symbol = body.symbol  # already trimmed, upper-cased and pattern-checked
     sec = get_or_create_security(db, symbol)
     dup = db.exec(
         select(Holding).where(Holding.portfolio_id == p.id, Holding.symbol == symbol)
@@ -352,7 +347,8 @@ def patch_holding(
     if "horizon" in fields:
         h.horizon = body.horizon
     if "risk_override" in fields:
-        h.risk_override = body.risk_override
+        override = body.risk_override.model_dump(exclude_none=True) if body.risk_override else None
+        h.risk_override = override or None
     db.add(h)
     db.commit()
     assert h.id is not None

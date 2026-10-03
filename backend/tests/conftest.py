@@ -1,20 +1,28 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, SQLModel
 
-from app.auth.ratelimit import login_limiter
+from app.auth.passwords import reset_hasher_cache
+from app.auth.ratelimit import clear_all_limiters
 from app.config import get_settings
 from app.db import get_engine, init_db, new_session
 from app.providers.base import OcrResult, Quote
 from app.providers.registry import Providers, set_providers
 from app.securities import seed_securities
 from app.timeutil import utcnow
+
+# Run the whole suite on Postgres: `DATABASE_URL=postgresql+psycopg://user:pw@host/db pytest`
+# (needs `uv sync --extra postgres`). Anything else means SQLite in a per-test temp file. The
+# database is emptied before and after every test, so use a throwaway database.
+_PG_URL = os.environ.get("DATABASE_URL", "")
+USE_POSTGRES = _PG_URL.startswith(("postgresql", "postgres:"))
 
 
 class FakeQuotes:
@@ -52,19 +60,31 @@ class FakeOcr:
 
 @pytest.fixture
 def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
+    monkeypatch.setenv(
+        "DATABASE_URL", _PG_URL if USE_POSTGRES else f"sqlite:///{tmp_path / 'test.db'}"
+    )
     monkeypatch.setenv("SECRET_KEY", "test-secret")
+    monkeypatch.setenv("ENV", "dev")
+    monkeypatch.setenv("COOKIE_SECURE", "false")
     monkeypatch.setenv("LOGIN_RATE_LIMIT_ATTEMPTS", "3")
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     get_settings.cache_clear()
     get_engine.cache_clear()
-    login_limiter.clear()
+    clear_all_limiters()
+    reset_hasher_cache()
+    if USE_POSTGRES:
+        import app.models  # noqa: F401  (registers the tables)
+
+        SQLModel.metadata.drop_all(get_engine())  # a clean slate left by nothing else
     init_db()
     with new_session() as db:
         seed_securities(db)
     yield
     set_providers(None)
+    if USE_POSTGRES:
+        SQLModel.metadata.drop_all(get_engine())
+        get_engine().dispose()
     get_settings.cache_clear()
     get_engine.cache_clear()
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from sqlmodel import Session
@@ -17,10 +18,18 @@ from app.scoring.risk import (
 )
 
 
+def _position_override(raw: object) -> float | None:
+    """The per-holding max position %, or None if absent or not a usable number (bad stored JSON)."""
+    value = raw.get("max_position_pct") if isinstance(raw, dict) else None
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return float(value) if math.isfinite(value) and 0 < value <= 100 else None
+
+
 def to_positions(valuation: PortfolioValuation) -> list[Position]:
     out: list[Position] = []
     for v in valuation.holdings:
-        override = (v.holding.risk_override or {}).get("max_position_pct")
+        override = _position_override(v.holding.risk_override)
         out.append(
             Position(
                 symbol=v.security.symbol,
@@ -30,7 +39,7 @@ def to_positions(valuation: PortfolioValuation) -> list[Position]:
                 country=v.security.country,
                 currency=v.currency,
                 asset_type=v.security.asset_type,
-                max_position_pct=float(override) if override is not None else None,
+                max_position_pct=override,
                 dual_group=v.security.dual_listing_group,
             )
         )

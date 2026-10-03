@@ -11,6 +11,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import get_settings
 from app.db import get_engine, init_db, new_session
+from app.logging_setup import configure_logging
 from app.providers.registry import get_providers
 from app.scheduler import jobs
 from app.securities import seed_securities
@@ -37,6 +38,11 @@ def _catchup() -> None:
 def _scores() -> None:
     with new_session() as db:
         log.info("score refresh: %d", jobs.run_score_refresh(db, get_providers().history))
+
+
+def _purge_drafts() -> None:
+    with new_session() as db:
+        log.info("purged %d expired import drafts", jobs.run_draft_purge(db))
 
 
 def build_scheduler() -> BlockingScheduler:
@@ -68,11 +74,20 @@ def build_scheduler() -> BlockingScheduler:
         coalesce=True,
         misfire_grace_time=s.scheduler_misfire_grace_seconds,
     )
+    sched.add_job(
+        _purge_drafts,
+        IntervalTrigger(minutes=s.draft_purge_interval_minutes),
+        id="purge_drafts",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=s.scheduler_misfire_grace_seconds,
+    )
     return sched
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    configure_logging()
     init_db(get_engine())
     with new_session() as db:
         seed_securities(db)

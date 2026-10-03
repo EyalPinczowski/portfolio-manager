@@ -7,7 +7,7 @@ from collections.abc import Iterable
 
 from sqlmodel import Session
 
-from app.models import PriceQuote
+from app.models import PriceQuote, Security
 from app.providers.base import Quote, QuoteProvider
 
 log = logging.getLogger(__name__)
@@ -44,6 +44,10 @@ def store_quotes(db: Session, quotes: Iterable[Quote]) -> int:
             )
             db.add(row)
         n += 1
+        sec = db.get(Security, q.symbol)
+        if sec is not None and not sec.verified:
+            sec.verified = True  # the provider knows this ticker: it may now appear in search
+            db.add(sec)
     db.commit()
     return n
 

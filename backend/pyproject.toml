@@ -26,7 +26,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Postgres driver (cloud). Dev and tests use SQLite and need nothing extra.
+postgres = ["psycopg[binary]>=3.2"]
 dev = [
+  "pip-audit>=2.7",
   "pytest>=8.2",
   "ruff>=0.6",
   "mypy>=1.11",

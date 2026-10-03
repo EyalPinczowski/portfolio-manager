@@ -145,12 +145,22 @@
       }
     },
     "/api/me/export": {
-      "get": {
+      "post": {
         "tags": [
           "auth"
         ],
         "summary": "Export Me",
-        "operationId": "export_me_api_me_export_get",
+        "operationId": "export_me_api_me_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordBody"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -159,7 +169,17 @@
                 "schema": {
                   "additionalProperties": true,
                   "type": "object",
-                  "title": "Response Export Me Api Me Export Get"
+                  "title": "Response Export Me Api Me Export Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -174,6 +194,101 @@
         ],
         "summary": "Delete Me",
         "operationId": "delete_me_api_me_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/sessions": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "List Sessions",
+        "operationId": "list_sessions_api_auth_sessions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Sessions Api Auth Sessions Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/sessions/{session_id}": {
+      "delete": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Revoke Session",
+        "operationId": "revoke_session_api_auth_sessions__session_id__delete",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/sessions/revoke-all": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Revoke All Sessions",
+        "description": "Log out everywhere else: every session of this user except the current one.",
+        "operationId": "revoke_all_sessions_api_auth_sessions_revoke_all_post",
         "responses": {
           "204": {
             "description": "Successful Response"
@@ -738,12 +853,79 @@
             }
           }
         ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportDraftOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "The raw image bytes (not multipart).",
+          "content": {
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolios/{portfolio_id}/imports/rows": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Create Import From Rows",
+        "description": "On-device OCR path: no image ever reaches the server. No OCR consent is needed (no third\nparty and no server-side reading).",
+        "operationId": "create_import_from_rows_api_portfolios__portfolio_id__imports_rows_post",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
-            "multipart/form-data": {
+            "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_create_import_api_portfolios__portfolio_id__imports_post"
+                "$ref": "#/components/schemas/ImportRowsBody"
               }
             }
           }
@@ -906,6 +1088,28 @@
         }
       }
     },
+    "/api/launch-gate": {
+      "get": {
+        "tags": [
+          "misc"
+        ],
+        "summary": "Launch Gate",
+        "description": "Whether live buy/sell verdicts may be served, and if not, why not.",
+        "operationId": "launch_gate_api_launch_gate_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaunchGateOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/risk/presets": {
       "get": {
         "tags": [
@@ -937,6 +1141,7 @@
           "misc"
         ],
         "summary": "Securities Search",
+        "description": "Seeded or provider-verified securities only (never another user's unverified ticker).",
         "operationId": "securities_search_api_securities_search_get",
         "parameters": [
           {
@@ -945,6 +1150,7 @@
             "required": true,
             "schema": {
               "type": "string",
+              "maxLength": 64,
               "title": "Q"
             }
           }
@@ -1217,8 +1423,6 @@
         "properties": {
           "symbol": {
             "type": "string",
-            "maxLength": 32,
-            "minLength": 1,
             "title": "Symbol"
           },
           "op": {
@@ -1231,10 +1435,12 @@
           },
           "price": {
             "type": "number",
+            "maximum": 1000000000000.0,
             "exclusiveMinimum": 0.0,
             "title": "Price"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "symbol",
@@ -1255,6 +1461,10 @@
           },
           "op": {
             "type": "string",
+            "enum": [
+              "above",
+              "below"
+            ],
             "title": "Op"
           },
           "price": {
@@ -1287,20 +1497,6 @@
           "active"
         ],
         "title": "AlertOut"
-      },
-      "Body_create_import_api_portfolios__portfolio_id__imports_post": {
-        "properties": {
-          "file": {
-            "type": "string",
-            "contentMediaType": "application/octet-stream",
-            "title": "File"
-          }
-        },
-        "type": "object",
-        "required": [
-          "file"
-        ],
-        "title": "Body_create_import_api_portfolios__portfolio_id__imports_post"
       },
       "Breach": {
         "properties": {
@@ -1404,12 +1600,11 @@
         "properties": {
           "symbol": {
             "type": "string",
-            "maxLength": 32,
-            "minLength": 1,
             "title": "Symbol"
           },
           "quantity": {
             "type": "number",
+            "maximum": 1000000000000.0,
             "exclusiveMinimum": 0.0,
             "title": "Quantity"
           },
@@ -1417,6 +1612,7 @@
             "anyOf": [
               {
                 "type": "number",
+                "maximum": 1000000000000.0,
                 "minimum": 0.0
               },
               {
@@ -1459,6 +1655,7 @@
             "title": "Horizon"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "symbol",
@@ -1486,10 +1683,23 @@
           },
           "asset_type": {
             "type": "string",
+            "enum": [
+              "stock",
+              "etf",
+              "crypto",
+              "fund",
+              "bond",
+              "cash"
+            ],
             "title": "Asset Type"
           },
           "market": {
             "type": "string",
+            "enum": [
+              "US",
+              "TASE",
+              "CRYPTO"
+            ],
             "title": "Market"
           },
           "quantity": {
@@ -1586,6 +1796,7 @@
             "anyOf": [
               {
                 "type": "number",
+                "maximum": 1000000000000.0,
                 "exclusiveMinimum": 0.0
               },
               {
@@ -1598,6 +1809,7 @@
             "anyOf": [
               {
                 "type": "number",
+                "maximum": 1000000000000.0,
                 "minimum": 0.0
               },
               {
@@ -1642,16 +1854,15 @@
           "risk_override": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/RiskOverride"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Risk Override"
+            ]
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "HoldingPatch"
       },
@@ -1687,6 +1898,11 @@
             },
             "type": "array",
             "title": "Proposed Changes"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
           }
         },
         "type": "object",
@@ -1695,7 +1911,8 @@
           "portfolio_id",
           "status",
           "rows",
-          "proposed_changes"
+          "proposed_changes",
+          "expires_at"
         ],
         "title": "ImportDraftOut"
       },
@@ -1730,6 +1947,7 @@
             "title": "Proposed Changes"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "ImportPatch"
       },
@@ -1860,20 +2078,64 @@
             "title": "Flags"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "ImportRowModel"
+      },
+      "ImportRowsBody": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRowModel"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Rows"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rows"
+        ],
+        "title": "ImportRowsBody",
+        "description": "On-device OCR: the browser parsed the screenshot, only the stock rows are sent."
+      },
+      "LaunchGateOut": {
+        "properties": {
+          "open": {
+            "type": "boolean",
+            "title": "Open"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "open",
+          "reasons"
+        ],
+        "title": "LaunchGateOut"
       },
       "LoginIn": {
         "properties": {
           "email": {
             "type": "string",
+            "maxLength": 254,
             "title": "Email"
           },
           "password": {
             "type": "string",
+            "maxLength": 1024,
             "title": "Password"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "email",
@@ -1950,6 +2212,10 @@
           },
           "locale": {
             "type": "string",
+            "enum": [
+              "he",
+              "en"
+            ],
             "title": "Locale"
           },
           "disclaimer_accepted": {
@@ -2056,6 +2322,21 @@
         ],
         "title": "NotificationOut"
       },
+      "PasswordBody": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 1024,
+            "title": "Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "title": "PasswordBody"
+      },
       "Pnl": {
         "properties": {
           "ils": {
@@ -2097,6 +2378,7 @@
             "default": "ILS"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "name"
@@ -2115,6 +2397,10 @@
           },
           "base_currency": {
             "type": "string",
+            "enum": [
+              "ILS",
+              "USD"
+            ],
             "title": "Base Currency"
           },
           "risk_filter": {
@@ -2180,16 +2466,15 @@
           "risk_filter": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/RiskFilterIn"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Risk Filter"
+            ]
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "PortfolioPatch"
       },
@@ -2223,7 +2508,8 @@
           "quantity": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -2234,7 +2520,8 @@
           "amount": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -2247,6 +2534,7 @@
             "title": "Currency"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "row_index",
@@ -2257,6 +2545,153 @@
           "currency"
         ],
         "title": "ProposedChange"
+      },
+      "RiskFilterIn": {
+        "properties": {
+          "preset": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "very_conservative",
+                  "conservative",
+                  "balanced",
+                  "balanced_aggressive",
+                  "aggressive",
+                  "very_aggressive"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset"
+          },
+          "max_position_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Position Pct"
+          },
+          "max_sector_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Sector Pct"
+          },
+          "max_country_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Country Pct"
+          },
+          "max_loss_per_position_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Loss Per Position Pct"
+          },
+          "max_portfolio_risk_per_trade_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Portfolio Risk Per Trade Pct"
+          },
+          "max_total_portfolio_risk_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Total Portfolio Risk Pct"
+          },
+          "min_rr": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Rr"
+          },
+          "stop_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fixed",
+                  "trailing",
+                  "both"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Type"
+          },
+          "drawdown_defensive_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drawdown Defensive Pct"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RiskFilterIn",
+        "description": "A risk filter as the client may send it: every field optional and bounded.\n\nPercentages are in (0, 100]; `min_rr` is a ratio in (0, 100]. Presets fill the missing fields."
       },
       "RiskFilterOut": {
         "properties": {
@@ -2326,6 +2761,153 @@
           "drawdown_defensive_pct"
         ],
         "title": "RiskFilterOut"
+      },
+      "RiskOverride": {
+        "properties": {
+          "preset": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "very_conservative",
+                  "conservative",
+                  "balanced",
+                  "balanced_aggressive",
+                  "aggressive",
+                  "very_aggressive"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset"
+          },
+          "max_position_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Position Pct"
+          },
+          "max_sector_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Sector Pct"
+          },
+          "max_country_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Country Pct"
+          },
+          "max_loss_per_position_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Loss Per Position Pct"
+          },
+          "max_portfolio_risk_per_trade_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Portfolio Risk Per Trade Pct"
+          },
+          "max_total_portfolio_risk_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Total Portfolio Risk Pct"
+          },
+          "min_rr": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Rr"
+          },
+          "stop_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fixed",
+                  "trailing",
+                  "both"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Type"
+          },
+          "drawdown_defensive_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drawdown Defensive Pct"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RiskOverride",
+        "description": "A per-holding override: it wins over the portfolio's filter (CLAUDE.md, product decisions)."
       },
       "RiskPresetOut": {
         "properties": {
@@ -2535,6 +3117,11 @@
           },
           "market": {
             "type": "string",
+            "enum": [
+              "US",
+              "TASE",
+              "CRYPTO"
+            ],
             "title": "Market"
           }
         },
@@ -2586,6 +3173,36 @@
           "pct"
         ],
         "title": "SeriesPoint"
+      },
+      "SessionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Seen At"
+          },
+          "current": {
+            "type": "boolean",
+            "title": "Current"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "last_seen_at",
+          "current"
+        ],
+        "title": "SessionOut"
       },
       "SignalBreakdownOut": {
         "properties": {
@@ -2649,6 +3266,7 @@
         "properties": {
           "invite_code": {
             "type": "string",
+            "maxLength": 128,
             "minLength": 1,
             "title": "Invite Code"
           },
@@ -2659,6 +3277,7 @@
           },
           "password": {
             "type": "string",
+            "maxLength": 1024,
             "title": "Password"
           },
           "accept_disclaimer": {
@@ -2675,6 +3294,7 @@
             "default": "he"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "invite_code",

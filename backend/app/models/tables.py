@@ -35,14 +35,17 @@ class Invite(SQLModel, table=True):
 
 
 class AuthSession(SQLModel, table=True):
-    """Server-side session. `id` is the sha256 of the random cookie token."""
+    """Server-side session. `token_hash` is the sha256 of the random cookie token (the token itself
+    is never stored); `id` is the public, listable id used by the sessions endpoints."""
 
     __tablename__ = "session"
-    id: str = Field(primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
+    token_hash: str = Field(index=True, unique=True)
     user_id: int = Field(foreign_key="user.id", index=True)
     csrf_token: str
     expires_at: NaiveDatetime
     created_at: NaiveDatetime = Field(default_factory=utcnow)
+    last_seen_at: NaiveDatetime = Field(default_factory=utcnow)
 
 
 class Security(SQLModel, table=True):
@@ -57,6 +60,10 @@ class Security(SQLModel, table=True):
     sector: str = "Unknown"
     country: str = "Unknown"
     dual_listing_group: str | None = Field(default=None, index=True)
+    # Seeded rows are verified. A ticker a user typed in is created unverified and becomes verified
+    # when the quote provider returns a price for it. Search lists verified securities only, so one
+    # user's watchlist never shows up in another user's search.
+    verified: bool = True
 
 
 class Portfolio(SQLModel, table=True):

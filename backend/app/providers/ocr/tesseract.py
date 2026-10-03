@@ -15,6 +15,7 @@ def tesseract_available() -> bool:
 
 class TesseractProvider:
     name = "tesseract"
+    third_party = False
 
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()

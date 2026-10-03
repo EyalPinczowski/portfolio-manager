@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Response, status
+from typing import Annotated
+
+from fastapi import APIRouter, HTTPException, Query, Response, status
 
 from app.api.schemas import (
     AlertCreate,
     AlertOut,
+    LaunchGateOut,
     NotificationOut,
     RiskPresetOut,
     ScoreCardDetail,
@@ -14,6 +17,7 @@ from app.api.schemas import (
 )
 from app.auth.deps import DbDep, SettingsDep, UserDep
 from app.config import DISCLAIMER
+from app.launchgate import GateDep
 from app.models import PriceAlert, Security
 from app.providers.registry import get_providers
 from app.repo import (
@@ -31,15 +35,30 @@ from app.timeutil import as_utc
 router = APIRouter(tags=["misc"])
 
 
+@router.get("/launch-gate", response_model=LaunchGateOut)
+def launch_gate(user: UserDep, gate: GateDep) -> LaunchGateOut:
+    """Whether live buy/sell verdicts may be served, and if not, why not."""
+    result = gate.evaluate()
+    return LaunchGateOut(open=result.open, reasons=result.reasons)
+
+
 @router.get("/risk/presets", response_model=list[RiskPresetOut])
 def risk_presets(user: UserDep) -> list[RiskPresetOut]:
     return [RiskPresetOut.model_validate(p.model_dump()) for p in list_presets()]
 
 
 @router.get("/securities/search", response_model=list[SecurityHit])
-def securities_search(q: str, user: UserDep, db: DbDep) -> list[SecurityHit]:
+def securities_search(
+    user: UserDep, db: DbDep, q: Annotated[str, Query(max_length=64)]
+) -> list[SecurityHit]:
+    """Seeded or provider-verified securities only (never another user's unverified ticker)."""
     return [
-        SecurityHit(symbol=s.symbol, name_en=s.name_en, name_he=s.name_he, market=s.market)
+        SecurityHit(
+            symbol=s.symbol,
+            name_en=s.name_en,
+            name_he=s.name_he,
+            market=s.market,  # type: ignore[arg-type]
+        )
         for s in search_securities(db, q)
     ]
 
@@ -90,9 +109,14 @@ def alerts(user: UserDep, db: DbDep) -> list[AlertOut]:
 
 
 @router.post("/alerts", response_model=AlertOut, status_code=status.HTTP_201_CREATED)
-def create_alert(body: AlertCreate, user: UserDep, db: DbDep) -> AlertOut:
+def create_alert(body: AlertCreate, user: UserDep, db: DbDep, settings: SettingsDep) -> AlertOut:
     assert user.id is not None
-    sym = body.symbol.strip().upper()
+    if len(list_alerts(db, user.id)) >= settings.max_alerts_per_user:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"You can have at most {settings.max_alerts_per_user} alerts; delete one first",
+        )
+    sym = body.symbol  # trimmed, upper-cased and pattern-checked by AlertCreate
     get_or_create_security(db, sym)
     a = PriceAlert(user_id=user.id, symbol=sym, op=body.op, price=body.price)
     db.add(a)

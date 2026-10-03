@@ -4,18 +4,20 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 ChangeType = Literal["buy", "sell", "deposit", "withdrawal"]
 EPS = 1e-9
 
 
 class ProposedChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     row_index: int  # -1 when the holding vanished from the screenshot
     symbol: str | None
     type: ChangeType
-    quantity: float | None
-    amount: float | None  # in `currency`
+    quantity: float | None = Field(ge=0, allow_inf_nan=False)
+    amount: float | None = Field(ge=0, allow_inf_nan=False)  # in `currency`
     currency: str
 
 

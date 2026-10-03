@@ -10,6 +10,7 @@ image" is guaranteed by construction: the bytes go out of scope when `build_draf
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -17,6 +18,7 @@ from sqlmodel import Session, col, select
 
 from app.config import Settings, get_settings
 from app.importer.diff import ProposedChange, diff_rows
+from app.importer.imageio import ImageRejectedError
 from app.importer.match import SecurityIndex, apply_match, match_row
 from app.importer.parse import ParsedRow, cost_native, parse_ocr_result, price_native, validate_row
 from app.importer.redact import redact_image
@@ -31,9 +33,32 @@ from app.models import (
 from app.portfolio.valuation import ensure_tracking_started
 from app.providers.base import OcrProvider, OcrUnavailableError
 from app.providers.fx_provider import get_usd_ils
-from app.timeutil import local_today
+from app.timeutil import as_utc, local_today, utcnow
 
 log = logging.getLogger(__name__)
+
+
+def draft_expires_at(draft: ImportDraft, settings: Settings | None = None) -> datetime:
+    """When an unconfirmed draft is deleted (aware UTC)."""
+    s = settings or get_settings()
+    return as_utc(draft.created_at) + timedelta(hours=s.import_draft_ttl_hours)
+
+
+def purge_expired_drafts(
+    db: Session, settings: Settings | None = None, now: datetime | None = None
+) -> int:
+    """Delete unconfirmed drafts older than the TTL (retention rule: 24 h). Returns the count."""
+    s = settings or get_settings()
+    cutoff = (now or utcnow()) - timedelta(hours=s.import_draft_ttl_hours)
+    old = db.exec(
+        select(ImportDraft).where(
+            col(ImportDraft.status) != "confirmed", col(ImportDraft.created_at) < cutoff
+        )
+    ).all()
+    for d in old:
+        db.delete(d)
+    db.commit()
+    return len(old)
 
 
 def last_snapshot_rows(db: Session, portfolio_id: int) -> list[dict[str, Any]] | None:
@@ -96,6 +121,38 @@ def recompute_changes(
     return diff_rows(_diff_input(rows), last_snapshot_rows(db, portfolio_id))
 
 
+def keep_stock_rows(rows: list[ParsedRow]) -> list[ParsedRow]:
+    """Drop lines that are not stock rows (account / owner / address lines read by OCR).
+
+    A row survives only if it matches a security or its quantity x price ~ value validates.
+    Dropped lines are never stored (and never logged): the draft holds stock fields only.
+    """
+    kept = [
+        r
+        for r in rows
+        if r.symbol is not None or not {"missing_fields", "value_mismatch"} & set(r.flags)
+    ]
+    for i, r in enumerate(kept):
+        r.index = i
+    return kept
+
+
+def _save_draft(db: Session, portfolio: Portfolio, rows: list[ParsedRow]) -> ImportDraft:
+    assert portfolio.id is not None
+    if not rows:
+        raise HTTPException(422, "No holdings could be read from the image")
+    draft = ImportDraft(
+        portfolio_id=portfolio.id,
+        rows=[r.model_dump() for r in rows],
+        proposed_changes=[c.model_dump() for c in recompute_changes(db, portfolio.id, rows)],
+        status="draft",
+    )
+    db.add(draft)
+    db.commit()
+    db.refresh(draft)
+    return draft
+
+
 def build_draft(
     db: Session,
     portfolio: Portfolio,
@@ -107,32 +164,46 @@ def build_draft(
     assert portfolio.id is not None
     try:
         redacted, report = redact_image(image_bytes, s)
+    except ImageRejectedError as exc:
+        raise HTTPException(exc.status, exc.message) from exc
     except Exception as exc:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "The file is not a readable image"
         ) from exc
-    if not report.word_boxes_available:
-        log.warning("Tesseract unavailable: header redacted, long digit runs could not be blurred")
     try:
-        result = ocr.extract(redacted)
-    except OcrUnavailableError as exc:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
+        if not report.word_boxes_available:
+            log.warning("Word-box redaction unavailable: long digit runs could not be blurred")
+            if getattr(ocr, "third_party", False):
+                # Never send a half-redacted image to a third party.
+                raise HTTPException(
+                    status.HTTP_503_SERVICE_UNAVAILABLE,
+                    "Server-side reading with an external service needs full redaction, which is "
+                    "unavailable here. Use on-device reading instead.",
+                )
+        try:
+            result = ocr.extract(redacted)
+        except OcrUnavailableError as exc:
+            raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
     finally:
         del redacted, image_bytes
     rows = parse_ocr_result(result, s)
+    del result  # raw OCR text goes out of scope here and is never stored
     if not rows:
         raise HTTPException(422, "No holdings could be read from the image")
     finalize_rows(db, rows, s)
-    draft = ImportDraft(
-        portfolio_id=portfolio.id,
-        rows=[r.model_dump() for r in rows],
-        proposed_changes=[c.model_dump() for c in recompute_changes(db, portfolio.id, rows)],
-        status="draft",
-    )
-    db.add(draft)
-    db.commit()
-    db.refresh(draft)
-    return draft
+    return _save_draft(db, portfolio, keep_stock_rows(rows))
+
+
+def build_draft_from_rows(
+    db: Session, portfolio: Portfolio, rows: list[ParsedRow], settings: Settings | None = None
+) -> ImportDraft:
+    """On-device OCR path: the browser read the screenshot, only the parsed rows arrive."""
+    s = settings or get_settings()
+    for r in rows:  # the server decides flags / candidates / matches, never the client
+        r.flags, r.candidates, r.matched_name = [], [], None
+        r.name = r.name[: s.import_name_max_chars]
+    finalize_rows(db, rows, s)
+    return _save_draft(db, portfolio, keep_stock_rows(rows))
 
 
 def merge_duplicate_rows(rows: list[ParsedRow]) -> list[ParsedRow]:
@@ -235,6 +306,8 @@ def confirm_draft(
                 )
             )
     draft.status = "confirmed"
+    draft.rows = []  # retention: only the HoldingsSnapshot / holdings keep the stock data
+    draft.proposed_changes = []
     db.add(draft)
     db.commit()
     ensure_tracking_started(db, portfolio, today)

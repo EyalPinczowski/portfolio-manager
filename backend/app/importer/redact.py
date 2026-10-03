@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from PIL import Image, ImageFilter
 
 from app.config import Settings, get_settings
+from app.importer.imageio import open_checked, to_rgb_bounded
 from app.providers.ocr.tesseract import tesseract_available
 
 log = logging.getLogger(__name__)
@@ -73,14 +74,14 @@ def redact_image(
 ) -> tuple[bytes, RedactionReport]:
     """Return (redacted PNG bytes, report). `word_boxes` can be injected (tests / other OCR)."""
     s = settings or get_settings()
-    with Image.open(io.BytesIO(image_bytes)) as src:
-        img = src.convert("RGB")
+    with open_checked(image_bytes, s) as src:  # raises ImageRejectedError (413 / 400)
+        img = to_rgb_bounded(src, s)
     available = True
     if word_boxes is None:
         try:
             word_boxes = find_word_boxes(img, s.tesseract_lang)
         except Exception as exc:
-            log.warning("word-box detection failed: %s", exc)
+            log.warning("word-box detection failed: %s", type(exc).__name__)
             word_boxes = None
         if word_boxes is None:
             available = False

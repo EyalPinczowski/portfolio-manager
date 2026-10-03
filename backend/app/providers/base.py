@@ -111,5 +111,8 @@ class OcrUnavailableError(RuntimeError):
 @runtime_checkable
 class OcrProvider(Protocol):
     name: str
+    # True if the image is sent to an outside service. Such a provider only ever receives an image
+    # whose word-box redaction completed (see importer/service.py). Providers without the
+    # attribute are treated as local.
 
     def extract(self, image_bytes: bytes) -> OcrResult: ...

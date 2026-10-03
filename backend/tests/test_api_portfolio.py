@@ -345,7 +345,7 @@ def test_securities_search_hebrew_english_symbol(signup: SignupFn) -> None:
 # ---------------------------------------------------------------- screenshot import
 def upload(c: TestClient, pid: int) -> Any:
     return c.post(
-        f"/api/portfolios/{pid}/imports", files={"file": ("shot.png", png_bytes(), "image/png")}
+        f"/api/portfolios/{pid}/imports", content=png_bytes(), headers={"Content-Type": "image/png"}
     )
 
 
@@ -358,9 +358,17 @@ def test_import_requires_consent_and_valid_image(
     assert upload(c, pid).status_code == 403
     c.post("/api/auth/consent/ocr")
     bad = c.post(
-        f"/api/portfolios/{pid}/imports", files={"file": ("x.png", b"not an image", "image/png")}
+        f"/api/portfolios/{pid}/imports",
+        content=b"not an image",
+        headers={"Content-Type": "image/png"},
     )
-    assert bad.status_code == 400
+    assert bad.status_code == 415  # the magic bytes decide, not the header
+    corrupt = c.post(
+        f"/api/portfolios/{pid}/imports",
+        content=png_bytes()[:40],  # a PNG header, then nothing
+        headers={"Content-Type": "image/png"},
+    )
+    assert corrupt.status_code == 400
     ocr_text["text"] = "nothing useful here"
     assert upload(c, pid).status_code == 422
 

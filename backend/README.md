@@ -9,8 +9,12 @@ for the contract. Not financial advice.
 cd backend
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -e ".[dev]"
-cp .env.example .env            # set SECRET_KEY; COOKIE_SECURE=true behind HTTPS
+cp .env.example .env            # set SECRET_KEY; local dev needs ENV=dev and COOKIE_SECURE=false
 ```
+
+`ENV=production` is the default: it disables `/api/docs` and the API refuses to start unless
+`COOKIE_SECURE=true` and `SECRET_KEY` is a real secret (32+ chars). `uv sync --frozen --extra dev` uses
+`uv.lock`; add `--extra postgres` for the Postgres driver.
 
 Tesseract (optional but needed for the free OCR path): `apt install tesseract-ocr tesseract-ocr-heb`.
 Without it, uploads return 503 unless `GEMINI_API_KEY` is set.
@@ -33,6 +37,8 @@ Run the API with a single worker (the login rate limiter is in memory).
 .venv/bin/pytest                    # fixtures only; live tests are skipped (pytest -m live to run them)
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
 .venv/bin/mypy app
+# the same suite on Postgres (empties that database around every test: use a throwaway one):
+DATABASE_URL=postgresql+psycopg://user:pw@localhost:5432/test .venv/bin/pytest
 ```
 
 ## Layout

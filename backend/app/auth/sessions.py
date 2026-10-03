@@ -9,7 +9,7 @@ from datetime import timedelta
 
 from fastapi import Request, Response
 from itsdangerous import BadSignature, URLSafeTimedSerializer
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from app.config import Settings
 from app.models import AuthSession, User
@@ -32,7 +32,7 @@ def create_session(db: Session, user: User, settings: Settings) -> tuple[AuthSes
     assert user.id is not None
     token = secrets.token_urlsafe(32)
     row = AuthSession(
-        id=_session_id(token),
+        token_hash=_session_id(token),
         user_id=user.id,
         csrf_token=secrets.token_urlsafe(32),
         expires_at=utcnow() + timedelta(hours=settings.session_ttl_hours),
@@ -72,9 +72,16 @@ def load_session(db: Session, request: Request, settings: Settings) -> AuthSessi
         token = _serializer(settings).loads(raw, max_age=settings.session_ttl_hours * 3600)
     except BadSignature:
         return None
-    row = db.get(AuthSession, _session_id(str(token)))
-    if row is None or row.expires_at <= utcnow():
+    row = db.exec(
+        select(AuthSession).where(col(AuthSession.token_hash) == _session_id(str(token)))
+    ).first()
+    now = utcnow()
+    if row is None or row.expires_at <= now:
         return None
+    if (now - row.last_seen_at).total_seconds() >= settings.session_touch_seconds:
+        row.last_seen_at = now  # at most one write per interval, not one per request
+        db.add(row)
+        db.commit()
     return row
 
 

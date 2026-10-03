@@ -3,24 +3,54 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+)
 
 from app.importer.diff import ProposedChange
 from app.importer.parse import ParsedRow
+from app.scoring.risk import PresetName, StopType
 
 Horizon = Literal["1w", "1m", "3m", "6m", "1y"]
 MarketKey = Literal["US", "TASE", "CRYPTO"]
+AssetType = Literal["stock", "etf", "crypto", "fund", "bond", "cash"]
+Locale = Literal["he", "en"]
+
+SYMBOL_PATTERN = r"^[A-Z0-9.^=\-]{1,20}$"
+BIG = 1e12  # sanity ceiling for quantities, prices and costs
+
+
+def _norm_symbol(v: Any) -> Any:
+    return v.strip().upper() if isinstance(v, str) else v
+
+
+# A ticker as Yahoo spells it (AAPL, TEVA.TA, BRK-B, ^GSPC, ILS=X); trimmed and upper-cased first.
+Symbol = Annotated[str, BeforeValidator(_norm_symbol), Field(pattern=SYMBOL_PATTERN)]
+Pct = Annotated[float, Field(gt=0, le=100, allow_inf_nan=False, strict=True)]
+Positive = Annotated[float, Field(gt=0, le=BIG, allow_inf_nan=False, strict=True)]
+NonNegative = Annotated[float, Field(ge=0, le=BIG, allow_inf_nan=False, strict=True)]
+
+
+class Body(BaseModel):
+    """Base of every request body: unknown fields are rejected, never silently stored."""
+
+    model_config = ConfigDict(extra="forbid")
 
 
 # ---------------------------------------------------------------- auth
-class SignupIn(BaseModel):
-    invite_code: str = Field(min_length=1)
+class SignupIn(Body):
+    invite_code: str = Field(min_length=1, max_length=128)
     email: EmailStr
-    password: str
+    password: str = Field(max_length=1024)
     accept_disclaimer: bool
-    locale: Literal["he", "en"] = "he"
+    locale: Locale = "he"
 
     @field_validator("accept_disclaimer")
     @classmethod
@@ -30,30 +60,63 @@ class SignupIn(BaseModel):
         return v
 
 
-class LoginIn(BaseModel):
-    email: str
-    password: str
+class LoginIn(Body):
+    email: str = Field(max_length=254)
+    password: str = Field(max_length=1024)
+
+
+class PasswordBody(Body):
+    password: str = Field(max_length=1024)
+
+
+class SessionOut(BaseModel):
+    id: int
+    created_at: datetime
+    last_seen_at: datetime
+    current: bool
 
 
 class MeOut(BaseModel):
     id: int
     email: str
-    locale: str
+    locale: Locale
     disclaimer_accepted: bool
     ocr_consent: bool
     csrf_token: str
 
 
 # ---------------------------------------------------------------- portfolios
-class PortfolioCreate(BaseModel):
+class RiskFilterIn(Body):
+    """A risk filter as the client may send it: every field optional and bounded.
+
+    Percentages are in (0, 100]; `min_rr` is a ratio in (0, 100]. Presets fill the missing fields.
+    """
+
+    preset: PresetName | None = None
+    max_position_pct: Pct | None = None
+    max_sector_pct: Pct | None = None
+    max_country_pct: Pct | None = None
+    max_loss_per_position_pct: Pct | None = None
+    max_portfolio_risk_per_trade_pct: Pct | None = None
+    max_total_portfolio_risk_pct: Pct | None = None
+    min_rr: Pct | None = None
+    stop_type: StopType | None = None
+    drawdown_defensive_pct: Pct | None = None
+
+
+class RiskOverride(RiskFilterIn):
+    """A per-holding override: it wins over the portfolio's filter (CLAUDE.md, product decisions)."""
+
+
+class PortfolioCreate(Body):
     name: str = Field(min_length=1, max_length=100)
     base_currency: Literal["ILS", "USD"] = "ILS"
 
 
-class PortfolioPatch(BaseModel):
+class PortfolioPatch(Body):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     base_currency: Literal["ILS", "USD"] | None = None
-    risk_filter: dict[str, Any] | None = None
+    risk_filter: RiskFilterIn | None = None
 
 
 class RiskFilterOut(BaseModel):
@@ -65,14 +128,14 @@ class RiskFilterOut(BaseModel):
     max_portfolio_risk_per_trade_pct: float
     max_total_portfolio_risk_pct: float
     min_rr: float
-    stop_type: Literal["fixed", "trailing", "both"]
+    stop_type: StopType
     drawdown_defensive_pct: float
 
 
 class PortfolioOut(BaseModel):
     id: int
     name: str
-    base_currency: str
+    base_currency: Literal["ILS", "USD"]
     risk_filter: RiskFilterOut
     tracking_started_at: str | None = None
     created_at: datetime
@@ -152,8 +215,8 @@ class HoldingOut(BaseModel):
     symbol: str
     name_en: str
     name_he: str
-    asset_type: str
-    market: str
+    asset_type: AssetType
+    market: MarketKey
     quantity: float
     price: float
     currency: str
@@ -167,20 +230,20 @@ class HoldingOut(BaseModel):
     price_stale: bool = False
 
 
-class HoldingCreate(BaseModel):
-    symbol: str = Field(min_length=1, max_length=32)
-    quantity: float = Field(gt=0)
-    avg_cost: float | None = Field(default=None, ge=0)
+class HoldingCreate(Body):
+    symbol: Symbol
+    quantity: Positive
+    avg_cost: NonNegative | None = None
     cost_currency: Literal["ILS", "USD"] | None = None
     horizon: Horizon | None = None
 
 
-class HoldingPatch(BaseModel):
-    quantity: float | None = Field(default=None, gt=0)
-    avg_cost: float | None = Field(default=None, ge=0)
+class HoldingPatch(Body):
+    quantity: Positive | None = None
+    avg_cost: NonNegative | None = None
     cost_currency: Literal["ILS", "USD"] | None = None
     horizon: Horizon | None = None
-    risk_override: dict[str, Any] | None = None
+    risk_override: RiskOverride | None = None
 
 
 class ExposureItem(BaseModel):
@@ -224,8 +287,13 @@ ImportFlag = Literal[
 
 
 class ImportRowModel(ParsedRow):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
     flags: list[ImportFlag] = Field(default_factory=list)  # type: ignore[assignment]
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _cap_name(cls, v: Any) -> Any:
+        return v[:200] if isinstance(v, str) else v  # a name is a few words, never a text dump
 
 
 class ImportDraftOut(BaseModel):
@@ -234,18 +302,30 @@ class ImportDraftOut(BaseModel):
     status: Literal["draft", "confirmed", "discarded"]
     rows: list[ImportRowModel]
     proposed_changes: list[ProposedChange]
+    expires_at: datetime  # an unconfirmed draft is deleted then (24 h after creation)
 
 
-class ImportPatch(BaseModel):
+class ImportRowsBody(Body):
+    """On-device OCR: the browser parsed the screenshot, only the stock rows are sent."""
+
+    rows: list[ImportRowModel] = Field(max_length=200)
+
+
+class ImportPatch(Body):
     rows: list[ImportRowModel] | None = None
     proposed_changes: list[ProposedChange] | None = None
+
+
+class LaunchGateOut(BaseModel):
+    open: bool
+    reasons: list[str]
 
 
 class SecurityHit(BaseModel):
     symbol: str
     name_en: str
     name_he: str
-    market: str
+    market: MarketKey
 
 
 # ---------------------------------------------------------------- scorecard
@@ -277,16 +357,16 @@ class ScoreCardDetail(BaseModel):
 
 
 # ---------------------------------------------------------------- alerts / notifications
-class AlertCreate(BaseModel):
-    symbol: str = Field(min_length=1, max_length=32)
+class AlertCreate(Body):
+    symbol: Symbol
     op: Literal["above", "below"]
-    price: float = Field(gt=0)
+    price: Positive
 
 
 class AlertOut(BaseModel):
     id: int
     symbol: str
-    op: str
+    op: Literal["above", "below"]
     price: float
     active: bool
     triggered_at: datetime | None = None

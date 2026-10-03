@@ -98,3 +98,10 @@ def run_score_refresh(
             db.rollback()
             log.warning("score refresh failed for %s: %s", sym, exc)
     return n
+
+
+def run_draft_purge(db: Session, settings: Settings | None = None) -> int:
+    """Retention rule: unconfirmed import drafts are deleted 24 h after creation."""
+    from app.importer.service import purge_expired_drafts
+
+    return purge_expired_drafts(db, settings)

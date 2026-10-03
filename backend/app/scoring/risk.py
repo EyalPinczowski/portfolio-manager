@@ -6,30 +6,44 @@ later phases the filter may block or downgrade a recommendation but never upgrad
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.config import Settings, get_settings
 
 StopType = Literal["fixed", "trailing", "both"]
+PresetName = Literal[
+    "very_conservative",
+    "conservative",
+    "balanced",
+    "balanced_aggressive",
+    "aggressive",
+    "very_aggressive",
+]
+
+
+Limit = Annotated[float, Field(gt=0, le=100, allow_inf_nan=False)]
 
 
 class RiskFilter(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    """The user's limits. Every number is a finite value in (0, 100]; unknown fields are rejected."""
+
+    model_config = ConfigDict(extra="forbid")
 
     preset: str | None = None
-    max_position_pct: float
-    max_sector_pct: float
-    max_country_pct: float
-    max_loss_per_position_pct: float
-    max_portfolio_risk_per_trade_pct: float
-    max_total_portfolio_risk_pct: float
-    min_rr: float
+    max_position_pct: Limit
+    max_sector_pct: Limit
+    max_country_pct: Limit
+    max_loss_per_position_pct: Limit
+    max_portfolio_risk_per_trade_pct: Limit
+    max_total_portfolio_risk_pct: Limit
+    min_rr: Limit
     stop_type: StopType
-    drawdown_defensive_pct: float
+    drawdown_defensive_pct: Limit
 
 
 class RiskPreset(RiskFilter):
@@ -70,14 +84,36 @@ def list_presets() -> list[RiskPreset]:
 
 
 def resolve_risk_filter(raw: dict[str, Any] | None, settings: Settings | None = None) -> RiskFilter:
-    """Preset defaults overlaid with any explicit numeric overrides stored on the portfolio."""
+    """Preset defaults overlaid with any explicit numeric overrides stored on the portfolio.
+
+    Stored JSON is untrusted (older versions saved unvalidated input): an override that is not a
+    finite number in (0, 100] (or a bad `stop_type`) is ignored and the preset value is used, so
+    the X-ray and the other readers never fail on bad stored data.
+    """
     s = settings or get_settings()
-    raw = raw or {}
+    raw = raw if isinstance(raw, dict) else {}
     name = raw.get("preset") or s.default_risk_preset
     base = PRESETS.get(name, PRESETS[DEFAULT_PRESET]).model_dump(exclude={"name"})
     base["preset"] = name if name in PRESETS else DEFAULT_PRESET
-    overrides = {k: v for k, v in raw.items() if k in base and k != "preset" and v is not None}
-    return RiskFilter.model_validate({**base, **overrides})
+    merged = dict(base)
+    for key, value in raw.items():
+        if key not in base or key == "preset" or value is None:
+            continue
+        if key == "stop_type":
+            if value in ("fixed", "trailing", "both"):
+                merged[key] = value
+        elif _valid_limit(value):
+            merged[key] = float(value)
+    return RiskFilter.model_validate(merged)
+
+
+def _valid_limit(value: Any) -> bool:
+    return (
+        isinstance(value, int | float)
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and 0 < value <= 100
+    )
 
 
 @dataclass

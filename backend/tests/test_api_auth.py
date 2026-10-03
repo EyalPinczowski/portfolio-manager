@@ -47,7 +47,13 @@ def test_invite_is_single_use_and_email_unique(client: TestClient) -> None:
     assert raw_signup(client, code).status_code == 201
     other = TestClient(create_app())
     assert raw_signup(other, code, "c@mail.com").status_code == 400
-    assert raw_signup(other, make_invite(), "BOB@mail.com").status_code == 409
+    spare = make_invite()
+    dup = raw_signup(other, spare, "BOB@mail.com")
+    assert dup.status_code == 400
+    assert (
+        dup.json() == raw_signup(other, "nope", "zed@mail.com").json()
+    )  # same answer as a bad invite
+    assert raw_signup(other, spare, "fresh@mail.com").status_code == 201  # and it was not consumed
 
 
 def test_signup_sets_disclaimer_and_argon2id_hash(client: TestClient) -> None:
@@ -92,7 +98,7 @@ def test_csrf_header_is_required_on_every_mutation(signup: SignupFn) -> None:
         ("POST", "/api/alerts", {"symbol": "AAPL", "op": "above", "price": 1}),
         ("POST", "/api/auth/consent/ocr", None),
         ("POST", "/api/auth/logout", None),
-        ("DELETE", "/api/me", None),
+        ("DELETE", "/api/me", {"password": GOOD["password"]}),
     ]:
         r = c.request(method, path, json=body)
         assert r.status_code == 403, (method, path)
@@ -153,10 +159,13 @@ def test_export_and_delete_account(signup: SignupFn) -> None:
     c = signup("gone@mail.com")
     pid = c.post("/api/portfolios", json={"name": "mine", "base_currency": "ILS"}).json()["id"]
     c.post("/api/alerts", json={"symbol": "AAPL", "op": "above", "price": 300})
-    export = c.get("/api/me/export").json()
+    assert c.request("DELETE", "/api/me", json={"password": "wrong"}).status_code == 403
+    assert c.post("/api/me/export", json={"password": "wrong"}).status_code == 403
+    assert c.get("/api/me/export").status_code == 405
+    export = c.post("/api/me/export", json={"password": GOOD["password"]}).json()
     assert export["user"]["email"] == "gone@mail.com" and "password_hash" not in export["user"]
     assert export["portfolios"][0]["id"] == pid and len(export["alerts"]) == 1
-    assert c.delete("/api/me").status_code == 204
+    assert c.request("DELETE", "/api/me", json={"password": GOOD["password"]}).status_code == 204
     assert c.get("/api/auth/me").status_code == 401
     with new_session() as db:
         assert db.exec(select(User)).first() is None

@@ -10,6 +10,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DISCLAIMER = "Not financial advice."
+DEFAULT_SECRET_KEY = "change-me-in-production"
 
 SIGNAL_NAMES: tuple[str, ...] = (
     "technical",
@@ -49,17 +50,32 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # --- core ---
+    # "production" is the default so a forgotten variable can never expose docs or insecure cookies.
+    # Local development sets ENV=dev (and COOKIE_SECURE=false when serving plain http).
+    env: Literal["dev", "production"] = "production"
     database_url: str = "sqlite:///./portfolio.db"
-    secret_key: str = "change-me-in-production"
+    secret_key: str = DEFAULT_SECRET_KEY
     cors_origins: list[str] = Field(default_factory=list)
 
     # --- auth ---
     cookie_name: str = "pm_session"
-    cookie_secure: bool = False
+    cookie_secure: bool = True  # must stay True in production (the app refuses to start otherwise)
     session_ttl_hours: int = 24 * 14
+    session_touch_seconds: int = 300  # how often `last_seen_at` is refreshed
     password_min_length: int = 10
-    login_rate_limit_attempts: int = 5
-    login_rate_limit_window_seconds: int = 300
+    login_rate_limit_attempts: int = 5  # free failures per email before backoff starts
+    login_rate_limit_ip_multiplier: int = 4  # a shared IP gets this many times more free failures
+    login_rate_limit_window_seconds: int = 300  # failures are forgotten / backoff capped at this
+    login_backoff_base_seconds: float = 15.0  # first block; doubles with every further failure
+    signup_rate_limit_per_hour: int = 10  # per IP, every attempt counts
+    upload_rate_limit_per_hour: int = 30  # per user, screenshot and on-device rows imports
+    trusted_proxy_header: str | None = None  # e.g. "CF-Connecting-IP"; off by default
+    trusted_proxy_cidrs: list[str] = Field(default_factory=list)  # restrict who may set it
+    argon2_memory_kib: int = 19 * 1024  # OWASP: m=19 MiB, t=2, p=1
+    argon2_time_cost: int = 2
+    argon2_parallelism: int = 1
+    argon2_max_concurrent: int = 2  # concurrent hashes (memory bound on a 512 MB host)
+    max_alerts_per_user: int = 50
     invite_ttl_days: int = 14
 
     # --- market data ---
@@ -80,6 +96,9 @@ class Settings(BaseSettings):
     provider_single_retry_max: int = 5  # tickers retried one by one after a batch came back empty
 
     # --- scheduler ---
+    # Reserved for the single-host deployment (docs/deployment.md, block D): run the jobs inside the
+    # API process. Not implemented yet; today the scheduler is `python -m app.scheduler`.
+    scheduler_in_process: bool = False
     quotes_interval_minutes: int = 5
     scores_interval_minutes: int = 30
     score_cache_ttl_minutes: int = 360
@@ -139,7 +158,15 @@ class Settings(BaseSettings):
     non_country_labels: list[str] = Field(default_factory=lambda: ["Global", "Unknown"])
 
     # --- importer ---
-    max_upload_bytes: int = 8 * 1024 * 1024
+    max_upload_bytes: int = 8 * 1024 * 1024  # raw image body on the server-OCR import route
+    max_body_bytes: int = 1024 * 1024  # every other /api request body
+    max_image_pixels: int = 25_000_000  # decompression-bomb guard (width x height)
+    import_max_side_px: int = 5000  # taller/wider images are downscaled (in strips) before OCR
+    import_strip_rows: int = 256
+    import_draft_ttl_hours: int = 24  # unconfirmed drafts are purged after this long
+    import_max_rows: int = 200
+    import_name_max_chars: int = 200
+    draft_purge_interval_minutes: int = 60
     redact_header_fraction: float = 0.12
     redact_min_digit_run: int = 6
     redact_blur_radius: int = 12
@@ -153,10 +180,30 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.5-flash"
 
+    # --- launch gate (no live buy/sell verdicts until both gates pass) ---
+    launch_require_backtest: bool = True
+    launch_paper_min_weeks: int = 4
+    launch_paper_max_critical_errors: int = 0
+    launch_paper_min_resolved_calls: int = 50  # calls resolved at the 1-month horizon
+    launch_paper_must_beat: list[str] = Field(default_factory=lambda: ["^GSPC", "^TA125.TA"])
+
     # --- alerts ---
     telegram_bot_token: str | None = None
     telegram_timeout_seconds: float = 10.0
     seed_csv_path: str | None = None
+
+
+def validate_production(settings: Settings) -> None:
+    """Refuse to start with unsafe settings in production. Raises RuntimeError."""
+    if settings.env != "production":
+        return
+    problems: list[str] = []
+    if not settings.cookie_secure:
+        problems.append("COOKIE_SECURE must be true (session cookies need the Secure flag)")
+    if settings.secret_key == DEFAULT_SECRET_KEY or len(settings.secret_key) < 32:
+        problems.append("SECRET_KEY must be set to a random string of at least 32 characters")
+    if problems:
+        raise RuntimeError("Refusing to start with ENV=production: " + "; ".join(problems))
 
 
 @lru_cache

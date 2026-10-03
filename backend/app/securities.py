@@ -54,6 +54,7 @@ def infer_security(symbol: str) -> Security:
             market="TASE",
             currency="ILS",
             country="Israel",
+            verified=False,
         )
     if sym.endswith("-USD"):
         return Security(
@@ -64,8 +65,11 @@ def infer_security(symbol: str) -> Security:
             currency="USD",
             sector="Crypto",
             country="Global",
+            verified=False,
         )
-    return Security(symbol=sym, name_en=sym, asset_type="stock", market="US", currency="USD")
+    return Security(
+        symbol=sym, name_en=sym, asset_type="stock", market="US", currency="USD", verified=False
+    )
 
 
 def get_or_create_security(db: Session, symbol: str) -> Security:
@@ -81,7 +85,7 @@ def search_securities(db: Session, query: str, limit: int = 15) -> list[Security
     q = query.strip()
     if not q:
         return []
-    all_secs = list(db.exec(select(Security)).all())
+    all_secs = list(db.exec(select(Security).where(col(Security.verified).is_(True))).all())
     ql = q.lower()
     exact_prefix = [s for s in all_secs if s.symbol.lower().startswith(ql)]
     exact_prefix.sort(key=lambda s: (len(s.symbol), s.symbol))
