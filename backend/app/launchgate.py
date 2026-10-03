@@ -4,7 +4,8 @@
 (b) paper trading passes: >= N weeks with no critical errors, >= M calls resolved at 1 month, and
     beating the S&P 500 and the TA-125 (all thresholds in `Settings.launch_*`).
 
-Nothing records backtests or paper trades yet, so the gate is always closed and says why. Any
+The default stores read the `backtest_run` and `paper_call` tables (`app/papertrading.py`); a
+database that cannot be read keeps the gate closed. Without rows the gate is closed and says why. Any
 route that returns a verdict must depend on `require_launch_gate`; `tests/test_launch_gate.py`
 fails if a response model has a verdict-like field on an un-gated route.
 """
@@ -35,6 +36,7 @@ class PaperMetrics:
     critical_errors: int
     resolved_calls_1m: int
     excess_return_pct: dict[str, float] = field(default_factory=dict)  # benchmark -> our edge, in %
+    calls_recorded: int = 0  # all paper calls made so far (open and resolved)
 
 
 class BacktestStore(Protocol):
@@ -104,7 +106,8 @@ class LaunchGate:
         else:
             if m.weeks_running < s.launch_paper_min_weeks:
                 reasons.append(
-                    f"Paper trading has run {m.weeks_running:.1f} of {s.launch_paper_min_weeks} required weeks."
+                    f"Paper trading has run {m.weeks_running:.1f} of {s.launch_paper_min_weeks} required weeks "
+                    f"({m.calls_recorded} call(s) recorded)."
                 )
             if m.critical_errors > s.launch_paper_max_critical_errors:
                 reasons.append(
@@ -113,7 +116,7 @@ class LaunchGate:
             if m.resolved_calls_1m < s.launch_paper_min_resolved_calls:
                 reasons.append(
                     f"Only {m.resolved_calls_1m} of {s.launch_paper_min_resolved_calls} required calls "
-                    "are resolved at 1 month."
+                    f"are resolved at 1 month ({m.calls_recorded} recorded)."
                 )
             for bench in s.launch_paper_must_beat:
                 edge = m.excess_return_pct.get(bench)
@@ -186,8 +189,11 @@ class Verdict:
 
 
 def get_launch_gate() -> LaunchGate:
-    """Dependency (override it in tests). Always closed until backtest and paper stores exist."""
-    return LaunchGate()
+    """Dependency (override it in tests): reads the backtest and paper-trading tables."""
+    from app.papertrading import DbBacktests, DbPaper
+
+    settings = get_settings()
+    return LaunchGate(settings, DbBacktests(settings), DbPaper(settings))
 
 
 GateDep = Annotated[LaunchGate, Depends(get_launch_gate)]

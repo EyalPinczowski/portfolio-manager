@@ -9,7 +9,14 @@ import pandas as pd
 
 from app.config import Settings, get_settings
 from app.signals import indicators as ind
-from app.signals.base import Explanation, SignalResult, as_float_inputs, clamp
+from app.signals.base import (
+    ChartAnnotation,
+    Explanation,
+    SignalResult,
+    as_float_inputs,
+    clamp,
+    price_history_source,
+)
 from app.timeutil import utcnow
 
 NAME = "technical"
@@ -40,6 +47,19 @@ def _last(series: pd.Series) -> float | None:
 
 def _index_as_of(df: pd.DataFrame) -> pd.Timestamp | None:
     return df.index[-1] if len(df.index) else None
+
+
+def _invalidation(inputs: dict[str, float | str | None], price: float) -> list[str]:
+    """What would make this reading wrong, from the moving averages the score used."""
+    out: list[str] = []
+    for label in ("50", "200"):
+        v = inputs.get(f"sma{label}")
+        if isinstance(v, float):
+            side = "below" if price > v else "above"
+            out.append(
+                f"A close {side} the {label}-day average ({v:.2f}) would reverse the trend reading."
+            )
+    return out
 
 
 def technical_signal(df: pd.DataFrame | None, settings: Settings | None = None) -> SignalResult:
@@ -267,5 +287,18 @@ def technical_signal(df: pd.DataFrame | None, settings: Settings | None = None) 
             summary=f"Technical score {score:+.0f} ({cat_summary}).",
             inputs=as_float_inputs(inputs),
             rules_applied=rules,
+            as_of=as_of,
+            annotations=[
+                ChartAnnotation(
+                    kind="moving_average",
+                    label=f"SMA{label}",
+                    price=inputs[f"sma{label}"],
+                    as_of=as_of,
+                )
+                for label in ("20", "50", "200")
+                if isinstance(inputs.get(f"sma{label}"), float)
+            ],
+            invalidation_risks=_invalidation(inputs, price),
+            sources=[price_history_source(as_of)],
         ),
     )

@@ -6,11 +6,12 @@ agorot (currency "ILA"). We decide by the reported currency field, never by the 
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Protocol, runtime_checkable
+from datetime import date, datetime
+from typing import Any, Literal, Protocol, runtime_checkable
 
 import pandas as pd
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
+from pydantic import Field as PydField
 
 AGOROT_CODES = {"ILA", "ILX"}
 OHLC_COLUMNS = ("Open", "High", "Low", "Close")
@@ -116,3 +117,171 @@ class OcrProvider(Protocol):
     # attribute are treated as local.
 
     def extract(self, image_bytes: bytes) -> OcrResult: ...
+
+
+# ---------------------------------------------------------------- Phase 2 data providers
+Market = Literal["US", "TASE", "CRYPTO"]
+ALL_MARKETS: frozenset[Market] = frozenset({"US", "TASE", "CRYPTO"})
+
+# Why a field has no value. `coverage` is by design: the provider does not serve that market (for
+# example a US-only source asked about a TASE symbol). The others are runtime conditions.
+MissingReason = Literal["coverage", "not_found", "unavailable", "rate_limited", "stale"]
+
+
+def market_of_symbol(symbol: str) -> Market:
+    """The market a Yahoo-style symbol belongs to (".TA" suffix: TASE, "-USD": crypto)."""
+    sym = symbol.strip().upper()
+    if sym.endswith(".TA"):
+        return "TASE"
+    if sym.endswith("-USD"):
+        return "CRYPTO"
+    return "US"
+
+
+class Field[T](BaseModel):
+    """One value with its provenance. A value is either present, or missing with a reason.
+
+    Never substitute a neutral default for a missing field: a signal built from missing fields has
+    confidence 0 (CLAUDE.md rule 4).
+    """
+
+    value: T | None = None
+    source: str
+    as_of: datetime | None = None  # naive UTC, when the provider says the value was true
+    missing_reason: MissingReason | None = None
+
+    @model_validator(mode="after")
+    def _value_xor_reason(self) -> Field[T]:
+        if self.value is None and self.missing_reason is None:
+            raise ValueError("a Field without a value needs a missing_reason")
+        if self.value is not None and self.missing_reason is not None:
+            raise ValueError("a Field with a value cannot carry a missing_reason")
+        return self
+
+    @property
+    def is_missing(self) -> bool:
+        return self.value is None
+
+    @classmethod
+    def ok(cls, value: T, source: str, as_of: datetime | None = None) -> Field[T]:
+        return cls(value=value, source=source, as_of=as_of)
+
+    @classmethod
+    def missing(cls, source: str, reason: MissingReason) -> Field[T]:
+        return cls(value=None, source=source, missing_reason=reason)
+
+
+class FundamentalsSnapshot(BaseModel):
+    """Valuation and quality numbers, each with its own source and date."""
+
+    symbol: str
+    market_cap: Field[float]
+    pe_trailing: Field[float]
+    pe_forward: Field[float]
+    eps_ttm: Field[float]
+    revenue_growth_yoy_pct: Field[float]
+    gross_margin_pct: Field[float]
+    operating_margin_pct: Field[float]
+    roic_pct: Field[float]
+    fcf_yield_pct: Field[float]
+    debt_to_equity: Field[float]
+
+    @classmethod
+    def all_missing(cls, symbol: str, source: str, reason: MissingReason) -> FundamentalsSnapshot:
+        return cls(
+            symbol=symbol, **{n: Field[float].missing(source, reason) for n in cls._numeric()}
+        )
+
+    @classmethod
+    def _numeric(cls) -> list[str]:
+        return [n for n in cls.model_fields if n != "symbol"]
+
+    @property
+    def fields(self) -> dict[str, Field[float]]:
+        return {n: getattr(self, n) for n in self._numeric()}
+
+    @property
+    def all_fields_missing(self) -> bool:
+        return all(f.is_missing for f in self.fields.values())
+
+
+class NewsItem(BaseModel):
+    id: str  # stable id the LLM roles must cite
+    headline: str
+    url: str = ""
+    publisher: str = ""
+    published_at: datetime | None = None
+    # When we could first have known about it (point-in-time control for evals).
+    available_at: datetime | None = None
+
+
+class Transcript(BaseModel):
+    symbol: str
+    fiscal_year: int
+    fiscal_quarter: int = PydField(ge=1, le=4)
+    call_date: date | None = None
+    text: str
+
+
+class Filing(BaseModel):
+    id: str
+    form: str  # 10-K, 10-Q, 8-K, 20-F ...
+    filed_at: datetime | None = None
+    title: str = ""
+    url: str = ""
+
+
+class _Covering(Protocol):
+    name: str
+    markets: frozenset[Market]
+
+
+def covers(provider: _Covering, symbol: str) -> bool:
+    return market_of_symbol(symbol) in provider.markets
+
+
+@runtime_checkable
+class FundamentalsProvider(Protocol):
+    name: str
+    markets: frozenset[Market]
+
+    def get_fundamentals(self, symbol: str) -> FundamentalsSnapshot:
+        """Never raises for a symbol it does not serve: every field is missing(`coverage`)."""
+
+
+@runtime_checkable
+class NewsProvider(Protocol):
+    name: str
+    markets: frozenset[Market]
+
+    def get_news(self, symbol: str, limit: int = 20) -> Field[list[NewsItem]]: ...
+
+
+@runtime_checkable
+class TranscriptProvider(Protocol):
+    name: str
+    markets: frozenset[Market]
+
+    def get_transcripts(self, symbol: str, quarters: int = 4) -> Field[list[Transcript]]: ...
+
+
+@runtime_checkable
+class FilingsProvider(Protocol):
+    name: str
+    markets: frozenset[Market]
+
+    def get_filings(
+        self, symbol: str, forms: tuple[str, ...] = (), limit: int = 20
+    ) -> Field[list[Filing]]: ...
+
+
+def describe_missing(what: str, field: Field[Any]) -> str:
+    """A human-readable reason for a signal's `reasons` when a field is missing."""
+    why = {
+        "coverage": f"{field.source} does not cover this market",
+        "not_found": f"{field.source} has no record of this symbol",
+        "unavailable": f"{field.source} is unavailable right now",
+        "rate_limited": f"{field.source} is rate limited right now",
+        "stale": f"{field.source} data is too old",
+    }.get(field.missing_reason or "", f"{field.source} returned nothing")
+    return f"No {what} data: {why}."

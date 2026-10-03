@@ -6,7 +6,7 @@ from datetime import date
 from typing import Any
 
 from pydantic import NaiveDatetime
-from sqlalchemy import JSON, Column, UniqueConstraint
+from sqlalchemy import JSON, CheckConstraint, Column, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 from app.timeutil import utcnow
@@ -178,3 +178,86 @@ class SignalCache(SQLModel, table=True):
     symbol: str = Field(primary_key=True)
     computed_at: NaiveDatetime = Field(default_factory=utcnow)
     payload: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+
+
+class PaperCall(SQLModel, table=True):
+    """One forward paper-trading call. **Append-only**: after insert only the resolution fields
+    (`RESOLUTION_FIELDS`) may change, and only once. The ORM guard lives in `app/papertrading.py`
+    (a `before_update` listener); on Postgres the migration also installs a trigger. The launch
+    gate reads the global calls (`is_global`); per-user paper portfolios use `user_id`."""
+
+    __tablename__ = "paper_call"
+    __table_args__ = (
+        CheckConstraint(
+            "(is_global AND user_id IS NULL) OR (NOT is_global AND user_id IS NOT NULL)",
+            name="ck_paper_call_scope",
+        ),
+    )
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: NaiveDatetime = Field(default_factory=utcnow, index=True)
+    user_id: int | None = Field(default=None, foreign_key="user.id", index=True, ondelete="CASCADE")
+    is_global: bool = False
+    symbol: str = Field(index=True)
+    side: str  # buy|sell: what the call said, as the paper portfolio simulates it
+    horizon: str  # 1w|1m|3m|6m|1y
+    entry: float
+    stop: float | None = None
+    targets: list[float] = Field(default_factory=list, sa_column=Column(JSON))
+    explanation: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    model_hash: str
+    prompt_hash: str
+    weights_hash: str = Field(index=True)
+    # ---- resolution (the only fields that may change, once) ----
+    resolved_at: NaiveDatetime | None = None
+    outcome: str | None = None  # target_hit|stop_hit|horizon_end|error
+    outcome_price: float | None = None
+    benchmark_returns: dict[str, float] | None = Field(default=None, sa_column=Column(JSON))
+
+
+class BacktestRun(SQLModel, table=True):
+    """A finished backtest of one weights config (immutable: the ORM refuses updates)."""
+
+    __tablename__ = "backtest_run"
+    id: int | None = Field(default=None, primary_key=True)
+    weights_hash: str = Field(index=True)
+    period_start: date
+    period_end: date
+    metrics: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+    passed: bool
+    created_at: NaiveDatetime = Field(default_factory=utcnow, index=True)
+
+
+class LlmUsage(SQLModel, table=True):
+    """Per provider, model and UTC day: how many calls were made, tokens used and how many times a
+    role fell back to its template. Incremented atomically in SQL, so concurrent processes agree."""
+
+    __tablename__ = "llm_usage"
+    provider: str = Field(primary_key=True)
+    model: str = Field(primary_key=True)
+    day: date = Field(primary_key=True)
+    requests: int = 0
+    tokens: int = 0
+    fallbacks: int = 0
+
+
+class LlmBucket(SQLModel, table=True):
+    """Token bucket per provider (shared by every process). `version` makes each refill-and-take a
+    compare-and-swap, which works the same on SQLite and Postgres."""
+
+    __tablename__ = "llm_bucket"
+    provider: str = Field(primary_key=True)
+    tokens: float
+    version: int = 0
+    updated_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
+class LlmCache(SQLModel, table=True):
+    """Validated LLM answers keyed by the hash of their input (never templates, never inputs)."""
+
+    __tablename__ = "llm_cache"
+    key: str = Field(primary_key=True)
+    role: str = Field(index=True)
+    provider: str
+    model: str
+    response: str  # the validated JSON of the output model
+    created_at: NaiveDatetime = Field(default_factory=utcnow, index=True)

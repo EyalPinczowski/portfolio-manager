@@ -11,7 +11,13 @@ from app.config import Settings, get_settings
 from app.models import SignalCache
 from app.providers.base import HistoryProvider
 from app.scoring.combine import combine_signals
-from app.signals.base import Explanation, SignalResult
+from app.signals.base import (
+    ChartAnnotation,
+    Explanation,
+    ExplanationSource,
+    SignalContribution,
+    SignalResult,
+)
 from app.signals.patterns import patterns_signal
 from app.signals.technical import technical_signal
 from app.timeutil import as_utc, utcnow
@@ -51,7 +57,7 @@ def compute_scorecard(
                 "nominal_weight": w.nominal_weight,
                 "reasons": res.reasons,
                 "data_as_of": as_utc(res.data_as_of).isoformat(),
-                "explanation": res.explanation.model_dump(),
+                "explanation": res.explanation.model_dump(mode="json"),
             }
         )
     active = [w for w in combined.breakdown if w.effective_weight > 0]
@@ -61,8 +67,34 @@ def compute_scorecard(
         if combined.available
         else "No signal has data for this security yet."
     )
+    contributions: list[SignalContribution] = []
+    annotations: list[ChartAnnotation] = []
+    sources: list[ExplanationSource] = []
+    invalidation: list[str] = []
+    for w in combined.breakdown:
+        res = results.get(w.name) or not_implemented_signal(w.name)
+        contributions.append(
+            SignalContribution(
+                name=w.name,
+                score=res.score,
+                weight=w.effective_weight,
+                confidence=res.confidence,
+                raw=dict(res.explanation.inputs),
+            )
+        )
+        annotations.extend(res.explanation.annotations)
+        for src in res.explanation.sources:
+            if src not in sources:
+                sources.append(src)
+        invalidation.extend(res.explanation.invalidation_risks)
+    as_ofs = [res.data_as_of for res in results.values() if res.confidence > 0]
     explanation = Explanation(
         summary=summary,
+        as_of=max(as_ofs, key=as_utc) if as_ofs else None,
+        contributions=contributions,
+        annotations=annotations,
+        invalidation_risks=invalidation,
+        sources=sources,
         inputs={
             w.name: f"{w.effective_weight:.1f}% effective (nominal {w.nominal_weight:.1f}%)"
             for w in combined.breakdown
@@ -81,7 +113,7 @@ def compute_scorecard(
         "available": combined.available,
         "validated": False,
         "signals": signals,
-        "explanation": explanation.model_dump(),
+        "explanation": explanation.model_dump(mode="json"),
     }
 
 

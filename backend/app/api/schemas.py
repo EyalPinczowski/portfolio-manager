@@ -17,6 +17,7 @@ from pydantic import (
 from app.importer.diff import ProposedChange
 from app.importer.parse import SYMBOL_PATTERN, ParsedRow, norm_symbol
 from app.scoring.risk import PresetName, StopType
+from app.signals.base import Explanation
 
 Horizon = Literal["1w", "1m", "3m", "6m", "1y"]
 MarketKey = Literal["US", "TASE", "CRYPTO"]
@@ -328,7 +329,7 @@ class SignalBreakdownOut(BaseModel):
     nominal_weight: float | None = None
     reasons: list[str]
     data_as_of: str
-    explanation: dict[str, Any]
+    explanation: Explanation
 
 
 class ScoreCardDetail(BaseModel):
@@ -343,7 +344,7 @@ class ScoreCardDetail(BaseModel):
     available: bool
     validated: bool
     signals: list[SignalBreakdownOut]
-    explanation: dict[str, Any]
+    explanation: Explanation
     disclaimer: str
 
 

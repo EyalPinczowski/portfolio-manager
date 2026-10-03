@@ -1,10 +1,16 @@
+from app.models import guards as guards
 from app.models.tables import (
     AuthSession,
+    BacktestRun,
     Holding,
     HoldingsSnapshot,
     ImportDraft,
     Invite,
+    LlmBucket,
+    LlmCache,
+    LlmUsage,
     Notification,
+    PaperCall,
     Portfolio,
     PortfolioSnapshot,
     PriceAlert,
@@ -17,11 +23,16 @@ from app.models.tables import (
 
 __all__ = [
     "AuthSession",
+    "BacktestRun",
     "Holding",
     "HoldingsSnapshot",
     "ImportDraft",
     "Invite",
+    "LlmBucket",
+    "LlmCache",
+    "LlmUsage",
     "Notification",
+    "PaperCall",
     "Portfolio",
     "PortfolioSnapshot",
     "PriceAlert",

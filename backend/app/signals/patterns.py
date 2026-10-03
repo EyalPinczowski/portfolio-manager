@@ -9,7 +9,14 @@ import pandas as pd
 
 from app.config import Settings, get_settings
 from app.signals import indicators as ind
-from app.signals.base import Explanation, SignalResult, as_float_inputs, clamp
+from app.signals.base import (
+    ChartAnnotation,
+    Explanation,
+    SignalResult,
+    as_float_inputs,
+    clamp,
+    price_history_source,
+)
 from app.timeutil import utcnow
 
 NAME = "patterns"
@@ -120,6 +127,8 @@ def patterns_signal(df: pd.DataFrame | None, settings: Settings | None = None) -
     reasons: list[str] = []
     rules: list[str] = []
     distinct = 0
+    annotations: list[ChartAnnotation] = []
+    invalidation: list[str] = []
 
     def add(score: float, reason: str, rule: str, pattern: bool = False) -> None:
         nonlocal distinct
@@ -127,6 +136,8 @@ def patterns_signal(df: pd.DataFrame | None, settings: Settings | None = None) -
         reasons.append(reason)
         rules.append(rule)
         distinct += 1 if pattern else 0
+        if pattern:
+            annotations.append(ChartAnnotation(kind="pattern", label=rule, as_of=as_of))
 
     # ---- support / resistance ----
     ph, pl = find_pivots(high, w, "high"), find_pivots(low, w, "low")
@@ -137,6 +148,28 @@ def patterns_signal(df: pd.DataFrame | None, settings: Settings | None = None) -
     resists = [lv for lv in levels if lv.price > price]
     sup = max(supports, key=lambda lv: lv.price) if supports else None
     res = min(resists, key=lambda lv: lv.price) if resists else None
+    if sup is not None:
+        annotations.append(
+            ChartAnnotation(
+                kind="support",
+                label=f"Support (touched {sup.touches}x)",
+                price=sup.price,
+                as_of=as_of,
+            )
+        )
+        invalidation.append(
+            f"A close below support at {sup.price:.2f} would turn this level into resistance."
+        )
+    if res is not None:
+        annotations.append(
+            ChartAnnotation(
+                kind="resistance",
+                label=f"Resistance (touched {res.touches}x)",
+                price=res.price,
+                as_of=as_of,
+            )
+        )
+        invalidation.append(f"A close above resistance at {res.price:.2f} would invalidate it.")
     near = s.patterns_near_level_pct
     sr_score = 0.0
     sr_note: list[str] = []
@@ -263,5 +296,9 @@ def patterns_signal(df: pd.DataFrame | None, settings: Settings | None = None) -
             summary=f"Pattern score {score:+.0f} from {len(scores)} rule(s); {distinct} pattern(s) detected.",
             inputs=as_float_inputs(inputs),
             rules_applied=rules,
+            as_of=as_of,
+            annotations=annotations,
+            invalidation_risks=invalidation,
+            sources=[price_history_source(as_of)],
         ),
     )

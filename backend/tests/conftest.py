@@ -66,6 +66,16 @@ def _drop_everything() -> None:
         conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
 
 
+@pytest.fixture(autouse=True)
+def _scratch_default_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Code that opens the default database without the `env` fixture (the launch gate reads the
+    paper-trading tables) must not create `./portfolio.db` in the working directory."""
+    if not USE_POSTGRES:
+        monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'scratch.db'}")
+        get_settings.cache_clear()
+        get_engine.cache_clear()
+
+
 @pytest.fixture
 def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setenv(

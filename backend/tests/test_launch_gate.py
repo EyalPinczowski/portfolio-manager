@@ -26,7 +26,7 @@ from tests.verdict_contract import find_violations, verdict_token
 VERDICT_ALLOWLIST: dict[str, str] = {}
 
 # `dict[str, Any]` fields and untyped responses that are still allowed, each with the reason. The
-# typed `Explanation` (Phase 2.0-C) removes the two `explanation` entries; the rest are data
+# typed `Explanation` (Phase 2.0-C) replaced the two `explanation` entries; the rest are data
 # structures that are not verdicts. A stale entry fails `test_the_allowlists_have_no_stale_entries`.
 UNTYPED_ALLOWLIST: dict[str, str] = {
     "ValidationError.input": "FastAPI's own 422 schema (our handler never echoes the input)",
@@ -34,8 +34,6 @@ UNTYPED_ALLOWLIST: dict[str, str] = {
     "POST /api/me/export": "account export: a JSON dump of the user's own data",
     "XrayOut.concentration": "x-ray breakdown rows; typed in Phase 2",
     "XrayOut.home_bias": "x-ray numbers; typed in Phase 2",
-    "ScoreCardDetail.explanation": "replaced by the typed Explanation in Phase 2.0-C",
-    "SignalBreakdownOut.explanation": "replaced by the typed Explanation in Phase 2.0-C",
 }
 # Verdict-looking names that are not verdicts.
 BENIGN: dict[str, str] = {

@@ -6,7 +6,7 @@ from datetime import date
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DISCLAIMER = "Not financial advice."
@@ -20,7 +20,99 @@ SIGNAL_NAMES: tuple[str, ...] = (
     "geo_news",
     "sentiment",
 )
+HORIZONS: tuple[str, ...] = ("1w", "1m", "3m", "6m", "1y")  # "1y" means 1y+
 IMPLEMENTED_SIGNALS: frozenset[str] = frozenset({"technical", "patterns"})
+
+
+Timeframe = Literal["4h", "1d", "1wk", "1mo"]
+TakeProfitSource = Literal[
+    "resistance",  # next resistance on the horizon's chart
+    "weekly_resistance",
+    "long_term_resistance",
+    "r_multiple",  # a multiple of the distance to the stop (between r_multiple_min and _max)
+    "upper_bollinger",
+    "analyst_mean_target",
+    "analyst_high_target",
+    "fibonacci_extension",
+    "trailing_only",  # no fixed take-profit: trail the stop
+]
+StopStructure = Literal[
+    "minor_support", "swing_low", "major_support", "weekly_swing_low", "multi_month_support"
+]
+
+
+class HorizonSpec(BaseModel):
+    """How exit levels are computed for one holding period (the README horizon table)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    label: str
+    chart_timeframes: list[Timeframe] = Field(min_length=1)  # primary chart first
+    atr_timeframe: Timeframe
+    atr_period: int = Field(gt=0)
+    # Stop distance as a multiple of ATR; both None for a purely structural stop (1y+).
+    atr_multiple_min: float | None = Field(default=None, gt=0)
+    atr_multiple_max: float | None = Field(default=None, gt=0)
+    stop_ma_period: int | None = Field(default=None, gt=0)  # the moving average to stop below
+    stop_structure: list[StopStructure] = Field(default_factory=list)
+    take_profit_sources: list[TakeProfitSource] = Field(min_length=1)
+    r_multiple_min: float | None = Field(default=None, gt=0)
+    r_multiple_max: float | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def _ranges(self) -> HorizonSpec:
+        for lo, hi, what in (
+            (self.atr_multiple_min, self.atr_multiple_max, "atr_multiple"),
+            (self.r_multiple_min, self.r_multiple_max, "r_multiple"),
+        ):
+            if (lo is None) != (hi is None):
+                raise ValueError(f"{what}_min and {what}_max must be set together")
+            if lo is not None and hi is not None and lo > hi:
+                raise ValueError(f"{what}_min must not exceed {what}_max")
+        if ("r_multiple" in self.take_profit_sources) != (self.r_multiple_min is not None):
+            raise ValueError("r_multiple needs a range, and a range needs the r_multiple source")
+        if self.atr_multiple_min is None and not (self.stop_ma_period or self.stop_structure):
+            raise ValueError("a stop needs an ATR multiple, a moving average or a structure")
+        return self
+
+
+def default_horizon_table() -> dict[str, HorizonSpec]:
+    """README -> Filters -> "1. Holding period". Change the numbers in config, not in code."""
+    return {
+        "1w": HorizonSpec(
+            label="1 week", chart_timeframes=["1d", "4h"], atr_timeframe="1d", atr_period=14,
+            atr_multiple_min=1.0, atr_multiple_max=1.5, stop_structure=["minor_support"],
+            take_profit_sources=["resistance", "r_multiple"], r_multiple_min=1.5, r_multiple_max=2.0,
+        ),
+        "1m": HorizonSpec(
+            label="1 month", chart_timeframes=["1d"], atr_timeframe="1d", atr_period=14,
+            atr_multiple_min=2.0, atr_multiple_max=2.0, stop_ma_period=20,
+            stop_structure=["swing_low"],
+            take_profit_sources=["resistance", "r_multiple", "upper_bollinger"],
+            r_multiple_min=2.0, r_multiple_max=2.0,
+        ),
+        "3m": HorizonSpec(
+            label="3 months", chart_timeframes=["1d", "1wk"], atr_timeframe="1d", atr_period=14,
+            atr_multiple_min=2.5, atr_multiple_max=3.0, stop_ma_period=50,
+            stop_structure=["major_support"],
+            take_profit_sources=["weekly_resistance", "r_multiple", "analyst_mean_target"],
+            r_multiple_min=2.0, r_multiple_max=3.0,
+        ),
+        "6m": HorizonSpec(
+            label="6 months", chart_timeframes=["1wk"], atr_timeframe="1wk", atr_period=14,
+            atr_multiple_min=2.0, atr_multiple_max=2.0, stop_ma_period=100,
+            stop_structure=["weekly_swing_low"],
+            take_profit_sources=[
+                "analyst_mean_target", "analyst_high_target", "r_multiple", "fibonacci_extension",
+            ],
+            r_multiple_min=3.0, r_multiple_max=3.0,
+        ),
+        "1y": HorizonSpec(
+            label="1 year+", chart_timeframes=["1wk", "1mo"], atr_timeframe="1wk", atr_period=14,
+            stop_ma_period=200, stop_structure=["multi_month_support"],
+            take_profit_sources=["analyst_high_target", "long_term_resistance", "trailing_only"],
+        ),
+    }  # fmt: skip
 
 
 def _default_weights() -> dict[str, float]:
@@ -136,6 +228,14 @@ class Settings(BaseSettings):
     fx_fallback_usd_ils: float = 3.6  # last resort only; always reported as stale
     fx_stale_after_hours: float = 72.0
     quote_stale_after_minutes: int = 30
+    # Exit levels are only suggested on a price this fresh. Per market, in minutes. While the market
+    # is closed the last session's closing quote still counts (within the same window of the close).
+    price_fresh_window_minutes: dict[str, int] = Field(
+        default_factory=lambda: {"US": 60, "TASE": 60, "CRYPTO": 30}
+    )
+    # The holding-period table that drives exit levels (README "Holding period"). Keys must be
+    # exactly HORIZONS; override it as JSON in the HORIZON_TABLE env var.
+    horizon_table: dict[str, HorizonSpec] = Field(default_factory=default_horizon_table)
     history_cache_ttl_seconds: int = 6 * 3600
     history_failure_ttl_seconds: int = 300
     history_cache_max_entries: int = 200  # one entry per symbol; the oldest is evicted
@@ -257,6 +357,17 @@ class Settings(BaseSettings):
     groq_model_fallbacks: list[str] = Field(
         default_factory=lambda: ["openai/gpt-oss-120b", "llama-3.3-70b-versatile"]
     )
+    # --- LLM foundation (`app/llm/`): the template path is the default; a provider is used only
+    # when its key is set, the bucket has a token and the answer validates ---
+    llm_enabled: bool = True
+    llm_provider_order: list[str] = Field(default_factory=lambda: ["gemini", "groq"])
+    llm_requests_per_minute: int = 8  # token bucket per provider, shared by all processes
+    llm_bucket_cas_retries: int = 100
+    llm_timeout_seconds: float = 30.0
+    llm_max_output_tokens: int = 1024
+    llm_cache_ttl_hours: float = 24.0 * 7
+    llm_scrub_min_digit_run: int = 6
+    llm_scrub_min_name_chars: int = 4  # parts of a user's e-mail name shorter than this are kept
     model_probe_enabled: bool = True
     model_probe_timeout_seconds: float = 8.0
 
@@ -265,6 +376,9 @@ class Settings(BaseSettings):
     launch_paper_min_weeks: int = 4
     launch_paper_max_critical_errors: int = 0
     launch_paper_min_resolved_calls: int = 50  # calls resolved at the 1-month horizon
+    # A call counts as "resolved at 1 month" once it is resolved (not an error) and this many days
+    # have passed since it was made, whether the stop, the target or the horizon ended it.
+    launch_paper_window_days: int = 30
     launch_paper_must_beat: list[str] = Field(default_factory=lambda: ["^GSPC", "^TA125.TA"])
 
     # --- alerts ---
@@ -282,6 +396,22 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = None
     telegram_timeout_seconds: float = 10.0
     seed_csv_path: str | None = None
+
+    @field_validator("horizon_table")
+    @classmethod
+    def _horizon_table_is_complete(cls, table: dict[str, HorizonSpec]) -> dict[str, HorizonSpec]:
+        if set(table) != set(HORIZONS):
+            raise ValueError(
+                f"horizon_table needs exactly the keys {list(HORIZONS)}, got {sorted(table)}"
+            )
+        return table
+
+    @field_validator("price_fresh_window_minutes")
+    @classmethod
+    def _fresh_windows(cls, windows: dict[str, int]) -> dict[str, int]:
+        if not windows or any(m <= 0 for m in windows.values()):
+            raise ValueError("price_fresh_window_minutes needs a positive window per market")
+        return windows
 
     @model_validator(mode="after")
     def _resolve_auto_migrate(self) -> Settings:

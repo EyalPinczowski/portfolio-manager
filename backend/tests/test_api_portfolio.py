@@ -222,6 +222,8 @@ def test_holdings_list_contract_and_score_card(
     assert by["technical"]["weight"] + by["patterns"]["weight"] == pytest.approx(100.0, abs=0.01)
     assert by["technical"]["explanation"]["rules_applied"] and by["technical"]["reasons"]
     assert detail["explanation"]["summary"] and "disclaimer" in detail
+    assert detail["explanation"]["version"] == 1 and by["technical"]["explanation"]["sources"]
+    assert detail["explanation"]["contributions"] and detail["explanation"]["as_of"]
     text = str(detail).lower()
     assert "verdict" not in {k.lower() for k in detail} and "recommendation" not in {
         k.lower() for k in detail

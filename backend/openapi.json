@@ -1574,6 +1574,172 @@
         "title": "ChallengeRequiredOut",
         "description": "403 body of `POST /auth/login` when a Cloudflare Turnstile token is needed."
       },
+      "ChartAnnotation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "support",
+              "resistance",
+              "moving_average",
+              "pattern"
+            ],
+            "title": "Kind"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "label"
+        ],
+        "title": "ChartAnnotation",
+        "description": "Something the chart should draw: a level, a moving average or a detected pattern."
+      },
+      "Explanation": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "default": 1
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "inputs": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Inputs"
+          },
+          "rules_applied": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rules Applied"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "contributions": {
+            "items": {
+              "$ref": "#/components/schemas/SignalContribution"
+            },
+            "type": "array",
+            "title": "Contributions"
+          },
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/ChartAnnotation"
+            },
+            "type": "array",
+            "title": "Annotations"
+          },
+          "risk_rules_applied": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Risk Rules Applied"
+          },
+          "invalidation_risks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Invalidation Risks"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ExplanationSource"
+            },
+            "type": "array",
+            "title": "Sources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary"
+        ],
+        "title": "Explanation",
+        "description": "The \"Why?\" of a scored object (CLAUDE.md shape), versioned and stored with it.\n\n`summary`, `inputs` and `rules_applied` are the v0 fields the frontend already reads; they stay\nas part of v1. Every field after them has a default, so payloads cached before v1 still load."
+      },
+      "ExplanationSource": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ExplanationSource",
+        "description": "Where a number came from and how fresh it is."
+      },
       "ExposureItem": {
         "properties": {
           "name": {
@@ -3188,9 +3354,7 @@
             "title": "Signals"
           },
           "explanation": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Explanation"
+            "$ref": "#/components/schemas/Explanation"
           },
           "disclaimer": {
             "type": "string",
@@ -3386,9 +3550,7 @@
             "title": "Data As Of"
           },
           "explanation": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Explanation"
+            "$ref": "#/components/schemas/Explanation"
           }
         },
         "type": "object",
@@ -3402,6 +3564,54 @@
           "explanation"
         ],
         "title": "SignalBreakdownOut"
+      },
+      "SignalContribution": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "raw": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Raw"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "score",
+          "weight",
+          "confidence"
+        ],
+        "title": "SignalContribution",
+        "description": "One signal's part in a combined score: what it said and how much it counted."
       },
       "SignupIn": {
         "properties": {

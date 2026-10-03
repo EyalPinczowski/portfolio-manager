@@ -108,6 +108,23 @@ def session_close(market: str, day: date, settings: Settings | None = None) -> d
     return datetime.combine(day, hours[1], tzinfo=_tz(market, s))
 
 
+def last_session_close(
+    market: str, now: datetime | None = None, settings: Settings | None = None
+) -> datetime | None:
+    """Aware time of the most recent session close at or before `now` (None for 24/7 markets or
+    when no session was found in the last 10 days)."""
+    if market not in LIBRARY_CODES:
+        return None
+    s = settings or get_settings()
+    at = _aware(now)
+    day = at.astimezone(_tz(market, s)).date()
+    for back in range(11):
+        close = session_close(market, day - timedelta(days=back), s)
+        if close is not None and close <= at:
+            return close
+    return None
+
+
 def _is_open(market: str, now: datetime | None, s: Settings) -> bool:
     local = _aware(now).astimezone(_tz(market, s))
     hours = _hours_for(market, local.date(), s)

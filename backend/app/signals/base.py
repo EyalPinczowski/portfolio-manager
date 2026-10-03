@@ -3,19 +3,66 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AfterValidator, BaseModel, Field, model_validator
 
-from app.timeutil import utcnow
+from app.timeutil import as_utc, utcnow
 
 NOT_AVAILABLE_YET = "Not available yet (planned for Phase 2)."
 
 
+EXPLANATION_VERSION = 1
+
+RawValue = float | str | None
+# Naive datetimes are UTC (the database convention); an explanation always carries an offset.
+UtcDatetime = Annotated[datetime, AfterValidator(as_utc)]
+
+
+class SignalContribution(BaseModel):
+    """One signal's part in a combined score: what it said and how much it counted."""
+
+    name: str
+    score: float
+    weight: float  # effective weight in percent after confidence-based redistribution
+    confidence: float = Field(ge=0.0, le=1.0)
+    raw: dict[str, RawValue] = Field(default_factory=dict)
+
+
+class ChartAnnotation(BaseModel):
+    """Something the chart should draw: a level, a moving average or a detected pattern."""
+
+    kind: Literal["support", "resistance", "moving_average", "pattern"]
+    label: str
+    price: float | None = None
+    as_of: UtcDatetime | None = None
+
+
+class ExplanationSource(BaseModel):
+    """Where a number came from and how fresh it is."""
+
+    name: str
+    as_of: UtcDatetime | None = None
+    detail: str = ""
+
+
 class Explanation(BaseModel):
+    """The "Why?" of a scored object (CLAUDE.md shape), versioned and stored with it.
+
+    `summary`, `inputs` and `rules_applied` are the v0 fields the frontend already reads; they stay
+    as part of v1. Every field after them has a default, so payloads cached before v1 still load.
+    """
+
+    version: int = EXPLANATION_VERSION
     summary: str
     inputs: dict[str, float | str] = Field(default_factory=dict)
     rules_applied: list[str] = Field(default_factory=list)
+    as_of: UtcDatetime | None = None
+    contributions: list[SignalContribution] = Field(default_factory=list)
+    annotations: list[ChartAnnotation] = Field(default_factory=list)
+    risk_rules_applied: list[str] = Field(default_factory=list)
+    invalidation_risks: list[str] = Field(default_factory=list)
+    sources: list[ExplanationSource] = Field(default_factory=list)
 
 
 class SignalResult(BaseModel):
@@ -41,7 +88,7 @@ class SignalResult(BaseModel):
             confidence=0.0,
             reasons=[reason],
             data_as_of=as_of or utcnow(),
-            explanation=Explanation(summary=reason, inputs={}, rules_applied=[]),
+            explanation=Explanation(summary=reason, inputs={}, rules_applied=[], as_of=as_of),
         )
 
 
@@ -60,3 +107,12 @@ def as_float_inputs(values: dict[str, Any]) -> dict[str, float | str]:
             continue
         out[key] = round(float(val), 4) if isinstance(val, int | float) else str(val)
     return out
+
+
+def price_history_source(as_of: datetime | None) -> ExplanationSource:
+    """The source line shared by the chart-based signals."""
+    return ExplanationSource(
+        name="Daily price history (OHLCV)",
+        as_of=as_of,
+        detail="Provider bars, split/dividend adjusted; the last bar's date is `as_of`.",
+    )
