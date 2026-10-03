@@ -1,0 +1,55 @@
+# CLAUDE.md
+
+Guidance for Claude Code when working in this repository.
+
+## Project
+
+A personal portfolio analysis and recommendation assistant for **US and Israeli (TASE)** stocks. It combines technical/chart analysis, analyst consensus, geopolitical/news signals and market sentiment (Fear & Greed, VIX) into buy/sell/hold suggestions. Every suggestion is filtered through **risk limits the user sets**. The output goes to a web app that refreshes continuously. See `README.md` for the feature spec.
+
+Status: **early stage**. Only the docs exist so far. Follow the layout and conventions below when adding code.
+
+## Stack
+
+- **Backend**: Python 3.12, FastAPI, SQLModel (SQLite now, Postgres later), APScheduler, pandas, `pandas-ta`, `yfinance`, `httpx`.
+- **Frontend**: Next.js (App Router) + TypeScript + Tailwind, TradingView `lightweight-charts` for price charts, WebSocket for live updates.
+- **Tests**: `pytest` (backend), `vitest` (frontend). Lint/format: `ruff`, `mypy`, `eslint`, `prettier`.
+
+## Commands (once scaffolded)
+
+```bash
+cd backend && uvicorn app.main:app --reload     # run API
+cd backend && pytest                             # tests
+cd backend && ruff check . && ruff format . && mypy app
+cd frontend && npm run dev | npm test | npm run lint
+```
+
+## Architecture rules
+
+1. **Providers are pluggable.** Every external data source implements a provider interface in `backend/app/providers/`. Signal code never calls `yfinance`, `requests` etc. directly. Free providers are the default. Paid ones turn on only when their API key is in the env.
+2. **Each signal is independent and explainable.** Each module in `backend/app/signals/` returns `SignalResult(score: float in [-100, 100], confidence: float in [0, 1], reasons: list[str], data_as_of: datetime)`. No signal may produce a score without a human-readable reason.
+3. **Scoring and risk are separate.** `scoring/` combines signals with configurable weights. `scoring/risk.py` then applies the user's limits (position size, sector/country exposure, stop-loss, drawdown, volatility cap, blacklist). The risk engine can block or downgrade a recommendation, but it never upgrades one. When it blocks a recommendation, record why so the UI can show it.
+4. **Missing data degrades gracefully.** If a signal has no data (e.g. no analyst coverage for an Israeli small cap), it returns `confidence=0` and its weight is spread across the other signals. Never treat missing data as a neutral score of 0 at full confidence.
+5. **Alerts fire only on changes.** Re-scoring runs often. Notify only when a recommendation changes or a price rule (stop/target) triggers.
+6. **No auto-trading.** The app only suggests. Don't add order-execution code unless the user explicitly asks.
+
+## Market-specific gotchas
+
+- **TASE tickers** use the `.TA` suffix in Yahoo (e.g. `TEVA.TA`, `LUMI.TA`, `NICE.TA`). Yahoo prices them in **agorot (ILA)**. Divide by 100 to get ILS, and always normalize at the provider layer.
+- Some Israeli companies are dual-listed on TASE and in the US (e.g. TEVA, NICE, ESLT), while others trade only in the US (e.g. CHKP, WIX). Keep a mapping table so dual listings are never double-counted.
+- **Trading hours**: TASE trades Mon–Fri since Jan 2026, roughly 09:59–17:25 Israel time (Friday closes earlier). US trades 09:30–16:00 ET. Use `zoneinfo` and exchange calendars (`exchange_calendars` / `pandas_market_calendars`) and never hard-code UTC offsets. DST changes on different dates in Israel and the US.
+- **Currency**: the portfolio is shown in both ILS and USD. Store each transaction in its native currency together with the FX rate on the trade date.
+- **Index references**: TA-35 (`TA35.TA`), TA-125 (`^TA125.TA`), S&P 500 (`^GSPC`), NASDAQ (`^IXIC`), VIX (`^VIX`), USD/ILS (`ILS=X`). Verify symbols before relying on them because Yahoo changes them occasionally.
+- The CNN Fear & Greed endpoint is **unofficial** and can break. Wrap it, cache it, and fall back to a computed proxy (VIX, put/call, breadth, momentum).
+
+## Conventions
+
+- Type hints everywhere. Use Pydantic/SQLModel for all I/O schemas.
+- Cache external calls (TTL per provider) and respect rate limits. Free tiers are tight (Finnhub ~60 req/min).
+- Unit tests for every signal must use **fixed fixture data**, not live APIs. Mark live-API tests with `@pytest.mark.live` and skip them by default.
+- Thresholds, weights and refresh intervals belong in config (`backend/app/config.py` / user settings in the DB), never inline.
+- Secrets live only in `.env`, and `.env` is never committed. Keep `.env.example` up to date.
+- Show the "not financial advice" disclaimer in the UI footer and in alert messages.
+
+## When unsure
+
+Ask the user before you change scoring weights, the risk logic, or add a paid data source. Those choices are theirs.
