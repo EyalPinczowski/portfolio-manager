@@ -64,7 +64,9 @@ cd frontend && npm run dev | npm test | npm run lint
   - Every role hand-off is a Pydantic model, with a JSON response schema, validate → retry once → template fallback.
   - Numbers must be grounded in the input reports. LLMs never calculate indicators.
   - The CIO adjusts the deterministic score by at most ±15 and must answer every Bear risk.
+  - Roles also include **Company Profile** (business, segments, management changes, competitors), a code-only **Peer Comparator**, and **earnings-call tone tracking** (cached per quarter).
   - The screener runs the committee only on the top finalists.
+- **Ask-my-portfolio chat**: LLM tool-use over **read-only, user-scoped** internal tools only. Answers are grounded and cited; it never trades or edits settings.
   - Evals live in `backend/evals/` (≥15 scenarios × 3–5 trials, with a mock LLM in CI).
   - The LLM layer is validated by **forward paper trading**, not by historical backtests, because LLMs leak future knowledge.
 - **Exit levels** (`scoring/exit_levels.py`): stop-loss / take-profit suggestions. They are computed from a `Horizon` (1w / 1m / 3m / 6m / 1y+) and a `RiskFilter`, which drive the chart timeframe, ATR multiple, moving average and take-profit sources. The horizon table in the README is the spec, and its numbers live in config. Two entry points:

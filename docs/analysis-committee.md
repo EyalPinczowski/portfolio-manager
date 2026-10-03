@@ -28,7 +28,9 @@ Every hand-off between roles is a validated Pydantic model, never free text.
 
 *Verify in the Phase 2 review:* defeatbeta's data freshness/lag and whether it covers `.TA` symbols. |
 | **Chartist** | Code (no LLM) | OHLCV | `ChartReport` | The existing `signals/technical.py` + `patterns.py`: RSI, MA 20/50/200, MACD, Bollinger, ATR, support/resistance, patterns. **All numbers are pre-computed.** The LLM never calculates indicators. |
-| **News & Macro analyst** | Code + LLM | news/filings search results, **earnings-call transcripts (defeatbeta)**, GDELT tone, F&G, VIX | `NewsReport` | The LLM only *classifies and summarises* retrieved items, and every claim must cite an item id. Sources: Finnhub company news, SEC EDGAR full-text search (free), RSS (Reuters, Globes, Calcalist, TheMarker), and optionally **Exa** semantic search restricted to primary sources (Reuters, Bloomberg, SEC, TASE/MAYA) when `EXA_API_KEY` is set. |
+| **Company Profile analyst** | Code + LLM | defeatbeta revenue by segment/geography, filings (10-K/20-F business section), profile data, officer list | `CompanyProfile` | A business overview, revenue mix by segment and country, **management and key-people changes** (new CEO/CFO, departures, from 8-K item 5.02 / MAYA), and **3–5 competitors** chosen from sector + industry + market cap. Each claim cites a source. |
+| **Peer Comparator** | Code (no LLM) | Scout data for the stock + its peers | `PeerTable` | The stock vs. 3–5 peers on P/E, forward P/E, revenue growth, gross/operating margin, ROIC, FCF yield, and 6-month performance. Each value is shown as a percentile within the peer group. |
+| **News & Macro analyst** | Code + LLM | news/filings search results, **earnings-call transcripts (defeatbeta) with a quarter-over-quarter tone diff**, GDELT tone, F&G, VIX | `NewsReport` | The LLM only *classifies and summarises* retrieved items, and every claim must cite an item id. Sources: Finnhub company news, SEC EDGAR full-text search (free), RSS (Reuters, Globes, Calcalist, TheMarker), and optionally **Exa** semantic search restricted to primary sources (Reuters, Bloomberg, SEC, TASE/MAYA) when `EXA_API_KEY` is set. |
 | **Bear** | LLM | Scout + Chartist + News reports | `BearCase` | The system prompt is hard-wired to argue **against** buying: overvaluation, falling margins, debt, regulation, geopolitics (Israel/region), dilution, insider selling, technical breakdown. It must cite fields from the reports and may not invent numbers. It outputs ranked risks, each with `severity` (1–5), `evidence_refs[]` and `what_would_invalidate`. |
 | **CIO** | LLM | all reports + BearCase + user's risk filter, horizon and portfolio fit | `CIOVerdict` | Weighs the bull evidence (signal scores) against the Bear. It **can only adjust the deterministic score within ±15 points**, and must give a reason for every adjustment and answer each Bear risk with `rebutted` / `accepted` / `unresolved`. The final verdict then passes through `scoring/risk.py`, which can still block or downgrade. |
 
@@ -39,6 +41,24 @@ The idea from the article: give the agents **ready-made data tools** instead of 
 - Use maintained Python data packages (`defeatbeta-api`, `yfinance`, `edgartools`) behind thin provider adapters. We don't write raw HTTP clients unless no package exists, as with MAYA or the CNN F&G endpoint.
 - The committee's LLM roles never fetch data themselves. Our code fetches it first and passes it in as structured reports. This keeps every number grounded and testable.
 - **Nice-to-have:** expose our own provider layer and portfolio as an **MCP server** (`backend/app/mcp/`). The user can then ask Claude Desktop or another MCP client questions about their portfolio. defeatbeta ships its own MCP server, which can sit next to ours.
+
+## Earnings-call tone tracking
+- For each of the last 2–4 quarters, the LLM extracts a `CallTone` object from the transcript:
+  - tone (−2..+2)
+  - guidance direction: raised / maintained / cut / none
+  - hedging-language count
+  - top 3 themes
+  - quoted evidence lines
+- Code then diffs the quarters into `ToneShift`, e.g. "guidance raised → maintained; tone +1 → −1; new theme: 'pricing pressure'". The Bear must consider any negative shift.
+- Extraction runs once per new transcript and is cached, so it costs few free-tier calls.
+- US coverage only via defeatbeta. TASE companies without transcripts get `confidence=0`.
+
+## Ask-my-portfolio chat
+- A chat box on the main page plus Telegram free text: "why am I down this week?", "what's my biggest risk?", "should I worry about NICE?".
+- **Tool-use over our own API**, never free-form guessing. The LLM gets read-only tools scoped to the current user: `get_summary`, `get_holdings`, `get_xray`, `get_scorecard(symbol)`, `get_analysis(symbol)`, `get_exit_levels(holding)`, `get_performance(period)`.
+- Answers must cite the tool results (the grounding check applies) and end with "Why?" links to the source cards.
+- It never places trades and never changes settings. It only suggests or links to the relevant page.
+- The chat history is stored per user, can be deleted, and is included in the data export.
 
 ## Structured outputs (Pydantic)
 - Every role output is a Pydantic v2 model in `backend/app/committee/schemas.py`. The LLM is called with a JSON response schema (Gemini `response_schema`, Groq JSON mode), then the result is validated with `Model.model_validate_json`.
@@ -52,7 +72,7 @@ The idea from the article: give the agents **ready-made data tools** instead of 
   - `severity ∈ 1..5`
 
 ## Cost and limits (free tier)
-- One full analysis = **3 LLM calls** (News, Bear, CIO). Everything else is code.
+- One full analysis = **4 LLM calls** (Company Profile, News, Bear, CIO); the profile is cached for weeks and the transcript tone per quarter. Everything else is code.
 - Gemini free (~10 RPM) is fine for on-demand "Analyze a stock".
 - The **screener does NOT run the committee on the whole universe**. Deterministic scores rank ~800 symbols, and only the **top ~10 finalists** go through the committee, from a queue at no more than 8 RPM.
 - Results are cached for each symbol per data refresh. Groq is the fallback provider, and templates are the last resort.

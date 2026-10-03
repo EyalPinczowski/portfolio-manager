@@ -53,6 +53,15 @@ The first screen after you log in:
 
 You can switch between portfolios or see all of them combined. On a phone, the three buttons stay pinned at the bottom.
 
+### Ask about my portfolio (chat)
+
+A chat box on the main page, and free text in Telegram. Ask things like:
+- "Why am I down this week?"
+- "What's my biggest risk?"
+- "Should I worry about NICE?"
+
+Answers come from your real data (holdings, X-ray, scores, analyses) with **Why?** links. The chat never trades and never changes your settings.
+
 ### Suggest new stocks
 
 The app scans the S&P 500, NASDAQ-100, TA-125, main US and TASE ETFs and the top cryptocurrencies, and scores each one with the same six signals.
@@ -143,9 +152,11 @@ Instead of asking one AI "buy or sell?", the analysis is split into specialised 
 
 1. **Data Scout** (code): price, P/E, EPS consensus, free-cash-flow yield, ROIC, margins, analyst targets, insiders, earnings date.
 2. **Chartist** (code): RSI, MA 20/50/200, MACD, Bollinger, ATR, support/resistance, patterns. Every number is pre-computed; the AI never does the maths.
-3. **News & Macro analyst** (AI): summarises news and filings from primary sources (SEC, Reuters, Globes, MAYA…), with every claim linked to its source.
-4. **The Bear** (AI): its only job is to find reasons **not** to buy, such as overvaluation, falling margins, debt, regulation or geopolitics.
-5. **CIO** (AI): weighs the evidence against the Bear's case and gives the final structured verdict. It can move the score by at most ±15 points and must answer every Bear point. Your risk filter is applied after that.
+3. **Company Profile** (AI + code): what the business does, revenue by segment and country, management changes (new CEO/CFO), and its main competitors.
+4. **Peer comparison** (code): the stock vs. 3–5 competitors on P/E, growth, margins, ROIC and free-cash-flow yield.
+5. **News & Macro analyst** (AI): summarises news and filings from primary sources (SEC, Reuters, Globes, MAYA…), with every claim linked to its source. It also compares **the tone of the latest earnings calls** with earlier quarters, e.g. guidance cut or management sounding more cautious.
+6. **The Bear** (AI): its only job is to find reasons **not** to buy, such as overvaluation, falling margins, debt, regulation or geopolitics.
+7. **CIO** (AI): weighs the evidence against the Bear's case and gives the final structured verdict. It can move the score by at most ±15 points and must answer every Bear point. Your risk filter is applied after that.
 
 The **Why?** button shows the whole committee: each report, the Bear's case, and how the CIO answered it.
 
