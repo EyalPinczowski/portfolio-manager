@@ -110,6 +110,14 @@ cd frontend && npm run dev | npm test | npm run lint
 3. **Write code with Sonnet agents** (`Agent` with `model: "sonnet"`). The main session plans, verifies (tests, lint, typecheck) and commits.
 4. Problems the review found are fixed in the same phase.
 
+## Security rules (user decision; details in `docs/security.md`)
+
+- **Screenshots are never kept.** Store only the stock rows (name, symbol, quantity, price, value, cost, currency). Never store the image, raw OCR text, account numbers or owner names.
+- Upload images as a **raw request body**, not multipart, because Starlette spools multipart uploads over 1 MB to disk. Hold bytes in memory only.
+- Prefer on-device OCR (in-browser tesseract.js). Never send a half-redacted image to a third party.
+- Purge unconfirmed import drafts after 24 hours, and clear a draft's rows once it is confirmed.
+- Production must run with secure cookies. Never log bodies, OCR text, tokens, passwords or emails.
+
 ## Host-agnostic deployment (user decision: free, no credit card, host chosen later)
 
 See `docs/deployment.md`. Until a host is chosen:

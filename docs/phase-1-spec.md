@@ -75,7 +75,7 @@ backend/tests/   # fixtures only; mark live tests with @pytest.mark.live (skippe
   5. validate: qty × price ≈ value within 2%, otherwise flag the row
   6. match against `Security` (exact symbol / tase_number / fuzzy Hebrew or English name via rapidfuzz)
   7. diff against the last snapshot, proposing buy/sell or deposit/withdrawal changes for the user to confirm
-  8. delete the image
+  8. delete the image (**superseded by `docs/security.md`: raw-body upload, in-memory only, purge drafts, prefer on-device OCR**)
 
   On confirm: write the Holdings, a `HoldingsSnapshot` and the `Transaction`s.
 - **Scheduler jobs**:
