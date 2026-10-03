@@ -96,10 +96,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Export Me */
-        get: operations["export_me_api_me_export_get"];
+        get?: never;
         put?: never;
-        post?: never;
+        /** Export Me */
+        post: operations["export_me_api_me_export_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -118,6 +118,60 @@ export interface paths {
         post?: never;
         /** Delete Me */
         delete: operations["delete_me_api_me_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sessions */
+        get: operations["list_sessions_api_auth_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Session */
+        delete: operations["revoke_session_api_auth_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/sessions/revoke-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke All Sessions
+         * @description Log out everywhere else: every session of this user except the current one.
+         */
+        post: operations["revoke_all_sessions_api_auth_sessions_revoke_all_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -281,6 +335,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/portfolios/{portfolio_id}/imports/rows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Import From Rows
+         * @description On-device OCR path: no image ever reaches the server. No OCR consent is needed (no third
+         *     party and no server-side reading).
+         */
+        post: operations["create_import_from_rows_api_portfolios__portfolio_id__imports_rows_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/imports/{draft_id}": {
         parameters: {
             query?: never;
@@ -316,6 +391,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/launch-gate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Launch Gate
+         * @description Whether live buy/sell verdicts may be served, and if not, why not.
+         */
+        get: operations["launch_gate_api_launch_gate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/risk/presets": {
         parameters: {
             query?: never;
@@ -340,7 +435,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Securities Search */
+        /**
+         * Securities Search
+         * @description Seeded or provider-verified securities only (never another user's unverified ticker).
+         */
         get: operations["securities_search_api_securities_search_get"];
         put?: never;
         post?: never;
@@ -475,19 +573,17 @@ export interface components {
             id: number;
             /** Symbol */
             symbol: string;
-            /** Op */
-            op: string;
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "above" | "below";
             /** Price */
             price: number;
             /** Active */
             active: boolean;
             /** Triggered At */
             triggered_at?: string | null;
-        };
-        /** Body_create_import_api_portfolios__portfolio_id__imports_post */
-        Body_create_import_api_portfolios__portfolio_id__imports_post: {
-            /** File */
-            file: string;
         };
         /** Breach */
         Breach: {
@@ -548,10 +644,16 @@ export interface components {
             name_en: string;
             /** Name He */
             name_he: string;
-            /** Asset Type */
-            asset_type: string;
-            /** Market */
-            market: string;
+            /**
+             * Asset Type
+             * @enum {string}
+             */
+            asset_type: "stock" | "etf" | "crypto" | "fund" | "bond" | "cash";
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "TASE" | "CRYPTO";
             /** Quantity */
             quantity: number;
             /** Price */
@@ -589,10 +691,7 @@ export interface components {
             cost_currency?: ("ILS" | "USD") | null;
             /** Horizon */
             horizon?: ("1w" | "1m" | "3m" | "6m" | "1y") | null;
-            /** Risk Override */
-            risk_override?: {
-                [key: string]: unknown;
-            } | null;
+            risk_override?: components["schemas"]["RiskOverride"] | null;
         };
         /** ImportDraftOut */
         ImportDraftOut: {
@@ -609,6 +708,11 @@ export interface components {
             rows: components["schemas"]["ImportRowModel"][];
             /** Proposed Changes */
             proposed_changes: components["schemas"]["ProposedChange"][];
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
         };
         /** ImportPatch */
         ImportPatch: {
@@ -659,6 +763,21 @@ export interface components {
             /** Flags */
             flags?: ("missing_fields" | "value_mismatch" | "unmatched" | "low_confidence_match" | "currency_changed" | "unit_mismatch")[];
         };
+        /**
+         * ImportRowsBody
+         * @description On-device OCR: the browser parsed the screenshot, only the stock rows are sent.
+         */
+        ImportRowsBody: {
+            /** Rows */
+            rows: components["schemas"]["ImportRowModel"][];
+        };
+        /** LaunchGateOut */
+        LaunchGateOut: {
+            /** Open */
+            open: boolean;
+            /** Reasons */
+            reasons: string[];
+        };
         /** LoginIn */
         LoginIn: {
             /** Email */
@@ -695,8 +814,11 @@ export interface components {
             id: number;
             /** Email */
             email: string;
-            /** Locale */
-            locale: string;
+            /**
+             * Locale
+             * @enum {string}
+             */
+            locale: "he" | "en";
             /** Disclaimer Accepted */
             disclaimer_accepted: boolean;
             /** Ocr Consent */
@@ -738,6 +860,11 @@ export interface components {
             /** Read */
             read: boolean;
         };
+        /** PasswordBody */
+        PasswordBody: {
+            /** Password */
+            password: string;
+        };
         /** Pnl */
         Pnl: {
             /** Ils */
@@ -764,8 +891,11 @@ export interface components {
             id: number;
             /** Name */
             name: string;
-            /** Base Currency */
-            base_currency: string;
+            /**
+             * Base Currency
+             * @enum {string}
+             */
+            base_currency: "ILS" | "USD";
             risk_filter: components["schemas"]["RiskFilterOut"];
             /** Tracking Started At */
             tracking_started_at?: string | null;
@@ -781,10 +911,7 @@ export interface components {
             name?: string | null;
             /** Base Currency */
             base_currency?: ("ILS" | "USD") | null;
-            /** Risk Filter */
-            risk_filter?: {
-                [key: string]: unknown;
-            } | null;
+            risk_filter?: components["schemas"]["RiskFilterIn"] | null;
         };
         /** ProposedChange */
         ProposedChange: {
@@ -803,6 +930,34 @@ export interface components {
             amount: number | null;
             /** Currency */
             currency: string;
+        };
+        /**
+         * RiskFilterIn
+         * @description A risk filter as the client may send it: every field optional and bounded.
+         *
+         *     Percentages are in (0, 100]; `min_rr` is a ratio in (0, 100]. Presets fill the missing fields.
+         */
+        RiskFilterIn: {
+            /** Preset */
+            preset?: ("very_conservative" | "conservative" | "balanced" | "balanced_aggressive" | "aggressive" | "very_aggressive") | null;
+            /** Max Position Pct */
+            max_position_pct?: number | null;
+            /** Max Sector Pct */
+            max_sector_pct?: number | null;
+            /** Max Country Pct */
+            max_country_pct?: number | null;
+            /** Max Loss Per Position Pct */
+            max_loss_per_position_pct?: number | null;
+            /** Max Portfolio Risk Per Trade Pct */
+            max_portfolio_risk_per_trade_pct?: number | null;
+            /** Max Total Portfolio Risk Pct */
+            max_total_portfolio_risk_pct?: number | null;
+            /** Min Rr */
+            min_rr?: number | null;
+            /** Stop Type */
+            stop_type?: ("fixed" | "trailing" | "both") | null;
+            /** Drawdown Defensive Pct */
+            drawdown_defensive_pct?: number | null;
         };
         /** RiskFilterOut */
         RiskFilterOut: {
@@ -829,6 +984,32 @@ export interface components {
             stop_type: "fixed" | "trailing" | "both";
             /** Drawdown Defensive Pct */
             drawdown_defensive_pct: number;
+        };
+        /**
+         * RiskOverride
+         * @description A per-holding override: it wins over the portfolio's filter (CLAUDE.md, product decisions).
+         */
+        RiskOverride: {
+            /** Preset */
+            preset?: ("very_conservative" | "conservative" | "balanced" | "balanced_aggressive" | "aggressive" | "very_aggressive") | null;
+            /** Max Position Pct */
+            max_position_pct?: number | null;
+            /** Max Sector Pct */
+            max_sector_pct?: number | null;
+            /** Max Country Pct */
+            max_country_pct?: number | null;
+            /** Max Loss Per Position Pct */
+            max_loss_per_position_pct?: number | null;
+            /** Max Portfolio Risk Per Trade Pct */
+            max_portfolio_risk_per_trade_pct?: number | null;
+            /** Max Total Portfolio Risk Pct */
+            max_total_portfolio_risk_pct?: number | null;
+            /** Min Rr */
+            min_rr?: number | null;
+            /** Stop Type */
+            stop_type?: ("fixed" | "trailing" | "both") | null;
+            /** Drawdown Defensive Pct */
+            drawdown_defensive_pct?: number | null;
         };
         /** RiskPresetOut */
         RiskPresetOut: {
@@ -908,8 +1089,11 @@ export interface components {
             name_en: string;
             /** Name He */
             name_he: string;
-            /** Market */
-            market: string;
+            /**
+             * Market
+             * @enum {string}
+             */
+            market: "US" | "TASE" | "CRYPTO";
         };
         /** SeriesPoint */
         SeriesPoint: {
@@ -921,6 +1105,23 @@ export interface components {
             sp500_pct?: number | null;
             /** Ta125 Pct */
             ta125_pct?: number | null;
+        };
+        /** SessionOut */
+        SessionOut: {
+            /** Id */
+            id: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Last Seen At
+             * Format: date-time
+             */
+            last_seen_at: string;
+            /** Current */
+            current: boolean;
         };
         /** SignalBreakdownOut */
         SignalBreakdownOut: {
@@ -1169,7 +1370,73 @@ export interface operations {
             };
         };
     };
-    export_me_api_me_export_get: {
+    export_me_api_me_export_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_me_api_me_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sessions_api_auth_sessions_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1184,14 +1451,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SessionOut"][];
                 };
             };
         };
     };
-    delete_me_api_me_delete: {
+    revoke_session_api_auth_sessions__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_all_sessions_api_auth_sessions_revoke_all_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -1611,9 +1905,47 @@ export interface operations {
             };
             cookie?: never;
         };
+        /** @description The raw image bytes (not multipart). */
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_create_import_api_portfolios__portfolio_id__imports_post"];
+                "image/png": string;
+                "image/jpeg": string;
+                "image/webp": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportDraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_import_from_rows_api_portfolios__portfolio_id__imports_rows_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportRowsBody"];
             };
         };
         responses: {
@@ -1730,6 +2062,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    launch_gate_api_launch_gate_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaunchGateOut"];
                 };
             };
         };
