@@ -80,3 +80,7 @@ The import flow exists (upload → review → confirm, with diffs against the la
 5. **Inferred transactions:** every quantity change becomes a proposed transaction the user confirms (this keeps profit/loss time-weighted correct: deposits and withdrawals are not profit). Cost per unit stays as before unless the screenshot gives a new P&L % (then `cost_inferred` is offered as an update, not forced).
 6. **Safety:** the screenshot is never stored (on-device reading), the rows are scrubbed, the draft expires in 24 h, and the confirm step is the only write. A failed or partial confirm leaves the portfolio unchanged (one database transaction).
 7. **Tests:** partial vs full scope; an update that changes one quantity and adds one holding; overlapping screenshots; confirm is atomic (inject a failure mid-confirm and prove nothing changed); the last-updated timestamp and nudge.
+
+
+## Feature (added 2026-10-03, user request): App settings
+Full spec in `docs/settings-spec.md` (appearance, portfolio defaults, notifications including the one-bot Telegram link flow, privacy and AI, system status, admin). Order: backend `UserSettings` + Telegram link + admin endpoints with the importer/backend block; the Settings screens with the frontend design block (`docs/ui-decisions.md`).
