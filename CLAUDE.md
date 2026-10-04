@@ -109,6 +109,7 @@ cd frontend && npm run dev | npm test | npm run lint
 2. Save the report to `docs/reviews/phase-<n>-<YYYY-MM-DD>.md` and show it to the user. The user chooses which suggestions to include. The rest go to `docs/ideas.md`.
 3. **Write code with Sonnet agents** (`Agent` with `model: "sonnet"`). The main session plans, verifies (tests, lint, typecheck) and commits.
 4. Problems the review found are fixed in the same phase.
+5. After every phase, run the whole test suite (backend pytest on SQLite and, when available, Postgres; ruff, mypy; frontend lint, tsc, vitest, build), regenerate `docs/testing.md` with `python scripts/test_inventory.py`, and add tests for anything the phase changed; move items from 'Planned tests' into the suite as they become runnable.
 
 - **Week = Sunday to Saturday** (`week_start_day` setting, Asia/Jerusalem); backend and frontend must agree.
 

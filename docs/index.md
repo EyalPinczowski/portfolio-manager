@@ -17,6 +17,7 @@ Token-saving rule for Claude sessions: do not read whole docs. Grep for a headin
 | Israeli funds (GemelNet) and dividend calendar | `backend/app/providers/gemelnet.py` (+ `dividends.py`, interfaces in `providers/base.py`), `funds.py` (symbol `GEMEL-<id>`, returns), `api/funds.py` (`GET /api/funds/search?q=`, `GET /api/funds/{id}`), `api/dividends.py` + `portfolio/dividends.py` (`GET /api/portfolios/{id}/dividends`), table `fund_holding` (migration 0014); status.md 2026-10-04 |
 | Exit-level scale-out plans per risk preset | config `exit_levels_scale_out_plans`; code `backend/app/scoring/exit_levels.py` (`_plan_for`, `ScaleOutPlan`); status.md 2026-10-04 |
 | RAG code (chunker, `ChunkIndex` FTS5/tsvector, `Retriever`, prompt builder, `rag-index` job), table `doc_chunk` (migration 0015) | `backend/app/rag/`, `docs/rag-spec.md` "Built"; status.md 2026-10-04 |
+| Testing: all tests by area (generated) + planned tests; regenerate with `python scripts/test_inventory.py` | `docs/testing.md`, `scripts/test_inventory.py` |
 | Backlog, reminders | `docs/ideas.md`, `docs/reminders.md` |
 | Reviews | `docs/reviews/` (one file per phase) |
 
