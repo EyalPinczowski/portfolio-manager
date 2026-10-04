@@ -1,0 +1,367 @@
+{
+ "help": "https://data.gov.il/api/3/action/help_show?name=datastore_search",
+ "success": true,
+ "result": {
+  "filters": {
+   "FUND_ID": "103"
+  },
+  "include_total": true,
+  "limit": 6,
+  "records_format": "objects",
+  "resource_id": "a30dcbea-a1d2-482c-ae29-8f781f5025fb",
+  "sort": "REPORT_PERIOD desc",
+  "total_estimation_threshold": null,
+  "records": [
+   {
+    "_id": 39,
+    "FUND_ID": 103,
+    "FUND_NAME": "מיטב גמל לבני 50 עד 60",
+    "FUND_CLASSIFICATION": "תגמולים ואישית לפיצויים",
+    "CONTROLLING_CORPORATION": "מיטב דש השקעות בע\"מ",
+    "MANAGING_CORPORATION": "מיטב גמל ופנסיה בע\"מ",
+    "REPORT_PERIOD": 202608,
+    "INCEPTION_DATE": "1970-01-01T00:00:00",
+    "TARGET_POPULATION": "כלל האוכלוסיה",
+    "SPECIALIZATION": "מדרגות",
+    "SUB_SPECIALIZATION": "50-60",
+    "DEPOSITS": 84.45,
+    "WITHDRAWLS": 46.12,
+    "INTERNAL_TRANSFERS": 278.82,
+    "NET_MONTHLY_DEPOSITS": 317.15,
+    "TOTAL_ASSETS": 25546.75,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.53,
+    "AVG_DEPOSIT_FEE": 0.05,
+    "MONTHLY_YIELD": 1.68,
+    "YEAR_TO_DATE_YIELD": 6.89,
+    "YIELD_TRAILING_3_YRS": 42.96,
+    "YIELD_TRAILING_5_YRS": 47.42,
+    "AVG_ANNUAL_YIELD_TRAILING_3YRS": 12.65,
+    "AVG_ANNUAL_YIELD_TRAILING_5YRS": 8.07,
+    "STANDARD_DEVIATION": 5.92,
+    "ALPHA": 1.32,
+    "SHARPE_RATIO": 1.11,
+    "LIQUID_ASSETS_PERCENT": 82.1,
+    "STOCK_MARKET_EXPOSURE": 11957.07,
+    "FOREIGN_EXPOSURE": 11808.57,
+    "FOREIGN_CURRENCY_EXPOSURE": 5031.88,
+    "MANAGING_CORPORATION_LEGAL_ID": 512065202,
+    "CURRENT_DATE": "2026-10-04T00:00:00"
+   },
+   {
+    "_id": 38,
+    "FUND_ID": 103,
+    "FUND_NAME": "מיטב גמל לבני 50 עד 60",
+    "FUND_CLASSIFICATION": "תגמולים ואישית לפיצויים",
+    "CONTROLLING_CORPORATION": "מיטב דש השקעות בע\"מ",
+    "MANAGING_CORPORATION": "מיטב גמל ופנסיה בע\"מ",
+    "REPORT_PERIOD": 202607,
+    "INCEPTION_DATE": "1970-01-01T00:00:00",
+    "TARGET_POPULATION": "כלל האוכלוסיה",
+    "SPECIALIZATION": "מדרגות",
+    "SUB_SPECIALIZATION": "50-60",
+    "DEPOSITS": 65.33,
+    "WITHDRAWLS": 33.58,
+    "INTERNAL_TRANSFERS": 277.82,
+    "NET_MONTHLY_DEPOSITS": 309.57,
+    "TOTAL_ASSETS": 24824.09,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.53,
+    "AVG_DEPOSIT_FEE": 0.05,
+    "MONTHLY_YIELD": -0.48,
+    "YEAR_TO_DATE_YIELD": 5.13,
+    "YIELD_TRAILING_3_YRS": 40.25,
+    "YIELD_TRAILING_5_YRS": 47.58,
+    "AVG_ANNUAL_YIELD_TRAILING_3YRS": 11.94,
+    "AVG_ANNUAL_YIELD_TRAILING_5YRS": 8.09,
+    "STANDARD_DEVIATION": 5.92,
+    "ALPHA": 0.96,
+    "SHARPE_RATIO": 1.07,
+    "LIQUID_ASSETS_PERCENT": 81.9,
+    "STOCK_MARKET_EXPOSURE": 11865.9,
+    "FOREIGN_EXPOSURE": 11696.35,
+    "FOREIGN_CURRENCY_EXPOSURE": 4756.37,
+    "MANAGING_CORPORATION_LEGAL_ID": 512065202,
+    "CURRENT_DATE": "2026-10-04T00:00:00"
+   },
+   {
+    "_id": 37,
+    "FUND_ID": 103,
+    "FUND_NAME": "מיטב גמל לבני 50 עד 60",
+    "FUND_CLASSIFICATION": "תגמולים ואישית לפיצויים",
+    "CONTROLLING_CORPORATION": "מיטב דש השקעות בע\"מ",
+    "MANAGING_CORPORATION": "מיטב גמל ופנסיה בע\"מ",
+    "REPORT_PERIOD": 202606,
+    "INCEPTION_DATE": "1970-01-01T00:00:00",
+    "TARGET_POPULATION": "כלל האוכלוסיה",
+    "SPECIALIZATION": "מדרגות",
+    "SUB_SPECIALIZATION": "50-60",
+    "DEPOSITS": 57.9,
+    "WITHDRAWLS": 51.32,
+    "INTERNAL_TRANSFERS": 411.24,
+    "NET_MONTHLY_DEPOSITS": 417.82,
+    "TOTAL_ASSETS": 24645.82,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.53,
+    "AVG_DEPOSIT_FEE": 0.05,
+    "MONTHLY_YIELD": -0.46,
+    "YEAR_TO_DATE_YIELD": 5.63,
+    "YIELD_TRAILING_3_YRS": 44.39,
+    "YIELD_TRAILING_5_YRS": 49.18,
+    "AVG_ANNUAL_YIELD_TRAILING_3YRS": 13.03,
+    "AVG_ANNUAL_YIELD_TRAILING_5YRS": 8.33,
+    "STANDARD_DEVIATION": 5.9,
+    "ALPHA": null,
+    "SHARPE_RATIO": 1.21,
+    "LIQUID_ASSETS_PERCENT": 82.2,
+    "STOCK_MARKET_EXPOSURE": 11686.61,
+    "FOREIGN_EXPOSURE": 11261.65,
+    "FOREIGN_CURRENCY_EXPOSURE": 4712.08,
+    "MANAGING_CORPORATION_LEGAL_ID": 512065202,
+    "CURRENT_DATE": "2026-10-04T00:00:00"
+   },
+   {
+    "_id": 36,
+    "FUND_ID": 103,
+    "FUND_NAME": "מיטב גמל לבני 50 עד 60",
+    "FUND_CLASSIFICATION": "תגמולים ואישית לפיצויים",
+    "CONTROLLING_CORPORATION": "מיטב דש השקעות בע\"מ",
+    "MANAGING_CORPORATION": "מיטב גמל ופנסיה בע\"מ",
+    "REPORT_PERIOD": 202605,
+    "INCEPTION_DATE": "1970-01-01T00:00:00",
+    "TARGET_POPULATION": "כלל האוכלוסיה",
+    "SPECIALIZATION": "מדרגות",
+    "SUB_SPECIALIZATION": "50-60",
+    "DEPOSITS": 82.73,
+    "WITHDRAWLS": 38.6,
+    "INTERNAL_TRANSFERS": 425.74,
+    "NET_MONTHLY_DEPOSITS": 469.87,
+    "TOTAL_ASSETS": 24350.86,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.53,
+    "AVG_DEPOSIT_FEE": 0.05,
+    "MONTHLY_YIELD": 1.82,
+    "YEAR_TO_DATE_YIELD": 6.12,
+    "YIELD_TRAILING_3_YRS": 47.45,
+    "YIELD_TRAILING_5_YRS": 51.25,
+    "AVG_ANNUAL_YIELD_TRAILING_3YRS": 13.82,
+    "AVG_ANNUAL_YIELD_TRAILING_5YRS": 8.63,
+    "STANDARD_DEVIATION": 5.88,
+    "ALPHA": 1.32,
+    "SHARPE_RATIO": 1.24,
+    "LIQUID_ASSETS_PERCENT": 82,
+    "STOCK_MARKET_EXPOSURE": 11443.97,
+    "FOREIGN_EXPOSURE": 10562.37,
+    "FOREIGN_CURRENCY_EXPOSURE": 4289.68,
+    "MANAGING_CORPORATION_LEGAL_ID": 512065202,
+    "CURRENT_DATE": "2026-10-04T00:00:00"
+   },
+   {
+    "_id": 35,
+    "FUND_ID": 103,
+    "FUND_NAME": "מיטב גמל לבני 50 עד 60",
+    "FUND_CLASSIFICATION": "תגמולים ואישית לפיצויים",
+    "CONTROLLING_CORPORATION": "מיטב דש השקעות בע\"מ",
+    "MANAGING_CORPORATION": "מיטב גמל ופנסיה בע\"מ",
+    "REPORT_PERIOD": 202604,
+    "INCEPTION_DATE": "1970-01-01T00:00:00",
+    "TARGET_POPULATION": "כלל האוכלוסיה",
+    "SPECIALIZATION": "מדרגות",
+    "SUB_SPECIALIZATION": "50-60",
+    "DEPOSITS": 50.2,
+    "WITHDRAWLS": 28.92,
+    "INTERNAL_TRANSFERS": 423.83,
+    "NET_MONTHLY_DEPOSITS": 445.11,
+    "TOTAL_ASSETS": 23463.42,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.53,
+    "AVG_DEPOSIT_FEE": 0.05,
+    "MONTHLY_YIELD": 3.95,
+    "YEAR_TO_DATE_YIELD": 4.23,
+    "YIELD_TRAILING_3_YRS": 46.25,
+    "YIELD_TRAILING_5_YRS": 50.72,
+    "AVG_ANNUAL_YIELD_TRAILING_3YRS": 13.51,
+    "AVG_ANNUAL_YIELD_TRAILING_5YRS": 8.55,
+    "STANDARD_DEVIATION": 5.87,
+    "ALPHA": 0.84,
+    "SHARPE_RATIO": 1.19,
+    "LIQUID_ASSETS_PERCENT": 82,
+    "STOCK_MARKET_EXPOSURE": 10896.57,
+    "FOREIGN_EXPOSURE": 10572.47,
+    "FOREIGN_CURRENCY_EXPOSURE": 4267.35,
+    "MANAGING_CORPORATION_LEGAL_ID": 512065202,
+    "CURRENT_DATE": "2026-10-04T00:00:00"
+   },
+   {
+    "_id": 34,
+    "FUND_ID": 103,
+    "FUND_NAME": "מיטב גמל לבני 50 עד 60",
+    "FUND_CLASSIFICATION": "תגמולים ואישית לפיצויים",
+    "CONTROLLING_CORPORATION": "מיטב דש השקעות בע\"מ",
+    "MANAGING_CORPORATION": "מיטב גמל ופנסיה בע\"מ",
+    "REPORT_PERIOD": 202603,
+    "INCEPTION_DATE": "1970-01-01T00:00:00",
+    "TARGET_POPULATION": "כלל האוכלוסיה",
+    "SPECIALIZATION": "מדרגות",
+    "SUB_SPECIALIZATION": "50-60",
+    "DEPOSITS": 77.54,
+    "WITHDRAWLS": 36.39,
+    "INTERNAL_TRANSFERS": 456.66,
+    "NET_MONTHLY_DEPOSITS": 497.81,
+    "TOTAL_ASSETS": 22153.01,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.53,
+    "AVG_DEPOSIT_FEE": 0.05,
+    "MONTHLY_YIELD": -2.49,
+    "YEAR_TO_DATE_YIELD": 0.26,
+    "YIELD_TRAILING_3_YRS": 43,
+    "YIELD_TRAILING_5_YRS": 48.32,
+    "AVG_ANNUAL_YIELD_TRAILING_3YRS": 12.66,
+    "AVG_ANNUAL_YIELD_TRAILING_5YRS": 8.2,
+    "STANDARD_DEVIATION": 5.73,
+    "ALPHA": 0.84,
+    "SHARPE_RATIO": 1.07,
+    "LIQUID_ASSETS_PERCENT": 81.5,
+    "STOCK_MARKET_EXPOSURE": 10110.46,
+    "FOREIGN_EXPOSURE": 10126.57,
+    "FOREIGN_CURRENCY_EXPOSURE": 3794.88,
+    "MANAGING_CORPORATION_LEGAL_ID": 512065202,
+    "CURRENT_DATE": "2026-10-04T00:00:00"
+   }
+  ],
+  "fields": [
+   {
+    "id": "_id",
+    "type": "int"
+   },
+   {
+    "id": "FUND_ID",
+    "type": "numeric"
+   },
+   {
+    "id": "FUND_NAME",
+    "type": "text"
+   },
+   {
+    "id": "FUND_CLASSIFICATION",
+    "type": "text"
+   },
+   {
+    "id": "CONTROLLING_CORPORATION",
+    "type": "text"
+   },
+   {
+    "id": "MANAGING_CORPORATION",
+    "type": "text"
+   },
+   {
+    "id": "REPORT_PERIOD",
+    "type": "numeric"
+   },
+   {
+    "id": "INCEPTION_DATE",
+    "type": "text"
+   },
+   {
+    "id": "TARGET_POPULATION",
+    "type": "text"
+   },
+   {
+    "id": "SPECIALIZATION",
+    "type": "text"
+   },
+   {
+    "id": "SUB_SPECIALIZATION",
+    "type": "text"
+   },
+   {
+    "id": "DEPOSITS",
+    "type": "numeric"
+   },
+   {
+    "id": "WITHDRAWLS",
+    "type": "numeric"
+   },
+   {
+    "id": "INTERNAL_TRANSFERS",
+    "type": "numeric"
+   },
+   {
+    "id": "NET_MONTHLY_DEPOSITS",
+    "type": "numeric"
+   },
+   {
+    "id": "TOTAL_ASSETS",
+    "type": "numeric"
+   },
+   {
+    "id": "AVG_ANNUAL_MANAGEMENT_FEE",
+    "type": "numeric"
+   },
+   {
+    "id": "AVG_DEPOSIT_FEE",
+    "type": "numeric"
+   },
+   {
+    "id": "MONTHLY_YIELD",
+    "type": "numeric"
+   },
+   {
+    "id": "YEAR_TO_DATE_YIELD",
+    "type": "numeric"
+   },
+   {
+    "id": "YIELD_TRAILING_3_YRS",
+    "type": "numeric"
+   },
+   {
+    "id": "YIELD_TRAILING_5_YRS",
+    "type": "numeric"
+   },
+   {
+    "id": "AVG_ANNUAL_YIELD_TRAILING_3YRS",
+    "type": "numeric"
+   },
+   {
+    "id": "AVG_ANNUAL_YIELD_TRAILING_5YRS",
+    "type": "numeric"
+   },
+   {
+    "id": "STANDARD_DEVIATION",
+    "type": "numeric"
+   },
+   {
+    "id": "ALPHA",
+    "type": "numeric"
+   },
+   {
+    "id": "SHARPE_RATIO",
+    "type": "numeric"
+   },
+   {
+    "id": "LIQUID_ASSETS_PERCENT",
+    "type": "numeric"
+   },
+   {
+    "id": "STOCK_MARKET_EXPOSURE",
+    "type": "numeric"
+   },
+   {
+    "id": "FOREIGN_EXPOSURE",
+    "type": "numeric"
+   },
+   {
+    "id": "FOREIGN_CURRENCY_EXPOSURE",
+    "type": "numeric"
+   },
+   {
+    "id": "MANAGING_CORPORATION_LEGAL_ID",
+    "type": "numeric"
+   },
+   {
+    "id": "CURRENT_DATE",
+    "type": "text"
+   }
+  ],
+  "_links": {
+   "start": "/api/3/action/datastore_search?resource_id=a30dcbea-a1d2-482c-ae29-8f781f5025fb&filters=%7B%22FUND_ID%22%3A+%22103%22%7D&limit=6&sort=REPORT_PERIOD+desc",
+   "next": "/api/3/action/datastore_search?resource_id=a30dcbea-a1d2-482c-ae29-8f781f5025fb&filters=%7B%22FUND_ID%22%3A+%22103%22%7D&limit=6&sort=REPORT_PERIOD+desc&offset=6"
+  },
+  "total": 32,
+  "total_was_estimated": false
+ }
+}

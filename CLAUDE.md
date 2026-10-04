@@ -38,7 +38,7 @@ cd frontend && npm run dev | npm test | npm run lint
 - Some Israeli companies are dual-listed on TASE and in the US (e.g. TEVA, NICE, ESLT), while others trade only in the US (e.g. CHKP, WIX). Keep a mapping table so dual listings are never double-counted.
 - **Trading hours**: TASE trades Mon–Fri since Jan 2026, roughly 09:59–17:25 Israel time (Friday closes earlier). US trades 09:30–16:00 ET. Use `zoneinfo` and exchange calendars (`exchange_calendars` / `pandas_market_calendars`) and never hard-code UTC offsets. DST changes on different dates in Israel and the US.
 - **Currency**: the portfolio is shown in both ILS and USD. Store each transaction in its native currency together with the FX rate on the trade date.
-- **Index references**: TA-35 (`TA35.TA`), TA-125 (`^TA125.TA`), S&P 500 (`^GSPC`), NASDAQ (`^IXIC`), VIX (`^VIX`), USD/ILS (`ILS=X`). Verify symbols before relying on them because Yahoo changes them occasionally.
+- **Index references**: TA-35 (`TA35.TA`), TA-125 (`^TA125.TA`), S&P 500 (`^GSPC`), NASDAQ (`^IXIC`), VIX (`^VIX`), USD/ILS (`ILS=X`). All verified live on 2026-10-04; re-check if one stops answering, because Yahoo changes them occasionally.
 - The CNN Fear & Greed endpoint is **unofficial** and can break. Wrap it, cache it, and fall back to a computed proxy (VIX, put/call, breadth, momentum).
 
 ## Conventions

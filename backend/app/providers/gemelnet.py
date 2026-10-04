@@ -4,9 +4,10 @@ Key-free, personal and non-commercial. The source is monthly: one row per fund p
 month. Everything here is label-first: `Field.source` is "gemelnet", `as_of` is the end of the
 latest reporting month, and an empty or unreadable answer is a missing reason, never a number.
 
-UNVERIFIED (the sandbox cannot reach data.gov.il): the resource id and the column names. The
-resource id comes from `Settings.gemelnet_resource_ids["monthly_returns"]` (empty by default: the
-lookup then answers `unavailable`), the column names from `Settings.gemelnet_fields`. The
+Verified live on 2026-10-04: the resource id (default in `Settings.gemelnet_resource_ids
+["monthly_returns"]`; an empty value makes the lookup answer `unavailable`), the column names in
+`Settings.gemelnet_fields`, and the `q`, `filters` and `sort` queries used below. A real answer is
+recorded in `tests/fixtures/live_2026_10/`. The
 `httpx.Client` is injectable, so tests use a `MockTransport` with the recorded fixture in
 `tests/fixtures/gemelnet/`.
 """

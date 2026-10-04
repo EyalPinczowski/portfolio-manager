@@ -588,13 +588,17 @@ class Settings(BaseSettings):
     # (currency has no default threshold: informational unless the user sets one)
 
     # --- Israeli funds (GemelNet on data.gov.il, free CKAN datastore API, no key) ---
-    # Personal, non-commercial use; data only behind login. Resource ids are NOT built in: they
-    # were not verified from the sandbox. Discover them with `package_search` on data.gov.il and
-    # set GEMELNET_RESOURCE_IDS as JSON, for example {"monthly_returns": "<uuid>"}. Without one the
-    # fund lookup answers "unavailable" and manual entry still works.
+    # Personal, non-commercial use; data only behind login. The default resource is the dataset
+    # "gemelnet" file "2024 to today" (verified live 2026-10-04: refreshed daily, monthly rows from
+    # 2024-01). Earlier years live in separate files (1999-2022, 2023), so a series starts in 2024.
+    # If data.gov.il replaces the file, find the new id with `package_search?q=gemelnet` and set
+    # GEMELNET_RESOURCE_IDS as JSON, for example {"monthly_returns": "<uuid>"}. An empty dict
+    # turns the lookup off ("unavailable"); manual entry still works.
     gemelnet_base_url: str = "https://data.gov.il/api/3/action"
-    gemelnet_resource_ids: dict[str, str] = Field(default_factory=dict)
-    # Our name -> the dataset's column name (unverified guesses, override as JSON when they differ).
+    gemelnet_resource_ids: dict[str, str] = Field(
+        default_factory=lambda: {"monthly_returns": "a30dcbea-a1d2-482c-ae29-8f781f5025fb"}
+    )
+    # Our name -> the dataset's column name (all verified against the live dataset on 2026-10-04).
     gemelnet_fields: dict[str, str] = Field(
         default_factory=lambda: {
             "fund_id": "FUND_ID",
