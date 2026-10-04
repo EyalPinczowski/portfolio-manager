@@ -138,3 +138,9 @@ Last updated: 2026-10-03 21:05 UTC. Branch: `claude/stock-portfolio-assistant-jg
 
 ## 2026-10-04 (live data check)
 - Pulled data from the sites earlier sessions could not reach; report in `docs/reviews/live-data-check-2026-10-04.md`. GemelNet resource id `a30dcbea-a1d2-482c-ae29-8f781f5025fb` is now the default in `config.py` (all 8 column names matched; series start at 2024-01). Bank of Israel XML, Frankfurter, CoinGecko ids and the Yahoo index/TASE symbols confirmed. Real answers recorded in `backend/tests/fixtures/live_2026_10/` with `tests/test_recorded_sources_2026_10.py`; live tests added for BoI/Frankfurter/CoinGecko. Still unverified: TASE Data Hub (needs sign-up), Stooq (unreachable), Finnhub/FMP with a real key. Full suite 1650 passed; ruff, mypy clean.
+
+## 2026-10-04 (real-history backtest)
+- Yahoo reachable (Stooq flaky, unused). `fetch-history` stored 86 symbols, 2015 to 2026-10-02, `synthetic: false` (git-ignored `backend/data/history/`).
+- Baseline (`top`, defaults): held-out success 3/6/9/9% (conservative to aggressive) vs the 80% bar; train 2–6%. Every profile trails ^GSPC by 6–8% per 6 months; 47–75% of trades stop out. Report `docs/reviews/backtest-real-2026-10-04-baseline-top.md`.
+- One-at-a-time tuning of non-risk params (screen 10/20 days, 1/5 new buys, trail update 1/10 days): nothing beat the defaults on train; defaults kept. Holding ^GSPC itself meets the conservative 3%/4% bar in only 11% of windows. Summary `docs/reviews/backtest-real-2026-10-04.md`. Nothing recorded to the launch gate.
+- Waiting for the user: relax targets/caps, revisit stop rules, or accept and rely on paper trading.
