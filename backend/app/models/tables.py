@@ -235,6 +235,22 @@ class XrayRuleSetting(SQLModel, table=True):
     updated_at: NaiveDatetime = Field(default_factory=utcnow)
 
 
+class FundHolding(SQLModel, table=True):
+    """Extra data of a fund holding (symbol `GEMEL-<fund id>`): the fund number, the user's own
+    fund name and track, and the **manual value** in ILS. GemelNet publishes monthly returns, not
+    a unit price, so the current value is what the user last read from the fund's statement; it is
+    never invented. Cascades with the holding."""
+
+    __tablename__ = "fund_holding"
+    holding_id: int = Field(primary_key=True, foreign_key="holding.id", ondelete="CASCADE")
+    fund_id: str = Field(index=True)
+    fund_name: str | None = None  # the user's own entry, shown when the dataset has no name
+    track: str | None = None  # the user's own entry (e.g. "S&P 500 track", "general")
+    manual_value_ils: float | None = None  # the whole position, ILS only
+    manual_value_as_of: date | None = None  # the statement date the user gave
+    updated_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
 class UserSettings(SQLModel, table=True):
     """Per-user settings, one row per user (see docs/settings-spec.md). A user without a row has the
     defaults from `Settings`. `idea_alerts` is NULL until the user saves the filter: nothing is

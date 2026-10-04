@@ -8,6 +8,7 @@ from typing import Any
 from sqlmodel import Session
 
 from app.config import Settings, get_settings
+from app.funds import is_fund_symbol
 from app.models import SignalCache
 from app.providers.base import HistoryProvider
 from app.scoring.combine import combine_signals
@@ -33,7 +34,7 @@ def compute_scorecard(
 ) -> dict[str, Any]:
     s = settings or get_settings()
     df = None
-    if history is not None:
+    if history is not None and not is_fund_symbol(symbol):  # a fund has no daily chart
         try:
             df = history.get_history(symbol, s.history_days)
         except Exception:

@@ -1,0 +1,493 @@
+{
+ "help": "https://data.gov.il/api/3/action/help_show?name=datastore_search",
+ "success": true,
+ "result": {
+  "include_total": true,
+  "resource_id": "00000000-0000-0000-0000-000000000001",
+  "fields": [
+   {
+    "id": "_id",
+    "type": "int"
+   },
+   {
+    "id": "FUND_ID",
+    "type": "int"
+   },
+   {
+    "id": "FUND_NAME",
+    "type": "text"
+   },
+   {
+    "id": "FUND_CLASSIFICATION",
+    "type": "text"
+   },
+   {
+    "id": "MANAGING_CORPORATION",
+    "type": "text"
+   },
+   {
+    "id": "REPORT_PERIOD",
+    "type": "int"
+   },
+   {
+    "id": "MONTHLY_YIELD",
+    "type": "float"
+   },
+   {
+    "id": "TOTAL_ASSETS",
+    "type": "float"
+   },
+   {
+    "id": "AVG_ANNUAL_MANAGEMENT_FEE",
+    "type": "float"
+   }
+  ],
+  "records": [
+   {
+    "_id": 40,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202609,
+    "MONTHLY_YIELD": 1.0,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 39,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202608,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 38,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202607,
+    "MONTHLY_YIELD": 0.7,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 37,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202606,
+    "MONTHLY_YIELD": 1.1,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 36,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202605,
+    "MONTHLY_YIELD": 0.4,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 35,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202604,
+    "MONTHLY_YIELD": 0.8,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 34,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202603,
+    "MONTHLY_YIELD": 0.1,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 33,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202602,
+    "MONTHLY_YIELD": 0.5,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 32,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202601,
+    "MONTHLY_YIELD": 0.9,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 31,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202512,
+    "MONTHLY_YIELD": 0.2,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 30,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202511,
+    "MONTHLY_YIELD": 0.6,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 29,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202510,
+    "MONTHLY_YIELD": 1.0,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 28,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202509,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 27,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202508,
+    "MONTHLY_YIELD": 0.7,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 26,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202507,
+    "MONTHLY_YIELD": 1.1,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 25,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202506,
+    "MONTHLY_YIELD": 0.4,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 24,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202505,
+    "MONTHLY_YIELD": 0.8,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 23,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202504,
+    "MONTHLY_YIELD": 0.1,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 22,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202503,
+    "MONTHLY_YIELD": 0.5,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 21,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202502,
+    "MONTHLY_YIELD": 0.9,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 20,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202501,
+    "MONTHLY_YIELD": 0.2,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 19,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202412,
+    "MONTHLY_YIELD": 0.6,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 18,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202411,
+    "MONTHLY_YIELD": 1.0,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 17,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202410,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 16,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202409,
+    "MONTHLY_YIELD": 0.7,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 15,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202408,
+    "MONTHLY_YIELD": 1.1,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 14,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202407,
+    "MONTHLY_YIELD": 0.4,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 13,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202406,
+    "MONTHLY_YIELD": 0.8,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 12,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202405,
+    "MONTHLY_YIELD": 0.1,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 11,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202404,
+    "MONTHLY_YIELD": 0.5,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 10,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202403,
+    "MONTHLY_YIELD": 0.9,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 9,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202402,
+    "MONTHLY_YIELD": 0.2,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 8,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202401,
+    "MONTHLY_YIELD": 0.6,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 7,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202312,
+    "MONTHLY_YIELD": 1.0,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 6,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202311,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 5,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202310,
+    "MONTHLY_YIELD": 0.7,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 4,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202309,
+    "MONTHLY_YIELD": 1.1,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 3,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202308,
+    "MONTHLY_YIELD": 0.4,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 2,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202307,
+    "MONTHLY_YIELD": 0.8,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   },
+   {
+    "_id": 1,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202306,
+    "MONTHLY_YIELD": 0.1,
+    "TOTAL_ASSETS": 12345.6,
+    "AVG_ANNUAL_MANAGEMENT_FEE": 0.62
+   }
+  ],
+  "_links": {
+   "start": "/api/3/action/datastore_search",
+   "next": "/api/3/action/datastore_search"
+  },
+  "total": 40
+ }
+}

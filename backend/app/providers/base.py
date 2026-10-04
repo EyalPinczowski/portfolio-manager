@@ -323,6 +323,83 @@ class FilingsProvider(Protocol):
     ) -> Field[list[Filing]]: ...
 
 
+# ---------------------------------------------------------------- Israeli funds (GemelNet)
+class FundInfo(BaseModel):
+    """One Israeli fund (provident, pension, study fund or mutual fund) as a public dataset lists it."""
+
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    fund_id: Annotated[str, StringConstraints(pattern=r"^\d{1,9}$")]
+    name: Annotated[str, StringConstraints(max_length=200)]
+    classification: Annotated[str, StringConstraints(max_length=200)] | None = None
+    managing_corporation: Annotated[str, StringConstraints(max_length=200)] | None = None
+
+
+class FundMonth(BaseModel):
+    """One reporting month. A value the dataset left empty stays None (never a neutral 0)."""
+
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    period: Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}$")]  # "YYYY-MM"
+    monthly_return_pct: float | None = None
+    total_assets: float | None = None  # as the dataset states it (unit not verified)
+    management_fee_pct: float | None = None
+
+
+class FundSeries(BaseModel):
+    """A fund with its monthly return series (ascending by month) and its category's last month."""
+
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    info: FundInfo
+    months: list[FundMonth]
+    # Average of the same-category funds' return for `category_period` (None: not enough peers).
+    category_period: str | None = None
+    category_avg_monthly_return_pct: float | None = None
+    category_peer_count: int = 0
+
+
+@runtime_checkable
+class FundProvider(Protocol):
+    name: str
+    markets: frozenset[Market]
+
+    def search_funds(self, query: str) -> Field[list[FundInfo]]:
+        """Funds whose name or number matches. Missing(`not_found`) when nothing matches."""
+
+    def get_fund(self, fund_id: str) -> Field[FundSeries]:
+        """The monthly series of one fund. Never raises: failures become a missing reason."""
+
+
+# ---------------------------------------------------------------- dividends (corporate actions)
+class DividendEvent(BaseModel):
+    """One dividend payment (past) or announcement (future). Amounts are per share, major units."""
+
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    ex_date: date
+    pay_date: date | None = None  # the free source rarely has it: None means unknown
+    amount: float = PydField(gt=0)  # per share, normalised (agorot -> ILS)
+    currency: str  # normalised ISO code
+    announced: bool = False  # True: a future date the source reports; False: a past payment
+    # True: the amount is the last known payment carried forward (the source gave a date only).
+    amount_is_estimate: bool = False
+
+
+class DividendHistory(BaseModel):
+    symbol: str
+    events: list[DividendEvent]  # ascending by ex_date, past and announced future
+
+
+@runtime_checkable
+class DividendProvider(Protocol):
+    name: str
+    markets: frozenset[Market]
+
+    def get_dividends(self, symbol: str) -> Field[DividendHistory]:
+        """Never raises. Missing(`not_found`): no dividend on record (a non-payer is the same)."""
+
+
 def describe_missing(what: str, field: Field[Any]) -> str:
     """A human-readable reason for a signal's `reasons` when a field is missing."""
     why = {

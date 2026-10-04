@@ -55,6 +55,7 @@ ReasonCode = Literal[
     "no_history",
     "insufficient_history",
     "history_price_mismatch",
+    "fund_no_levels",
 ]
 StopFit = Literal["ok", "too_tight", "too_wide"]
 
@@ -882,6 +883,16 @@ def compute_exit_levels(
     s = settings or get_settings()
     symbol = valued.holding.symbol
     hz = parse_horizon(horizon)
+    if valued.security.asset_type == "fund":
+        return no_levels_result(
+            symbol,
+            "no_levels",
+            "fund_no_levels",
+            "No levels: this is a fund. It has monthly data and no tradable price, so stop and "
+            "take-profit levels are not computed.",
+            horizon=hz,
+            risk=risk,
+        )
     if hz is None:
         return no_levels_result(
             symbol,

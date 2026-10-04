@@ -2599,6 +2599,138 @@
         }
       }
     },
+    "/api/funds/search": {
+      "get": {
+        "tags": [
+          "funds"
+        ],
+        "summary": "Search Funds",
+        "description": "Funds by name or number. `data_status` says why a list is empty: `no_data` (no match),\n`unavailable` (the dataset cannot be reached or is not configured) or `rate_limited`.",
+        "operationId": "search_funds_api_funds_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundSearchOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/funds/{fund_id}": {
+      "get": {
+        "tags": [
+          "funds"
+        ],
+        "summary": "Fund Detail",
+        "description": "One fund with 1m/3m/1y/3y returns compounded from its monthly series, and the 1m return\nagainst the category average when enough peers reported.",
+        "operationId": "fund_detail_api_funds__fund_id__get",
+        "parameters": [
+          {
+            "name": "fund_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,9}$",
+              "title": "Fund Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolios/{portfolio_id}/dividends": {
+      "get": {
+        "tags": [
+          "dividends"
+        ],
+        "summary": "Dividends",
+        "description": "Upcoming ex-dividend and pay dates with amounts for the held stocks and ETFs, plus an\nestimate of the next 12 months' income. A symbol the source knows nothing about says so\n(`no_data`); nothing is guessed.",
+        "operationId": "dividends_api_portfolios__portfolio_id__dividends_get",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DividendsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -3673,6 +3805,65 @@
         ],
         "title": "ChartReport"
       },
+      "DividendsOut": {
+        "properties": {
+          "portfolio_id": {
+            "type": "integer",
+            "title": "Portfolio Id"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "window_days": {
+            "type": "integer",
+            "title": "Window Days"
+          },
+          "upcoming": {
+            "items": {
+              "$ref": "#/components/schemas/UpcomingDividend"
+            },
+            "type": "array",
+            "title": "Upcoming"
+          },
+          "symbols": {
+            "items": {
+              "$ref": "#/components/schemas/SymbolDividendStatus"
+            },
+            "type": "array",
+            "title": "Symbols"
+          },
+          "income_estimate": {
+            "$ref": "#/components/schemas/IncomeEstimate"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "credit": {
+            "type": "string",
+            "title": "Credit"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "portfolio_id",
+          "as_of",
+          "window_days",
+          "upcoming",
+          "symbols",
+          "income_estimate",
+          "source",
+          "credit"
+        ],
+        "title": "DividendsOut"
+      },
       "EvidenceRow": {
         "properties": {
           "label": {
@@ -3869,7 +4060,8 @@
                   "stale_price",
                   "no_history",
                   "insufficient_history",
-                  "history_price_mismatch"
+                  "history_price_mismatch",
+                  "fund_no_levels"
                 ]
               },
               {
@@ -4603,6 +4795,430 @@
         ],
         "title": "Finding"
       },
+      "FundDetailOut": {
+        "properties": {
+          "fund_id": {
+            "type": "string",
+            "title": "Fund Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification"
+          },
+          "managing_corporation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Managing Corporation"
+          },
+          "latest_period": {
+            "type": "string",
+            "title": "Latest Period"
+          },
+          "data_as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Data As Of"
+          },
+          "data_stale": {
+            "type": "boolean",
+            "title": "Data Stale"
+          },
+          "total_assets": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Assets"
+          },
+          "management_fee_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Management Fee Pct"
+          },
+          "returns": {
+            "items": {
+              "$ref": "#/components/schemas/FundReturn"
+            },
+            "type": "array",
+            "title": "Returns"
+          },
+          "category_peer_count": {
+            "type": "integer",
+            "title": "Category Peer Count"
+          },
+          "monthly_series": {
+            "items": {
+              "$ref": "#/components/schemas/FundMonth"
+            },
+            "type": "array",
+            "title": "Monthly Series"
+          },
+          "price_available": {
+            "type": "boolean",
+            "title": "Price Available",
+            "default": false
+          },
+          "value_note": {
+            "type": "string",
+            "title": "Value Note",
+            "default": "The dataset has monthly returns only. Enter the value from your fund statement as the holding's manual value."
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "credit": {
+            "type": "string",
+            "title": "Credit"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "fund_id",
+          "symbol",
+          "name",
+          "latest_period",
+          "data_as_of",
+          "data_stale",
+          "returns",
+          "category_peer_count",
+          "monthly_series",
+          "source",
+          "credit"
+        ],
+        "title": "FundDetailOut"
+      },
+      "FundHoldingOut": {
+        "properties": {
+          "fund_id": {
+            "type": "string",
+            "title": "Fund Id"
+          },
+          "track": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track"
+          },
+          "value_basis": {
+            "type": "string",
+            "enum": [
+              "manual_value",
+              "cost_only",
+              "no_value"
+            ],
+            "title": "Value Basis"
+          },
+          "manual_value_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Value Ils"
+          },
+          "manual_value_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Value As Of"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Flags"
+          },
+          "credit": {
+            "type": "string",
+            "title": "Credit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fund_id",
+          "value_basis",
+          "flags",
+          "credit"
+        ],
+        "title": "FundHoldingOut",
+        "description": "What the app knows about a fund holding (symbol `GEMEL-<fund id>`). The value is the user's\nown entry (`manual_value`): GemelNet has monthly returns, not a unit price."
+      },
+      "FundMonth": {
+        "properties": {
+          "period": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}$",
+            "title": "Period"
+          },
+          "monthly_return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Return Pct"
+          },
+          "total_assets": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Assets"
+          },
+          "management_fee_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Management Fee Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period"
+        ],
+        "title": "FundMonth",
+        "description": "One reporting month. A value the dataset left empty stays None (never a neutral 0)."
+      },
+      "FundReturn": {
+        "properties": {
+          "horizon": {
+            "type": "string",
+            "enum": [
+              "1m",
+              "3m",
+              "1y",
+              "3y"
+            ],
+            "title": "Horizon"
+          },
+          "months": {
+            "type": "integer",
+            "title": "Months"
+          },
+          "return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Pct"
+          },
+          "annualised_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annualised Pct"
+          },
+          "category_avg_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Avg Pct"
+          },
+          "vs_category_pts": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vs Category Pts"
+          },
+          "missing_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "not_enough_months",
+                  "gap_in_series",
+                  "no_value"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "horizon",
+          "months"
+        ],
+        "title": "FundReturn"
+      },
+      "FundSearchItem": {
+        "properties": {
+          "fund_id": {
+            "type": "string",
+            "title": "Fund Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification"
+          },
+          "managing_corporation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Managing Corporation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fund_id",
+          "symbol",
+          "name"
+        ],
+        "title": "FundSearchItem"
+      },
+      "FundSearchOut": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "data_status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "no_data",
+              "unavailable",
+              "rate_limited"
+            ],
+            "title": "Data Status"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/FundSearchItem"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "credit": {
+            "type": "string",
+            "title": "Credit"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "data_status",
+          "results",
+          "source",
+          "credit"
+        ],
+        "title": "FundSearchOut"
+      },
       "GapBreakdown": {
         "properties": {
           "reference": {
@@ -5036,6 +5652,57 @@
               }
             ],
             "title": "Horizon"
+          },
+          "manual_value_ils": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Value Ils"
+          },
+          "manual_value_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Value As Of"
+          },
+          "fund_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fund Name"
+          },
+          "track": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track"
           }
         },
         "additionalProperties": false,
@@ -5141,7 +5808,8 @@
             "type": "string",
             "enum": [
               "missing",
-              "needs_horizon"
+              "needs_horizon",
+              "no_levels"
             ],
             "title": "Stop Tp Status"
           },
@@ -5200,6 +5868,16 @@
               }
             ],
             "title": "Price Flag"
+          },
+          "fund": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FundHoldingOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -5291,6 +5969,57 @@
                 "type": "null"
               }
             ]
+          },
+          "manual_value_ils": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Value Ils"
+          },
+          "manual_value_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Value As Of"
+          },
+          "fund_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fund Name"
+          },
+          "track": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track"
           }
         },
         "additionalProperties": false,
@@ -5807,6 +6536,111 @@
         "title": "ImportRowsBody",
         "description": "On-device OCR: the browser parsed the screenshot, only the stock rows are sent."
       },
+      "IncomeEstimate": {
+        "properties": {
+          "is_estimate": {
+            "type": "boolean",
+            "title": "Is Estimate",
+            "default": true
+          },
+          "basis": {
+            "type": "string",
+            "const": "trailing_payments_repeated",
+            "title": "Basis",
+            "default": "trailing_payments_repeated"
+          },
+          "months": {
+            "type": "integer",
+            "title": "Months"
+          },
+          "total_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Ils"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/IncomeLine"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "symbols_without_data": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Symbols Without Data"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "months",
+          "lines",
+          "symbols_without_data",
+          "note"
+        ],
+        "title": "IncomeEstimate"
+      },
+      "IncomeLine": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "per_share": {
+            "type": "number",
+            "title": "Per Share"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "amount_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Ils"
+          },
+          "payments_counted": {
+            "type": "integer",
+            "title": "Payments Counted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "quantity",
+          "per_share",
+          "currency",
+          "amount",
+          "payments_counted"
+        ],
+        "title": "IncomeLine"
+      },
       "InviteCreate": {
         "properties": {
           "days": {
@@ -6207,7 +7041,8 @@
                   "stale_price",
                   "no_history",
                   "insufficient_history",
-                  "history_price_mismatch"
+                  "history_price_mismatch",
+                  "fund_no_levels"
                 ]
               },
               {
@@ -7208,7 +8043,8 @@
                   "stale_price",
                   "no_history",
                   "insufficient_history",
-                  "history_price_mismatch"
+                  "history_price_mismatch",
+                  "fund_no_levels"
                 ]
               },
               {
@@ -9330,6 +10166,83 @@
         ],
         "title": "SummaryOut"
       },
+      "SymbolDividendStatus": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "data_status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "no_data",
+              "stopped",
+              "not_applicable",
+              "unavailable",
+              "rate_limited",
+              "not_checked"
+            ],
+            "title": "Data Status"
+          },
+          "last_ex_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ex Date"
+          },
+          "last_amount_per_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Amount Per Share"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "payments_in_period": {
+            "type": "integer",
+            "title": "Payments In Period",
+            "default": 0
+          },
+          "per_share_in_period": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Share In Period"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "data_status"
+        ],
+        "title": "SymbolDividendStatus"
+      },
       "TelegramStatusOut": {
         "properties": {
           "configured": {
@@ -9509,6 +10422,83 @@
           "truncated"
         ],
         "title": "TrackRecordOut"
+      },
+      "UpcomingDividend": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name_en": {
+            "type": "string",
+            "title": "Name En"
+          },
+          "ex_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Ex Date"
+          },
+          "pay_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pay Date"
+          },
+          "amount_per_share": {
+            "type": "number",
+            "title": "Amount Per Share"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "expected_amount": {
+            "type": "number",
+            "title": "Expected Amount"
+          },
+          "expected_amount_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Amount Ils"
+          },
+          "amount_is_estimate": {
+            "type": "boolean",
+            "title": "Amount Is Estimate"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name_en",
+          "ex_date",
+          "amount_per_share",
+          "currency",
+          "quantity",
+          "expected_amount",
+          "amount_is_estimate",
+          "source"
+        ],
+        "title": "UpcomingDividend"
       },
       "ValidationError": {
         "properties": {

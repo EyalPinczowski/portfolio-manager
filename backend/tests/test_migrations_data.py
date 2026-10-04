@@ -316,3 +316,33 @@ def test_0013_adds_xray_rules_without_touching_existing_data(tmp_path: Path) -> 
     with engine.connect() as conn:
         assert conn.execute(text("SELECT count(*) FROM xray_rule_setting")).scalar() == 0
     engine.dispose()
+
+
+def test_0014_adds_fund_holdings_without_touching_existing_data(tmp_path: Path) -> None:
+    engine = make_engine(f"sqlite:///{tmp_path / 'm.db'}")
+    run_migrations(engine)
+    downgrade_migrations(engine, "0013_xray_rule_setting")
+    with engine.connect() as conn:
+        assert "fund_holding" not in {
+            r[0] for r in conn.exec_driver_sql("SELECT name FROM sqlite_master")
+        }
+    _seed(engine)
+    run_migrations(engine)  # expand-only: 0013 -> 0014 with data present
+    assert _counts(engine) == {"user": 1, "portfolio": 1, "session": 1, "holding": 1}
+    with engine.begin() as conn:
+        assert conn.execute(text("SELECT count(*) FROM fund_holding")).scalar() == 0
+        hid = conn.execute(text("SELECT id FROM holding")).scalar()
+        conn.execute(
+            text(
+                "INSERT INTO fund_holding (holding_id, fund_id, fund_name, track, "
+                "manual_value_ils, manual_value_as_of, updated_at) VALUES "
+                "(:h, '1001', NULL, NULL, 5000, '2026-01-31', '2026-01-31')"
+            ),
+            {"h": hid},
+        )
+        assert conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
+    with engine.begin() as conn:  # the cascade works on the migrated schema
+        conn.execute(text("DELETE FROM holding"))
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT count(*) FROM fund_holding")).scalar() == 0
+    engine.dispose()

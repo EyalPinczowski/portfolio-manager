@@ -9,6 +9,7 @@ from rapidfuzz import fuzz, process
 from sqlmodel import Session, col, select
 
 from app.config import Settings, get_settings
+from app.funds import is_fund_symbol
 from app.models import Security
 
 DEFAULT_SEED = Path(__file__).parent / "data" / "securities_seed.csv"
@@ -54,6 +55,17 @@ def seed_securities(db: Session, path: Path | None = None, settings: Settings | 
 def infer_security(symbol: str) -> Security:
     """Minimal Security for a symbol we do not know (manual add of an unseeded ticker)."""
     sym = symbol.upper()
+    if is_fund_symbol(sym):  # Israeli fund: ILS, not a Yahoo ticker
+        return Security(
+            symbol=sym,
+            name_en=f"Fund {sym.removeprefix('GEMEL-')}",
+            asset_type="fund",
+            market="TASE",
+            currency="ILS",
+            sector="Fund",
+            country="Israel",
+            verified=False,
+        )
     if sym.endswith(".TA"):
         return Security(
             symbol=sym,

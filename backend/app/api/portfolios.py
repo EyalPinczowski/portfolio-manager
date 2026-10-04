@@ -9,6 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, status
 from sqlmodel import Session, col, select
 
 from app.api.schemas import (
+    FundHoldingOut,
     HeatmapItem,
     HoldingCreate,
     HoldingOut,
@@ -25,7 +26,9 @@ from app.auth.deps import DbDep, SettingsDep, UserDep
 from app.auth.ratelimit import enforce_limit, holding_add_limiter
 from app.config import Settings
 from app.db import new_session
+from app.funds import ValueBasis, fund_id_of, is_fund_symbol, value_flags
 from app.models import (
+    FundHolding,
     Holding,
     HoldingsSnapshot,
     ImportDraft,
@@ -49,13 +52,13 @@ from app.portfolio.valuation import (
     value_portfolio,
 )
 from app.portfolio.xray import build_xray
-from app.providers.registry import get_providers
+from app.providers.registry import get_fund_provider, get_providers
 from app.repo import get_holding_in_portfolio, get_portfolio, list_portfolios
 from app.scoring.risk import resolve_risk_filter
 from app.scoring.scorecard import get_cached_scorecard, is_fresh, refresh_scorecard
 from app.securities import get_or_create_security
 from app.strictjson import StrictJsonRoute
-from app.timeutil import as_utc, local_today
+from app.timeutil import as_utc, local_today, utcnow
 
 router = APIRouter(tags=["portfolios"], route_class=StrictJsonRoute)
 
@@ -88,6 +91,26 @@ def _clean_risk_filter(body: RiskFilterIn, settings: Settings) -> dict[str, Any]
     return out
 
 
+def _fund_out(db: Session, v: ValuedHolding, settings: Settings) -> FundHoldingOut | None:
+    h = v.holding
+    fid = fund_id_of(h.symbol)
+    if v.security.asset_type != "fund" or fid is None or h.id is None:
+        return None
+    fh = db.get(FundHolding, h.id)
+    basis: ValueBasis = (
+        "manual_value" if v.price_source == "manual" else "cost_only" if h.avg_cost else "no_value"
+    )
+    return FundHoldingOut(
+        fund_id=fid,
+        track=fh.track if fh else None,
+        value_basis=basis,
+        manual_value_ils=fh.manual_value_ils if fh else None,
+        manual_value_as_of=fh.manual_value_as_of if fh else None,
+        flags=value_flags(basis),
+        credit=settings.gemelnet_credit,
+    )
+
+
 def holding_outs(
     db: Session,
     portfolio: Portfolio,
@@ -117,11 +140,13 @@ def holding_outs(
                 "usd": round(v.pnl_usd, 2),
                 "pct": round(v.pnl_pct, 4),
             }
+        fund = _fund_out(db, v, settings)
+        fh_row = db.get(FundHolding, h.id) if fund is not None else None
         out.append(
             HoldingOut(
                 id=h.id,
                 symbol=h.symbol,
-                name_en=sec.name_en,
+                name_en=(fh_row.fund_name if fh_row and fh_row.fund_name else sec.name_en),
                 name_he=sec.name_he,
                 asset_type=sec.asset_type,
                 market=sec.market,
@@ -133,7 +158,13 @@ def holding_outs(
                 pnl=pnl,  # type: ignore[arg-type]
                 weight_pct=round(v.value_ils / total * 100.0, 2) if total else 0.0,
                 horizon=h.horizon,  # type: ignore[arg-type]
-                stop_tp_status="needs_horizon" if h.horizon is None else "missing",
+                stop_tp_status=(
+                    "no_levels"
+                    if fund is not None
+                    else "needs_horizon"
+                    if h.horizon is None
+                    else "missing"
+                ),
                 score_card=mini,
                 price_stale=v.stale,
                 price_source=v.quote_source,
@@ -141,6 +172,7 @@ def holding_outs(
                 price_as_of=as_utc(v.as_of) if v.as_of is not None else None,
                 price_is_fresh=price_is_fresh(v),
                 price_flag=v.quote_flag,
+                fund=fund,
             )
         )
     out.sort(key=lambda x: x.value_ils, reverse=True)
@@ -153,6 +185,8 @@ def refresh_symbol_data(symbols: list[str]) -> None:
     with new_session() as db:
         refresh_symbols(db, symbols, providers.quotes)
         for sym in symbols:
+            if is_fund_symbol(sym):
+                continue  # no chart to score
             try:
                 refresh_scorecard(db, sym, providers.history)
             except Exception:  # pragma: no cover - defensive
@@ -266,7 +300,7 @@ def post_mortem(
     assert user.id is not None
     p = get_portfolio(db, user.id, portfolio_id)
     if start is not None and end is not None and start >= end:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "start must be before end")
+        raise HTTPException(422, "start must be before end")
     return post_mortem_for_portfolio(
         db, p, get_providers().history, settings, start, end, local_today()
     )
@@ -288,6 +322,32 @@ def heatmap(
 
 
 # ---------------------------------------------------------------- manual holding edits
+_FUND_FIELDS = ("manual_value_ils", "manual_value_as_of", "fund_name", "track")
+
+
+def _check_fund_fields(symbol: str, fields: set[str], as_of: date | None) -> None:
+    """Fund-only inputs on a non-fund holding, or a statement date in the future: a 422."""
+    given = [f for f in _FUND_FIELDS if f in fields]
+    if given and not is_fund_symbol(symbol):
+        raise HTTPException(
+            422,
+            f"{', '.join(given)} apply to Israeli fund holdings only (symbol GEMEL-<fund number>)",
+        )
+    if as_of is not None and as_of > local_today():
+        raise HTTPException(422, "manual_value_as_of cannot be in the future")
+
+
+def _public_fund_facts(fund_id: str) -> tuple[str | None, str | None]:
+    """(name, classification) from the fund dataset, best effort: a gap is just (None, None)."""
+    try:
+        field = get_fund_provider().get_fund(fund_id)
+    except Exception:  # a provider failure never blocks a manual entry
+        return None, None
+    if field.value is None:
+        return None, None
+    return field.value.info.name, field.value.info.classification
+
+
 def _single(db: Session, p: Portfolio, holding_id: int, settings: Settings) -> HoldingOut:
     outs, _ = holding_outs(db, p, settings)
     for o in outs:
@@ -331,7 +391,17 @@ def add_holding(
         holding_add_limiter, f"user:{user.id}", settings.holding_add_rate_limit_per_hour, 3600.0
     )
     symbol = body.symbol  # already trimmed, upper-cased and pattern-checked
+    _check_fund_fields(symbol, set(body.model_fields_set), body.manual_value_as_of)
+    if is_fund_symbol(symbol) and body.cost_currency == "USD":
+        raise HTTPException(422, "Israeli funds are held in ILS only")
+    pub_name, pub_track = (None, None)
+    fund_id = fund_id_of(symbol)
+    if fund_id is not None:
+        pub_name, pub_track = _public_fund_facts(fund_id)
     sec = get_or_create_security(db, symbol)
+    if pub_name and sec.name_en.startswith("Fund "):
+        sec.name_en = pub_name  # the dataset's public name; the user's own entry stays per holding
+        db.add(sec)
     dup = db.exec(
         select(Holding).where(Holding.portfolio_id == p.id, Holding.symbol == symbol)
     ).first()
@@ -347,6 +417,21 @@ def add_holding(
         horizon=body.horizon,
     )
     db.add(h)
+    db.flush()
+    if fund_id is not None:
+        assert h.id is not None
+        db.add(
+            FundHolding(
+                holding_id=h.id,
+                fund_id=fund_id,
+                fund_name=body.fund_name,
+                track=body.track or pub_track,
+                manual_value_ils=body.manual_value_ils,
+                manual_value_as_of=(
+                    (body.manual_value_as_of or local_today()) if body.manual_value_ils else None
+                ),
+            )
+        )
     db.commit()
     db.refresh(h)
     refresh_symbols(db, [symbol], get_providers().quotes)  # best effort, bounded by the provider
@@ -363,6 +448,31 @@ def add_holding(
     return _single(db, p, h.id, settings)
 
 
+def _patch_fund_row(db: Session, h: Holding, body: HoldingPatch) -> None:
+    assert h.id is not None
+    fid = fund_id_of(h.symbol)
+    assert fid is not None
+    row = db.get(FundHolding, h.id) or FundHolding(holding_id=h.id, fund_id=fid)
+    fields = body.model_fields_set
+    if "manual_value_ils" in fields:
+        row.manual_value_ils = body.manual_value_ils  # explicit null clears it
+        if body.manual_value_ils is None:
+            row.manual_value_as_of = None
+        elif "manual_value_as_of" not in fields:
+            row.manual_value_as_of = local_today()
+    if "manual_value_as_of" in fields and body.manual_value_as_of is not None:
+        if row.manual_value_ils is None:
+            raise HTTPException(422, "manual_value_as_of needs a manual_value_ils")
+        row.manual_value_as_of = body.manual_value_as_of
+    if "fund_name" in fields:
+        row.fund_name = body.fund_name
+    if "track" in fields:
+        row.track = body.track
+    row.updated_at = utcnow()
+    db.add(row)
+    db.flush()
+
+
 @router.patch("/portfolios/{portfolio_id}/holdings/{holding_id}", response_model=HoldingOut)
 def patch_holding(
     portfolio_id: int,
@@ -375,6 +485,9 @@ def patch_holding(
     assert user.id is not None
     h, p = get_holding_in_portfolio(db, user.id, portfolio_id, holding_id)
     fields = body.model_fields_set
+    _check_fund_fields(h.symbol, set(fields), body.manual_value_as_of)
+    if is_fund_symbol(h.symbol) and body.cost_currency == "USD":
+        raise HTTPException(422, "Israeli funds are held in ILS only")
     if body.quantity is not None and body.quantity != h.quantity:
         record_quantity_change(db, p, h, body.quantity - h.quantity, _valued(db, p, settings, h.id))
         h.quantity = body.quantity
@@ -389,6 +502,8 @@ def patch_holding(
         h.risk_override = override or None
     db.add(h)
     db.flush()
+    if any(f in fields for f in _FUND_FIELDS):
+        _patch_fund_row(db, h, body)
     sync_pending_flows(db, p, settings=settings)  # settles only on a real quote/screenshot price
     db.commit()
     assert h.id is not None

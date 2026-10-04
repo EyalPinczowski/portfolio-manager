@@ -16,7 +16,9 @@ from app.api import (
     analyze,
     auth,
     buy_ideas,
+    dividends,
     exit_levels,
+    funds,
     imports,
     lists,
     misc,
@@ -110,6 +112,8 @@ def create_app() -> FastAPI:
         admin,
         track_record,
         xray_rules,
+        funds,
+        dividends,
     ):
         api.include_router(module.router)
 

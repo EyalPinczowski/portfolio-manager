@@ -185,6 +185,9 @@ def test_unauthenticated_requests_are_rejected(client: TestClient) -> None:
         "/api/launch-gate",
         "/api/portfolios/1/xray",
         "/api/portfolios/1/xray-rules",
+        "/api/portfolios/1/dividends",
+        "/api/funds/search?q=abc",
+        "/api/funds/1001",
         "/api/track-record",
         "/api/imports/1",
         "/api/search-history",
@@ -255,3 +258,30 @@ def test_track_record_has_no_user_data_in_it(signup: SignupFn) -> None:
         body = c.get("/api/track-record").json()
         assert body["rows"] == [] and body["state"] == "not_started"
         assert "ZZZZ" not in str(body)
+
+
+def test_fund_holdings_and_dividends_are_owner_scoped(signup: SignupFn) -> None:
+    a = signup("fa@mail.com")
+    b = signup("fb@mail.com")
+    pid = a.post("/api/portfolios", json={"name": "A", "base_currency": "ILS"}).json()["id"]
+    bpid = b.post("/api/portfolios", json={"name": "B", "base_currency": "ILS"}).json()["id"]
+    h = a.post(
+        f"/api/portfolios/{pid}/holdings",
+        json={"symbol": "GEMEL-1001", "quantity": 1, "manual_value_ils": 5000},
+    )
+    assert h.status_code == 201, h.text
+    hid = h.json()["id"]
+
+    assert b.get(f"/api/portfolios/{pid}/dividends").status_code == 404
+    for pth in (pid, bpid):  # through A's portfolio and through B's own
+        for body in ({"manual_value_ils": 1}, {"track": "x"}, {"fund_name": "x"}):
+            assert b.patch(f"/api/portfolios/{pth}/holdings/{hid}", json=body).status_code == 404
+        assert b.delete(f"/api/portfolios/{pth}/holdings/{hid}").status_code == 404
+    assert b.get(f"/api/holdings/{hid}/exit-levels").status_code == 404
+    # B adding the same fund gets B's own row: A's manual value never shows up
+    mine = b.post(f"/api/portfolios/{bpid}/holdings", json={"symbol": "GEMEL-1001", "quantity": 1})
+    assert mine.status_code == 201
+    assert mine.json()["fund"]["manual_value_ils"] is None and mine.json()["value_ils"] == 0.0
+    export = b.post("/api/me/export", json={"password": "correct horse battery"}).json()
+    assert [f["manual_value_ils"] for f in export["portfolios"][0]["fund_holdings"]] == [None]
+    assert a.get(f"/api/portfolios/{pid}/holdings").json()[0]["value_ils"] == 5000.0

@@ -7,6 +7,7 @@ from collections.abc import Iterable
 
 from sqlmodel import Session, col, select
 
+from app.funds import is_fund_symbol
 from app.models import Portfolio, PriceQuote, Security, Transaction
 from app.providers.base import Quote, QuoteProvider
 
@@ -60,6 +61,7 @@ def store_quotes(db: Session, quotes: Iterable[Quote]) -> int:
 
 def refresh_symbols(db: Session, symbols: list[str], provider: QuoteProvider) -> int:
     """Fetch and store quotes; failures leave the (stale) cache untouched."""
+    symbols = [s for s in symbols if not is_fund_symbol(s)]  # a fund has no market quote
     if not symbols:
         return 0
     try:

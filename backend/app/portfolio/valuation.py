@@ -9,7 +9,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, select
 
 from app.config import Settings, get_settings
+from app.funds import is_fund_symbol, manual_as_of
 from app.models import (
+    FundHolding,
     Holding,
     HoldingsSnapshot,
     Portfolio,
@@ -125,12 +127,18 @@ def value_portfolio(
         sec = db.get(Security, h.symbol)
         if sec is None:
             continue
-        quote = db.get(PriceQuote, h.symbol)
+        fund = db.get(FundHolding, h.id) if sec.asset_type == "fund" and h.id is not None else None
+        quote = None if sec.asset_type == "fund" else db.get(PriceQuote, h.symbol)
         if quote is not None and quote.currency.strip().upper() not in SUPPORTED_CURRENCIES:
             # Unknown currency (e.g. a legacy row stored without one): never guess, show stale.
             quote = None
         source = "quote"
-        if quote is not None:
+        if fund is not None and fund.manual_value_ils and fund.manual_value_ils > 0:
+            # GemelNet has monthly returns, no unit price: the value is the user's own entry.
+            price, cur, stale, chg = fund.manual_value_ils / h.quantity, "ILS", True, 0.0
+            as_of = manual_as_of(fund.manual_value_as_of) if fund.manual_value_as_of else None
+            source = "manual"
+        elif quote is not None:
             price, cur, stale, chg, as_of = (
                 quote.price,
                 quote.currency,
@@ -172,7 +180,9 @@ def value_portfolio(
                 pnl_pct,
                 as_of,
                 source,
-                performance_priced=source != "cost" and price > 0 and h.id not in waiting,
+                performance_priced=source not in ("cost", "manual")
+                and price > 0
+                and h.id not in waiting,
                 usd_ils=usd_ils,
                 quote_source=quote.source if source == "quote" and quote is not None else None,
                 price_basis=quote.basis
@@ -217,8 +227,8 @@ def register_pending(
     Called only when an unpriced holding is added or its quantity changes (never from the daily
     snapshot). A marker whose quantity falls to 0 or below is removed. The caller commits.
     """
-    if portfolio.id is None or holding.id is None:
-        return None
+    if portfolio.id is None or holding.id is None or is_fund_symbol(holding.symbol):
+        return None  # a fund never gets a market price: a marker would wait forever
     marker = pending_markers(db, portfolio.id).get(holding.id)
     if marker is not None:
         marker.holding_id = holding.id
@@ -343,7 +353,7 @@ def sync_pending_flows(
     n = 0
     for hid, marker in markers.items():
         v = live.get(hid)
-        if v is None or v.price_source == "cost" or v.price <= 0:
+        if v is None or v.price_source in ("cost", "manual") or v.price <= 0:
             continue
         marker.type = "buy"
         marker.holding_id = (

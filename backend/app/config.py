@@ -64,6 +64,10 @@ def default_quote_source_limits() -> dict[str, QuoteSourceLimits]:
         "fmp": QuoteSourceLimits(ttl_seconds=24 * 3600, max_calls_per_minute=10),
         "frankfurter": QuoteSourceLimits(ttl_seconds=24 * 3600, max_calls_per_minute=10),
         "boi": QuoteSourceLimits(ttl_seconds=24 * 3600, max_calls_per_minute=10),
+        # GemelNet (data.gov.il CKAN) publishes monthly: a long TTL, a small budget.
+        "gemelnet": QuoteSourceLimits(
+            ttl_seconds=12 * 3600, max_calls_per_minute=10, timeout_seconds=15.0
+        ),
     }
 
 
@@ -572,6 +576,49 @@ class Settings(BaseSettings):
     # Toggleable X-ray rules (informational only; nothing is ever blocked). A rule's threshold is
     # taken from the portfolio's RiskFilter unless the user overrides it within these bounds (%).
     xray_currency_default_max_pct: float = Field(default=80.0, gt=0, le=100)  # no RiskFilter field
+
+    # --- Israeli funds (GemelNet on data.gov.il, free CKAN datastore API, no key) ---
+    # Personal, non-commercial use; data only behind login. Resource ids are NOT built in: they
+    # were not verified from the sandbox. Discover them with `package_search` on data.gov.il and
+    # set GEMELNET_RESOURCE_IDS as JSON, for example {"monthly_returns": "<uuid>"}. Without one the
+    # fund lookup answers "unavailable" and manual entry still works.
+    gemelnet_base_url: str = "https://data.gov.il/api/3/action"
+    gemelnet_resource_ids: dict[str, str] = Field(default_factory=dict)
+    # Our name -> the dataset's column name (unverified guesses, override as JSON when they differ).
+    gemelnet_fields: dict[str, str] = Field(
+        default_factory=lambda: {
+            "fund_id": "FUND_ID",
+            "fund_name": "FUND_NAME",
+            "classification": "FUND_CLASSIFICATION",
+            "managing_corporation": "MANAGING_CORPORATION",
+            "period": "REPORT_PERIOD",
+            "monthly_yield": "MONTHLY_YIELD",
+            "total_assets": "TOTAL_ASSETS",
+            "management_fee": "AVG_ANNUAL_MANAGEMENT_FEE",
+        }
+    )
+    gemelnet_search_max_results: int = Field(default=20, ge=1, le=50)
+    gemelnet_search_min_chars: int = Field(default=2, ge=1)
+    gemelnet_series_months: int = Field(default=60, ge=12, le=240)  # monthly rows read per fund
+    gemelnet_category_max_rows: int = Field(default=500, ge=1, le=5000)  # peers for the average
+    gemelnet_category_min_peers: int = Field(default=3, ge=1)  # fewer peers: no average
+    gemelnet_stale_after_days: int = Field(default=75, ge=1)  # monthly data older than this: stale
+    fund_search_rate_limit_per_hour: int = Field(default=120, ge=1)  # per user
+    gemelnet_credit: str = (
+        "Fund data: GemelNet, Ministry of Finance (data.gov.il), personal non-commercial use."
+    )
+
+    # --- dividend calendar (yfinance corporate actions through the provider interface) ---
+    dividend_cache_ttl_seconds: float = Field(default=6 * 3600.0, ge=0)
+    dividend_cache_max_entries: int = Field(default=500, ge=1)
+    dividend_upcoming_days: int = Field(default=120, ge=1, le=400)  # how far ahead to list
+    dividend_history_days: int = Field(default=800, ge=30)  # payments read back for the estimate
+    dividend_estimate_months: int = Field(default=12, ge=1, le=24)
+    dividend_max_symbols_per_request: int = Field(default=60, ge=1)  # provider calls per page
+    # Ex-dates a stock is expected to repeat: a payment more than this many days old is dropped
+    # from the estimate (a stopped dividend is not extrapolated).
+    dividend_stale_after_days: int = Field(default=400, ge=30)
+    dividend_credit: str = "Dividend dates: Yahoo Finance (estimates, not announcements)."
     xray_home_bias_default_max_pct: float = Field(default=50.0, gt=0, le=100)  # no RiskFilter field
     xray_rule_override_bounds: dict[str, tuple[float, float]] = Field(
         default_factory=lambda: {

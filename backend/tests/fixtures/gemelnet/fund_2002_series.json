@@ -1,0 +1,196 @@
+{
+ "help": "https://data.gov.il/api/3/action/help_show?name=datastore_search",
+ "success": true,
+ "result": {
+  "include_total": true,
+  "resource_id": "00000000-0000-0000-0000-000000000001",
+  "fields": [
+   {
+    "id": "_id",
+    "type": "int"
+   },
+   {
+    "id": "FUND_ID",
+    "type": "int"
+   },
+   {
+    "id": "FUND_NAME",
+    "type": "text"
+   },
+   {
+    "id": "FUND_CLASSIFICATION",
+    "type": "text"
+   },
+   {
+    "id": "MANAGING_CORPORATION",
+    "type": "text"
+   },
+   {
+    "id": "REPORT_PERIOD",
+    "type": "int"
+   },
+   {
+    "id": "MONTHLY_YIELD",
+    "type": "float"
+   },
+   {
+    "id": "TOTAL_ASSETS",
+    "type": "float"
+   },
+   {
+    "id": "AVG_ANNUAL_MANAGEMENT_FEE",
+    "type": "float"
+   }
+  ],
+  "records": [
+   {
+    "_id": 112,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202609,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 111,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202608,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 110,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202607,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 109,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202606,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 108,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202605,
+    "MONTHLY_YIELD": null,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 107,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202604,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 106,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202603,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 105,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202601,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 104,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202512,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 103,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202511,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 102,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202510,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 101,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202509,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 100,
+    "FUND_ID": 2002,
+    "FUND_NAME": "קופת גמל להשקעה לדוגמה",
+    "FUND_CLASSIFICATION": "קופות גמל להשקעה",
+    "MANAGING_CORPORATION": "חברה אחרת בע\"מ",
+    "REPORT_PERIOD": 202508,
+    "MONTHLY_YIELD": 0.3,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   }
+  ],
+  "_links": {
+   "start": "/api/3/action/datastore_search",
+   "next": "/api/3/action/datastore_search"
+  },
+  "total": 13
+ }
+}

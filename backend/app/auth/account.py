@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.models import (
+    FundHolding,
     Holding,
     HoldingsSnapshot,
     ImportDraft,
@@ -36,6 +37,14 @@ def export_user_data(db: Session, user: User) -> dict[str, Any]:
                 "holdings": [
                     h.model_dump(mode="json")
                     for h in db.exec(select(Holding).where(Holding.portfolio_id == pid))
+                ],
+                "fund_holdings": [
+                    x.model_dump(mode="json")
+                    for x in db.exec(
+                        select(FundHolding)
+                        .join(Holding, col(Holding.id) == col(FundHolding.holding_id))
+                        .where(Holding.portfolio_id == pid)
+                    )
                 ],
                 "holdings_snapshots": [
                     x.model_dump(mode="json")

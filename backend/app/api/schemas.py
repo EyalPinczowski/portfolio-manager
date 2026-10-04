@@ -241,6 +241,19 @@ class ScoreCardMini(BaseModel):
     confidence: float
 
 
+class FundHoldingOut(BaseModel):
+    """What the app knows about a fund holding (symbol `GEMEL-<fund id>`). The value is the user's
+    own entry (`manual_value`): GemelNet has monthly returns, not a unit price."""
+
+    fund_id: str
+    track: str | None = None
+    value_basis: Literal["manual_value", "cost_only", "no_value"]
+    manual_value_ils: float | None = None
+    manual_value_as_of: date | None = None
+    flags: list[str]  # data gaps in plain codes (monthly_data_only, no_value, ...)
+    credit: str
+
+
 class HoldingOut(BaseModel):
     id: int
     symbol: str
@@ -256,7 +269,7 @@ class HoldingOut(BaseModel):
     pnl: Pnl | None = None
     weight_pct: float
     horizon: Horizon | None = None
-    stop_tp_status: Literal["missing", "needs_horizon"]
+    stop_tp_status: Literal["missing", "needs_horizon", "no_levels"]  # no_levels: a fund
     score_card: ScoreCardMini
     price_stale: bool = False
     # Where the price came from and how current it is (the UI shows "Delayed" / "Last close, <date>").
@@ -265,6 +278,10 @@ class HoldingOut(BaseModel):
     price_as_of: datetime | None = None
     price_is_fresh: bool = False  # true only for a fresh live quote (the exit-level gate)
     price_flag: str | None = None  # e.g. price_disagreement
+    fund: FundHoldingOut | None = None  # set for an Israeli fund holding only
+
+
+FundText = Annotated[str, Field(min_length=1, max_length=120)]
 
 
 class HoldingCreate(Body):
@@ -273,6 +290,11 @@ class HoldingCreate(Body):
     avg_cost: NonNegative | None = None
     cost_currency: Literal["ILS", "USD"] | None = None
     horizon: Horizon | None = None
+    # Fund holdings only (symbol `GEMEL-<fund id>`); a 422 on any other symbol.
+    manual_value_ils: Positive | None = None  # the whole position in ILS, from the statement
+    manual_value_as_of: date | None = None  # default: today
+    fund_name: FundText | None = None
+    track: FundText | None = None
 
 
 class HoldingPatch(Body):
@@ -281,6 +303,11 @@ class HoldingPatch(Body):
     cost_currency: Literal["ILS", "USD"] | None = None
     horizon: Horizon | None = None
     risk_override: RiskOverride | None = None
+    # Fund holdings only: a 422 on any other holding. Explicit null clears a manual value.
+    manual_value_ils: Positive | None = None
+    manual_value_as_of: date | None = None
+    fund_name: FundText | None = None
+    track: FundText | None = None
 
 
 class ExposureItem(BaseModel):
