@@ -465,9 +465,10 @@ class FrankfurterFxProvider(_FxSource):
 
 
 class BoiFxProvider(_FxSource):
-    """Bank of Israel representative USD rate (public XML, no key). The element names are
-    unverified (the vendor page was unreachable when this was written): the parser accepts the
-    known shape tolerantly and the plausibility range rejects a misread number."""
+    """Bank of Israel representative USD rate (public XML, no key). The element names (`Key`,
+    `CurrentExchangeRate`, `LastUpdate`) were verified live on 2026-10-04 (recorded in
+    `tests/fixtures/live_2026_10/boi_rates.xml`); the parser stays tolerant and the plausibility
+    range rejects a misread number."""
 
     name = "boi"
 

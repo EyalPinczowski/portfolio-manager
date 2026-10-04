@@ -46,4 +46,6 @@ Fetch each symbol once on the server, shared across users (about 30 calls per 5 
 5. Rebrands and limit changes happen (Alpha Vantage 500 → 100 → 25/day, Polygon → Massive, Stooq added a key in 2026).
 
 ## Could not verify
+> **Update 2026-10-04:** Frankfurter, Bank of Israel (XML element names), the CoinGecko coin ids and the Yahoo symbols were verified live; see `live-data-check-2026-10-04.md`. TASE Data Hub, Stooq and the vendor terms are still unverified.
+
 Finnhub ToS, the Frankfurter site and terms, the TASE Data Hub portal and API guide (so TASE units, index coverage, and "internal use" for a multi-user app), whether Alpha Vantage returns TASE quotes, Stooq's terms, quota, TASE coverage and cloud-IP blocking, full terms of FMP/Tiingo/Polygon/Twelve Data, whether any key-based API blocks data-center IPs, CoinGecko's exact cache window and history depth, and Yahoo's current block status.

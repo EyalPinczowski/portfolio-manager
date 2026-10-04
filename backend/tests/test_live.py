@@ -23,18 +23,46 @@ def test_live_history_has_ohlcv() -> None:
 
 @pytest.mark.live
 def test_live_gemelnet_columns_match_the_configured_names() -> None:
-    """Needs GEMELNET_RESOURCE_IDS (JSON). Verifies the UNVERIFIED column names against data.gov.il."""
+    """The configured resource still answers with the configured column names (data.gov.il may
+    replace the file; then find the new id with `package_search?q=gemelnet`)."""
     from app.config import get_settings
     from app.providers.gemelnet import GemelNetProvider
 
     s = get_settings()
     if not s.gemelnet_resource_ids.get("monthly_returns"):
-        pytest.skip("set GEMELNET_RESOURCE_IDS={'monthly_returns': '<resource id>'}")
+        pytest.skip("GEMELNET_RESOURCE_IDS is empty: the fund lookup is switched off")
     p = GemelNetProvider(s)
     records = p._records({"limit": 5})
     assert records and set(s.gemelnet_fields.values()) <= set(records[0]), records[0].keys()
-    found = p.search_funds("קרן")
+    found = p.search_funds("מיטב")
     assert found.value, found.missing_reason
+    fund = p.get_fund(found.value[0].fund_id)
+    assert fund.value and fund.value.months, fund.missing_reason
+
+
+@pytest.mark.live
+def test_live_usd_ils_reference_rates() -> None:
+    """Bank of Israel and Frankfurter (no key) still answer in the shape the parsers expect."""
+    from app.config import get_settings
+    from app.providers.fallback_sources import BoiFxProvider, FrankfurterFxProvider
+
+    s = get_settings()
+    for cls in (BoiFxProvider, FrankfurterFxProvider):
+        q = cls(s).get_quotes([s.fx_symbol]).get(s.fx_symbol)
+        assert q is not None and q.currency == "ILS", cls.name
+
+
+@pytest.mark.live
+def test_live_coingecko_ids_all_resolve() -> None:
+    """Every configured coin id answers. Needs COINGECKO_API_KEY (a wrong key is a 401)."""
+    from app.config import get_settings
+    from app.providers.fallback_sources import CoinGeckoQuoteProvider
+
+    s = get_settings()
+    if not s.coingecko_api_key:
+        pytest.skip("set COINGECKO_API_KEY (free demo key)")
+    quotes = CoinGeckoQuoteProvider(s).get_quotes(list(s.coingecko_ids))
+    assert set(quotes) == set(s.coingecko_ids)
 
 
 @pytest.mark.live

@@ -1,9 +1,8 @@
 """GemelNet provider, fund returns, fund holdings and the fund API (fixtures only, no network).
 
 The fixtures in `tests/fixtures/gemelnet/` are hand-built in the CKAN `datastore_search` shape with
-the column names in `Settings.gemelnet_fields`. Those names and the resource id are UNVERIFIED
-against the live dataset (the sandbox cannot reach data.gov.il); a live check belongs behind
-`@pytest.mark.live`.
+the column names in `Settings.gemelnet_fields` (verified live on 2026-10-04; a real answer is
+tested in `test_recorded_sources_2026_10.py`, a live check is in `test_live.py`).
 """
 
 from __future__ import annotations
