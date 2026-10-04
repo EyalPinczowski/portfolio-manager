@@ -20,7 +20,7 @@ import { mockRequest } from "@/lib/mock";
 import { SystemStatus } from "@/components/SettingsPage";
 
 const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
-const health = (over: Partial<Health> = {}): Health => ({ status: "ok", scheduler: "leader", leader: true, last_quotes_at: ago(3), last_snapshot_at: "2026-10-02", ...over });
+const health = (over: Partial<Health> = {}): Health => ({ status: "ok", scheduler: "leader", leader: true, last_quotes_at: ago(3), last_snapshot_at: "2026-10-02", last_paper_resolve_at: null, ...over });
 const setup = (h: Health, open: boolean, fxStale = false, locale: "en" | "he" = "en") => {
   vi.spyOn(api, "health").mockResolvedValue(h);
   const base = mockRequest("GET", "/portfolios/1/summary") as Summary;
