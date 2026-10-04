@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from app.api import (
     admin,
     analyze,
+    ask,
     auth,
     buy_ideas,
     dividends,
@@ -106,6 +107,7 @@ def create_app() -> FastAPI:
         exit_levels,
         buy_ideas,
         analyze,
+        ask,
         lists,
         settings_api,
         telegram,

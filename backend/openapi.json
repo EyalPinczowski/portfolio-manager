@@ -1907,10 +1907,195 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AskOut"
+                  "$ref": "#/components/schemas/app__analyze__schemas__AskOut"
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/analyze/{symbol}/committee": {
+      "post": {
+        "tags": [
+          "analyze"
+        ],
+        "summary": "Committee",
+        "description": "Run the Investment Committee (company profile, news, Bear, CIO) for any ticker.\n\nPublic data only: the roles see `PublicFacts` and retrieved public passages, never the user's\nportfolio. There is no buy/sell verdict here: the CIO answers the Bear's risks and may nudge the\nchart score within the configured cap, nothing more. Every role has a template fallback, so\nthis works with no AI key. Chart data is cached like the rest of Analyze, and model answers are\ncached by the LLM layer.",
+        "operationId": "committee_api_analyze__symbol__committee_post",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitteeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ask": {
+      "post": {
+        "tags": [
+          "ask"
+        ],
+        "summary": "Ask Question",
+        "description": "Answer one question from read-only tools and store the exchange. A `conversation_id` that is\nnot the caller's is a 404; so is a `portfolio_id` that is not the caller's.",
+        "operationId": "ask_question_api_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskQuestionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__api__ask__AskOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ask/conversations": {
+      "get": {
+        "tags": [
+          "ask"
+        ],
+        "summary": "Conversations",
+        "operationId": "conversations_api_ask_conversations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationOut"
+                  },
+                  "type": "array",
+                  "title": "Response Conversations Api Ask Conversations Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ask/conversations/{conversation_id}": {
+      "get": {
+        "tags": [
+          "ask"
+        ],
+        "summary": "Conversation",
+        "operationId": "conversation_api_ask_conversations__conversation_id__get",
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ask"
+        ],
+        "summary": "Remove Conversation",
+        "operationId": "remove_conversation_api_ask_conversations__conversation_id__delete",
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -3015,56 +3200,100 @@
         ],
         "title": "AskIn"
       },
-      "AskOut": {
+      "AskQuestionIn": {
         "properties": {
-          "symbol": {
+          "question": {
             "type": "string",
-            "title": "Symbol"
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Question"
           },
-          "answer": {
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "portfolio_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "AskQuestionIn"
+      },
+      "BearCase": {
+        "properties": {
+          "risks": {
+            "items": {
+              "$ref": "#/components/schemas/BearRisk"
+            },
+            "type": "array",
+            "title": "Risks"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "BearCase"
+      },
+      "BearRisk": {
+        "properties": {
+          "text": {
             "type": "string",
-            "title": "Answer"
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Text"
           },
-          "grounded_in": {
+          "severity": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Severity"
+          },
+          "chunk_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Chunk Ids"
+          },
+          "fact_refs": {
             "items": {
               "type": "string"
             },
             "type": "array",
-            "title": "Grounded In"
+            "title": "Fact Refs"
           },
-          "llm_used": {
-            "type": "boolean",
-            "title": "Llm Used",
-            "default": false
-          },
-          "notes_stored": {
-            "type": "boolean",
-            "title": "Notes Stored",
-            "default": false
-          },
-          "question_declined": {
-            "type": "boolean",
-            "title": "Question Declined",
-            "default": false
-          },
-          "privacy_note": {
+          "what_would_invalidate": {
             "type": "string",
-            "title": "Privacy Note",
-            "default": "Your question and notes stay on the server and are never sent to a free AI provider."
-          },
-          "disclaimer": {
-            "type": "string",
-            "title": "Disclaimer",
-            "default": "Not financial advice."
+            "maxLength": 400,
+            "title": "What Would Invalidate",
+            "default": ""
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "symbol",
-          "answer",
-          "grounded_in"
+          "text",
+          "severity"
         ],
-        "title": "AskOut"
+        "title": "BearRisk"
       },
       "BenchmarkAggregate": {
         "properties": {
@@ -3312,6 +3541,77 @@
         ],
         "title": "BuyIdeasIn",
         "description": "Everything is required except the optional exclusion list."
+      },
+      "CIOAssessment": {
+        "properties": {
+          "adjustment": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Adjustment"
+          },
+          "adjustment_reason": {
+            "type": "string",
+            "maxLength": 600,
+            "title": "Adjustment Reason",
+            "default": ""
+          },
+          "responses": {
+            "items": {
+              "$ref": "#/components/schemas/RiskResponse"
+            },
+            "type": "array",
+            "title": "Responses"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "adjustment"
+        ],
+        "title": "CIOAssessment",
+        "description": "What the model returns. The adjusted score is computed by code, never by the model."
+      },
+      "CIOResult": {
+        "properties": {
+          "base_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Score"
+          },
+          "adjustment": {
+            "type": "number",
+            "title": "Adjustment"
+          },
+          "adjusted_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjusted Score"
+          },
+          "assessment": {
+            "$ref": "#/components/schemas/CIOAssessment"
+          }
+        },
+        "type": "object",
+        "required": [
+          "base_score",
+          "adjustment",
+          "adjusted_score",
+          "assessment"
+        ],
+        "title": "CIOResult"
       },
       "CachedQuoteOut": {
         "properties": {
@@ -3804,6 +4104,222 @@
           "explanation"
         ],
         "title": "ChartReport"
+      },
+      "Citation": {
+        "properties": {
+          "chunk_id": {
+            "type": "integer",
+            "title": "Chunk Id"
+          },
+          "doc_type": {
+            "type": "string",
+            "title": "Doc Type"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunk_id",
+          "doc_type",
+          "source_url",
+          "as_of"
+        ],
+        "title": "Citation"
+      },
+      "CommitteeOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "cached": {
+            "type": "boolean",
+            "title": "Cached"
+          },
+          "report": {
+            "$ref": "#/components/schemas/CommitteeReport"
+          },
+          "llm_used": {
+            "type": "boolean",
+            "title": "Llm Used"
+          },
+          "launch_gate_open": {
+            "type": "boolean",
+            "title": "Launch Gate Open"
+          },
+          "launch_gate_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Launch Gate Reasons"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "generated_at",
+          "cached",
+          "report",
+          "llm_used",
+          "launch_gate_open"
+        ],
+        "title": "CommitteeOut"
+      },
+      "CommitteeReport": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/RoleResult_CompanyProfile_"
+          },
+          "news": {
+            "$ref": "#/components/schemas/RoleResult_NewsReport_"
+          },
+          "bear": {
+            "$ref": "#/components/schemas/RoleResult_BearCase_"
+          },
+          "cio": {
+            "$ref": "#/components/schemas/RoleResult_CIOAssessment_"
+          },
+          "cio_score": {
+            "$ref": "#/components/schemas/CIOResult"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "profile",
+          "news",
+          "bear",
+          "cio",
+          "cio_score"
+        ],
+        "title": "CommitteeReport"
+      },
+      "CompanyProfile": {
+        "properties": {
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileClaim"
+            },
+            "type": "array",
+            "title": "Claims"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CompanyProfile"
+      },
+      "ConversationDetailOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "portfolio_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/MessageOut"
+            },
+            "type": "array",
+            "title": "Messages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "updated_at",
+          "messages"
+        ],
+        "title": "ConversationDetailOut"
+      },
+      "ConversationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "portfolio_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ConversationOut"
       },
       "DividendsOut": {
         "properties": {
@@ -7045,6 +7561,74 @@
         ],
         "title": "MeOut"
       },
+      "MessageOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "cites": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Cites"
+          },
+          "tools_called": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tools Called"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "template",
+                  "llm",
+                  "cache"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "declined": {
+            "type": "boolean",
+            "title": "Declined",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "role",
+          "content",
+          "created_at"
+        ],
+        "title": "MessageOut"
+      },
       "MissingInput": {
         "properties": {
           "name": {
@@ -7146,6 +7730,53 @@
           "pct"
         ],
         "title": "MonthlyBar"
+      },
+      "NewsItem": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "tone": {
+            "type": "string",
+            "enum": [
+              "positive",
+              "neutral",
+              "negative"
+            ],
+            "title": "Tone",
+            "default": "neutral"
+          },
+          "chunk_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Chunk Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "NewsItem"
+      },
+      "NewsReport": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NewsItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "NewsReport"
       },
       "NotificationOut": {
         "properties": {
@@ -7897,6 +8528,40 @@
           "is_fresh"
         ],
         "title": "PriceInfo"
+      },
+      "ProfileClaim": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "enum": [
+              "business",
+              "segments",
+              "management",
+              "competitors"
+            ],
+            "title": "Topic"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "chunk_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Chunk Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "topic",
+          "text"
+        ],
+        "title": "ProfileClaim"
       },
       "ProposedChange": {
         "properties": {
@@ -8761,6 +9426,45 @@
         ],
         "title": "RiskPresetOut"
       },
+      "RiskResponse": {
+        "properties": {
+          "risk_index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Risk Index"
+          },
+          "stance": {
+            "type": "string",
+            "enum": [
+              "rebutted",
+              "accepted",
+              "unresolved"
+            ],
+            "title": "Stance"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "chunk_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Chunk Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "risk_index",
+          "stance",
+          "reason"
+        ],
+        "title": "RiskResponse"
+      },
       "RiskToStop": {
         "properties": {
           "native": {
@@ -8799,6 +9503,274 @@
           "pct_of_position"
         ],
         "title": "RiskToStop"
+      },
+      "RoleResult_BearCase_": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "value": {
+            "$ref": "#/components/schemas/BearCase"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "llm",
+              "cache",
+              "template"
+            ],
+            "title": "Source"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "no_coverage"
+            ],
+            "title": "Status"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "prompt_tokens": {
+            "type": "integer",
+            "title": "Prompt Tokens",
+            "default": 0
+          },
+          "budget": {
+            "type": "integer",
+            "title": "Budget",
+            "default": 0
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "value",
+          "source",
+          "status",
+          "confidence"
+        ],
+        "title": "RoleResult[BearCase]"
+      },
+      "RoleResult_CIOAssessment_": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "value": {
+            "$ref": "#/components/schemas/CIOAssessment"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "llm",
+              "cache",
+              "template"
+            ],
+            "title": "Source"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "no_coverage"
+            ],
+            "title": "Status"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "prompt_tokens": {
+            "type": "integer",
+            "title": "Prompt Tokens",
+            "default": 0
+          },
+          "budget": {
+            "type": "integer",
+            "title": "Budget",
+            "default": 0
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "value",
+          "source",
+          "status",
+          "confidence"
+        ],
+        "title": "RoleResult[CIOAssessment]"
+      },
+      "RoleResult_CompanyProfile_": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "value": {
+            "$ref": "#/components/schemas/CompanyProfile"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "llm",
+              "cache",
+              "template"
+            ],
+            "title": "Source"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "no_coverage"
+            ],
+            "title": "Status"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "prompt_tokens": {
+            "type": "integer",
+            "title": "Prompt Tokens",
+            "default": 0
+          },
+          "budget": {
+            "type": "integer",
+            "title": "Budget",
+            "default": 0
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "value",
+          "source",
+          "status",
+          "confidence"
+        ],
+        "title": "RoleResult[CompanyProfile]"
+      },
+      "RoleResult_NewsReport_": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "value": {
+            "$ref": "#/components/schemas/NewsReport"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "llm",
+              "cache",
+              "template"
+            ],
+            "title": "Source"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "no_coverage"
+            ],
+            "title": "Status"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "prompt_tokens": {
+            "type": "integer",
+            "title": "Prompt Tokens",
+            "default": 0
+          },
+          "budget": {
+            "type": "integer",
+            "title": "Budget",
+            "default": 0
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "value",
+          "source",
+          "status",
+          "confidence"
+        ],
+        "title": "RoleResult[NewsReport]"
       },
       "RowConflict": {
         "properties": {
@@ -11114,6 +12086,95 @@
           "rules"
         ],
         "title": "XrayRulesPatch"
+      },
+      "app__analyze__schemas__AskOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "grounded_in": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Grounded In"
+          },
+          "llm_used": {
+            "type": "boolean",
+            "title": "Llm Used",
+            "default": false
+          },
+          "notes_stored": {
+            "type": "boolean",
+            "title": "Notes Stored",
+            "default": false
+          },
+          "question_declined": {
+            "type": "boolean",
+            "title": "Question Declined",
+            "default": false
+          },
+          "privacy_note": {
+            "type": "string",
+            "title": "Privacy Note",
+            "default": "Your question and notes stay on the server and are never sent to a free AI provider."
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "answer",
+          "grounded_in"
+        ],
+        "title": "AskOut"
+      },
+      "app__api__ask__AskOut": {
+        "properties": {
+          "conversation_id": {
+            "type": "integer",
+            "title": "Conversation Id"
+          },
+          "question": {
+            "$ref": "#/components/schemas/MessageOut"
+          },
+          "answer": {
+            "$ref": "#/components/schemas/MessageOut"
+          },
+          "declined": {
+            "type": "boolean",
+            "title": "Declined",
+            "default": false
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id",
+          "question",
+          "answer"
+        ],
+        "title": "AskOut"
       }
     }
   }

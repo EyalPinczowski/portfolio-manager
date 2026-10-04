@@ -741,6 +741,13 @@ class Settings(BaseSettings):
     committee_max_claims: int = Field(default=8, ge=1, le=30)
     ask_max_tools_per_question: int = Field(default=4, ge=1, le=10)
     ask_max_holdings_rows: int = Field(default=30, ge=1, le=200)
+    # Ask chat history: kept this many days after the last message, then purged by the scheduler.
+    ask_history_retention_days: int = Field(default=90, ge=1, le=3650)
+    ask_history_purge_interval_minutes: int = Field(default=360, ge=1)
+    ask_max_question_chars: int = Field(default=500, ge=20, le=4000)
+    ask_max_conversations_per_user: int = Field(default=100, ge=1, le=10_000)
+    ask_rate_limit_per_hour: int = Field(default=60, ge=1)  # per user
+    committee_rate_limit_per_hour: int = Field(default=20, ge=1)  # per user
     llm_cache_ttl_hours: float = 24.0 * 7
     llm_cache_ttl_news_hours: float = 6.0  # answers whose prompt depends on news go stale fast
     # Free-tier quotas are per day and shared by every user: reserve them. Per-minute sub-buckets

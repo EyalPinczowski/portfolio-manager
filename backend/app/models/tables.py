@@ -273,6 +273,37 @@ class DocChunk(SQLModel, table=True):
     created_at: NaiveDatetime = Field(default_factory=utcnow)
 
 
+class AskConversation(SQLModel, table=True):
+    """One ask-my-portfolio chat. Scoped to its user (every query filters on `user_id`). Kept for
+    `Settings.ask_history_retention_days` after its last message, then purged; the user can delete
+    it any time. `portfolio_id` is the optional portfolio the questions were scoped to."""
+
+    __tablename__ = "ask_conversation"
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True, ondelete="CASCADE")
+    portfolio_id: int | None = Field(default=None, foreign_key="portfolio.id", ondelete="CASCADE")
+    title: str = ""
+    created_at: NaiveDatetime = Field(default_factory=utcnow)
+    updated_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
+class AskMessage(SQLModel, table=True):
+    """A question or an answer. Only the text, the tool names and the citations are stored: never
+    a raw tool payload (holdings, amounts), a screenshot or an OCR text."""
+
+    __tablename__ = "ask_message"
+    id: int | None = Field(default=None, primary_key=True)
+    conversation_id: int = Field(foreign_key="ask_conversation.id", index=True, ondelete="CASCADE")
+    user_id: int = Field(foreign_key="user.id", index=True, ondelete="CASCADE")
+    role: str  # user | assistant
+    content: str
+    cites: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    tools_called: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    source: str | None = None  # assistant only: template | llm | cache
+    declined: bool = False
+    created_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
 class UserSettings(SQLModel, table=True):
     """Per-user settings, one row per user (see docs/settings-spec.md). A user without a row has the
     defaults from `Settings`. `idea_alerts` is NULL until the user saves the filter: nothing is

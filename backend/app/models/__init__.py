@@ -1,5 +1,7 @@
 from app.models import guards as guards
 from app.models.tables import (
+    AskConversation,
+    AskMessage,
     AuditLog,
     AuthSession,
     BacktestRun,
@@ -30,6 +32,8 @@ from app.models.tables import (
 )
 
 __all__ = [
+    "AskConversation",
+    "AskMessage",
     "AuditLog",
     "AuthSession",
     "BacktestRun",

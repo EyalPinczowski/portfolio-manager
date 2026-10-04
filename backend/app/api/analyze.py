@@ -12,9 +12,11 @@ question and notes are never sent to one.
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 
 from app.analyze.fit import compute_fit, incomplete_fit
 from app.analyze.public_facts import PublicFacts, public_facts, summarize, template_summary
@@ -31,9 +33,15 @@ from app.analyze.service import MarketData, load_market, quote_row
 from app.api.exit_levels import _risk_for
 from app.api.schemas import BIG, Horizon
 from app.auth.deps import DbDep, SettingsDep, UserDep
+from app.auth.ratelimit import committee_limiter, enforce_limit
+from app.committee.roles import run_committee
+from app.committee.schemas import CommitteeReport
+from app.config import DISCLAIMER
 from app.errors import ApiError
 from app.importer.parse import SYMBOL_PATTERN, norm_symbol
 from app.launchgate import GateDep
+from app.llm.base import LLMProvider
+from app.llm.providers import build_providers
 from app.models import Security
 from app.portfolio.freshness import price_is_fresh
 from app.portfolio.valuation import value_portfolio
@@ -244,3 +252,67 @@ def ask(symbol: str, body: AskIn, user: UserDep, db: DbDep, settings: SettingsDe
     )
     text, used, declined = _answer(body.question, public_facts(scout, md.chart))
     return AskOut(symbol=sym, answer=text, grounded_in=used, question_declined=declined)
+
+
+def committee_providers(settings: SettingsDep) -> list[LLMProvider]:
+    """The free providers in the configured order (they see `PublicFacts` and public passages only).
+    Empty without keys: every role then uses its template. Override in tests."""
+    return build_providers(settings)
+
+
+class CommitteeOut(BaseModel):
+    symbol: str
+    generated_at: datetime
+    cached: bool  # the chart data came from the analyze cache
+    report: CommitteeReport
+    llm_used: bool  # at least one role was answered by a model (or the response cache)
+    launch_gate_open: bool
+    launch_gate_reasons: list[str] = Field(default_factory=list)
+    disclaimer: str = DISCLAIMER
+
+
+@router.post("/analyze/{symbol}/committee", response_model=CommitteeOut)
+def committee(
+    symbol: str,
+    user: UserDep,
+    db: DbDep,
+    settings: SettingsDep,
+    gate: GateDep,
+    providers: list[LLMProvider] = Depends(committee_providers),
+) -> CommitteeOut:
+    """Run the Investment Committee (company profile, news, Bear, CIO) for any ticker.
+
+    Public data only: the roles see `PublicFacts` and retrieved public passages, never the user's
+    portfolio. There is no buy/sell verdict here: the CIO answers the Bear's risks and may nudge the
+    chart score within the configured cap, nothing more. Every role has a template fallback, so
+    this works with no AI key. Chart data is cached like the rest of Analyze, and model answers are
+    cached by the LLM layer."""
+    assert user.id is not None
+    sym = _symbol(symbol)
+    enforce_limit(
+        committee_limiter, f"user:{user.id}", settings.committee_rate_limit_per_hour, 3600.0
+    )
+    sec, md = _market(db, sym, settings)
+    scout = build_scout_report(
+        sec,
+        verified=True,
+        price=None,
+        price_reason=None,
+        chart=md.chart,
+        history_as_of=md.history_as_of,
+    )
+    facts = public_facts(scout, md.chart)
+    now = utcnow()
+    report = run_committee(db, facts, providers=providers, settings=settings)
+    status = gate.evaluate()
+    return CommitteeOut(
+        symbol=sym,
+        generated_at=now,
+        cached=md.cached,
+        report=report,
+        llm_used=any(
+            r.source != "template" for r in (report.profile, report.news, report.bear, report.cio)
+        ),
+        launch_gate_open=status.open,
+        launch_gate_reasons=status.reasons,
+    )

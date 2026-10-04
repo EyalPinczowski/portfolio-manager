@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlmodel import Session, col, select
 
+from app.committee.history import list_conversations, list_messages
 from app.models import (
     FundHolding,
     Holding,
@@ -93,6 +94,14 @@ def export_user_data(db: Session, user: User) -> dict[str, Any]:
         "settings": (
             row.model_dump(mode="json") if (row := db.get(UserSettings, user.id)) else None
         ),
+        "ask_conversations": [
+            {
+                **c.model_dump(mode="json"),
+                "messages": [m.model_dump(mode="json") for m in list_messages(db, user.id, c.id)],
+            }
+            for c in list_conversations(db, user.id, limit=10_000)
+            if c.id is not None
+        ],
         "notifications": [
             n.model_dump(mode="json")
             for n in db.exec(select(Notification).where(Notification.user_id == user.id))

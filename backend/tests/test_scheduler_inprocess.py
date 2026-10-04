@@ -134,6 +134,7 @@ EXPECTED_JOBS = {
     "universe_scores",
     "purge_drafts",
     "purge_sessions",
+    "purge_ask_history",
     "weekly_review",
     "paper_resolve",
 }

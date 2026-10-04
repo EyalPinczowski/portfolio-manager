@@ -120,6 +120,13 @@ def run_draft_purge(db: Session, settings: Settings | None = None) -> int:
     return purge_expired_drafts(db, settings)
 
 
+def run_ask_history_purge(db: Session, settings: Settings | None = None) -> int:
+    """Retention rule: ask conversations idle for `ask_history_retention_days` are deleted."""
+    from app.committee.history import purge_expired_conversations
+
+    return purge_expired_conversations(db, settings)
+
+
 def run_session_purge(db: Session) -> int:
     """Hygiene: delete expired `session` rows."""
     from app.auth.sessions import purge_expired_sessions

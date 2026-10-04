@@ -50,6 +50,11 @@ def _purge_drafts() -> None:
         log.info("purged %d expired import drafts", jobs.run_draft_purge(db))
 
 
+def _purge_ask_history() -> None:
+    with new_session() as db:
+        log.info("purged %d expired ask conversations", jobs.run_ask_history_purge(db))
+
+
 def _purge_sessions() -> None:
     with new_session() as db:
         log.info("purged %d expired sessions", jobs.run_session_purge(db))
@@ -113,6 +118,14 @@ def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> Non
         misfire_grace_time=s.scheduler_misfire_grace_seconds,
     )
     sched.add_job(
+        _purge_ask_history,
+        IntervalTrigger(minutes=s.ask_history_purge_interval_minutes),
+        id="purge_ask_history",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=s.scheduler_misfire_grace_seconds,
+    )
+    sched.add_job(
         _purge_sessions,
         IntervalTrigger(minutes=s.session_purge_interval_minutes),
         id="purge_sessions",
@@ -145,6 +158,7 @@ JOB_IDS = (
     "universe_scores",
     "purge_drafts",
     "purge_sessions",
+    "purge_ask_history",
     "weekly_review",
     "paper_resolve",
 )

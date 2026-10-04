@@ -371,3 +371,31 @@ def test_0015_adds_doc_chunk_without_touching_existing_data(tmp_path: Path) -> N
     with pytest.raises(IntegrityError), engine.begin() as conn:  # unique per symbol + hash
         conn.execute(ins, {"h": "a"})
     engine.dispose()
+
+
+def test_0016_adds_ask_history_without_touching_existing_data(tmp_path: Path) -> None:
+    engine = make_engine(f"sqlite:///{tmp_path / 'm.db'}")
+    run_migrations(engine)
+    downgrade_migrations(engine, "0015_doc_chunk")
+    with engine.connect() as conn:
+        names = {r[0] for r in conn.exec_driver_sql("SELECT name FROM sqlite_master")}
+    assert "ask_conversation" not in names and "ask_message" not in names
+    _seed(engine)
+    run_migrations(engine)  # expand-only: 0015 -> 0016 with data present
+    assert _counts(engine) == {"user": 1, "portfolio": 1, "session": 1, "holding": 1}
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO ask_conversation (user_id, title, created_at, updated_at) "
+                "VALUES (1, 't', '2026-01-01', '2026-01-01')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO ask_message (conversation_id, user_id, role, content, cites, "
+                "tools_called, declined, created_at) VALUES (1, 1, 'user', 'q', '[]', '[]', 0, "
+                "'2026-01-01')"
+            )
+        )
+        assert conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
+    engine.dispose()

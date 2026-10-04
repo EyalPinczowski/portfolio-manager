@@ -22,7 +22,7 @@ from typing import Any, Literal
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.committee.roles import numbers_grounded
 from app.config import Settings, get_settings
@@ -35,7 +35,16 @@ from app.rag.tokens import estimate_tokens
 from app.repo import get_portfolio, list_portfolios
 from app.verdict_words import verdict_words_in_text
 
-TOOL_NAMES = ("get_summary", "get_holdings", "get_xray", "get_scorecard", "get_performance")
+TOOL_NAMES = (
+    "get_summary",
+    "get_holdings",
+    "get_xray",
+    "get_scorecard",
+    "get_performance",
+    "get_analysis",
+    "get_exit_levels",
+)
+_SYMBOL_OK = re.compile(r"[A-Z0-9][A-Z0-9.\-]{0,23}")
 DECLINE = (
     "I can only read your portfolio data; I do not place trades, change settings or tell you what "
     "to trade. Here is what the data shows."
@@ -107,6 +116,8 @@ class PortfolioTools:
             "get_xray": self.get_xray,
             "get_scorecard": self.get_scorecard,
             "get_performance": self.get_performance,
+            "get_analysis": self.get_analysis,
+            "get_exit_levels": self.get_exit_levels,
         }
 
     def call(self, name: str, **args: Any) -> ToolResult:
@@ -177,12 +188,113 @@ class PortfolioTools:
         )  # fmt: skip
         return xr
 
+    @staticmethod
+    def _symbol(symbol: str) -> str:
+        sym = symbol.strip().upper()
+        if not _SYMBOL_OK.fullmatch(sym):
+            raise ToolError("bad symbol")
+        return sym
+
+    def _held_or_watched(self, sym: str, portfolio_id: int | None = None) -> bool:
+        """True when the symbol is a holding (of this user) or on this user's watchlist."""
+        from app.models import Holding
+        from app.userlists import watchlist_item
+
+        for p in self._portfolios(portfolio_id):
+            if self._db.exec(
+                select(Holding.id).where(Holding.portfolio_id == p.id, Holding.symbol == sym)
+            ).first():
+                return True
+        return watchlist_item(self._db, self._uid, sym) is not None
+
+    def get_analysis(self, symbol: str) -> dict[str, Any]:
+        """The existing chart analysis (score, confidence, reasons) for a symbol the user holds or
+        watches. Public market data only; the same template summary the Analyze page shows."""
+        from app.analyze.public_facts import public_facts, template_summary
+        from app.analyze.scout import build_scout_report
+        from app.analyze.service import load_market
+        from app.models import Security
+        from app.providers.registry import get_providers
+        from app.securities import infer_security
+
+        sym = self._symbol(symbol)
+        if not self._held_or_watched(sym):
+            return {"symbol": sym, "available": False, "reason": "not held or watched"}
+        known = self._db.get(Security, sym)
+        sec = known or infer_security(sym)
+        md = load_market(self._db, sym, known, get_providers(), self._s)
+        scout = build_scout_report(
+            sec, verified=True, price=None, price_reason=None, chart=md.chart,
+            history_as_of=md.history_as_of,
+        )  # fmt: skip
+        facts = public_facts(scout, md.chart)
+        if facts.score is None:
+            return {
+                "symbol": sym,
+                "available": False,
+                "reason": "no chart signal has enough data yet",
+            }
+        out: dict[str, Any] = {
+            "symbol": sym,
+            "available": True,
+            "score": round(facts.score, 1),
+            "confidence": round(facts.confidence, 2),
+            "reasons": facts.reasons[:5],
+            "summary": template_summary(facts),
+            "as_of": md.chart.data_as_of.isoformat() if md.chart.data_as_of else None,
+        }
+        return json.loads(json.dumps(out, default=str))  # type: ignore[no-any-return]
+
+    def get_exit_levels(self, symbol: str, portfolio_id: int | None = None) -> dict[str, Any]:
+        """Stop and take-profit levels for a holding, from `scoring/exit_levels.py`. With no
+        horizon set on the holding the answer is `needs_horizon`: a horizon is never assumed."""
+        from app.api.exit_levels import _history, _risk_for
+        from app.portfolio.valuation import value_portfolio
+        from app.scoring.exit_levels import compute_exit_levels
+
+        sym = self._symbol(symbol)
+        for p in self._portfolios(portfolio_id):
+            val = value_portfolio(self._db, p, self._s)
+            v = next((x for x in val.holdings if x.holding.symbol == sym), None)
+            if v is None:
+                continue
+            h = v.holding
+            if not h.horizon:
+                return {
+                    "symbol": sym,
+                    "available": False,
+                    "status": "needs_horizon",
+                    "note": "No horizon is set for this holding, so no exit levels are shown. "
+                    "Set a horizon on the holding first.",
+                }
+            res = compute_exit_levels(
+                v,
+                h.horizon,
+                _risk_for(p, h, None, self._s),
+                _history(v, self._s),
+                portfolio_value_ils=val.total_ils,
+                settings=self._s,
+            )
+            eff = res.effective_stop
+            out: dict[str, Any] = {
+                "symbol": sym,
+                "available": res.status == "levels",
+                "status": res.status,
+                "horizon": res.horizon,
+                "currency": res.currency,
+                "price": res.price,
+                "stop_price": eff.price if eff else None,
+                "stop_distance_pct": eff.distance_pct if eff else None,
+                "take_profit_prices": [t.price for t in res.take_profits],
+                "reason": res.reason,
+            }
+            return json.loads(json.dumps(out, default=str))  # type: ignore[no-any-return]
+        return {"symbol": sym, "available": False, "status": "not_held", "note": "not a holding"}
+
     def get_scorecard(self, symbol: str) -> dict[str, Any]:
         from app.scoring.scorecard import get_cached_scorecard
 
-        sym = symbol.strip().upper()
-        if not re.fullmatch(r"[A-Z0-9][A-Z0-9.\-]{0,23}", sym):
-            raise ToolError("bad symbol")
+        sym = self._symbol(symbol)
         card = get_cached_scorecard(self._db, sym)  # public market data, not user data
         if card is None:
             return {"symbol": sym, "available": False}
@@ -190,19 +302,28 @@ class PortfolioTools:
         return {"symbol": sym, "available": True, **data}
 
 
-def _plan(question: str) -> list[tuple[str, dict[str, Any]]]:
+_NOT_SYMBOLS = {"I", "ILS", "USD", "ETF", "AI", "US", "TASE", "TA"}
+_EXIT_WORDS = ("stop", "exit level", "exit", "take profit", "take-profit", "horizon")
+_ANALYSIS_WORDS = ("analy", "explain")
+
+
+def _plan(question: str, portfolio_id: int | None = None) -> list[tuple[str, dict[str, Any]]]:
     q = question.lower()
+    scope: dict[str, Any] = {} if portfolio_id is None else {"portfolio_id": portfolio_id}
     plan: list[tuple[str, dict[str, Any]]] = []
     for words, tool in _ROUTES:
         if any(w in q for w in words) and tool != "get_scorecard":
-            plan.append((tool, {}))
-    for sym in _SYMBOL.findall(question):
-        if sym not in {"I", "ILS", "USD", "ETF"} and any(
-            w in q for w in ("worry", "score", "chart", "about")
-        ):
+            plan.append((tool, dict(scope)))
+    symbols = [sym for sym in _SYMBOL.findall(question) if sym not in _NOT_SYMBOLS]
+    for sym in symbols:
+        if any(w in q for w in ("worry", "score", "chart", "about")):
             plan.append(("get_scorecard", {"symbol": sym}))
+        if any(w in q for w in _ANALYSIS_WORDS):
+            plan.append(("get_analysis", {"symbol": sym}))
+        if any(w in q for w in _EXIT_WORDS):
+            plan.append(("get_exit_levels", {"symbol": sym, **scope}))
     if not plan:
-        plan.append(("get_summary", {}))
+        plan.append(("get_summary", dict(scope)))
     seen: set[str] = set()
     out: list[tuple[str, dict[str, Any]]] = []
     for t, a in plan:
@@ -270,6 +391,32 @@ def _template(results: list[ToolResult]) -> tuple[str, list[str]]:
                 )
             else:
                 parts.append(f"No score is available for {d['symbol']} yet. {tag}")
+        elif r.tool == "get_analysis":
+            if d.get("available"):
+                parts.append(
+                    f"{d['symbol']} analysis: score {float(d['score']):+.0f} "
+                    f"(confidence {float(d['confidence']):.0%}). {' '.join(d.get('reasons', [])[:2])} "
+                    f"{tag}".replace("  ", " ")
+                )
+            else:
+                parts.append(
+                    f"No analysis is available for {d['symbol']} ({d.get('reason')}). {tag}"
+                )
+        elif r.tool == "get_exit_levels":
+            if d.get("status") == "needs_horizon":
+                parts.append(
+                    f"{d['symbol']} has no horizon set, so no exit levels are shown. {tag}"
+                )
+            elif d.get("available") and d.get("stop_price") is not None:
+                tps = ", ".join(f"{p:g}" for p in d.get("take_profit_prices", [])[:3])
+                parts.append(
+                    f"{d['symbol']} ({d.get('horizon')}): stop {d['stop_price']:g} "
+                    f"({d['stop_distance_pct']:+.1f}%)"
+                    + (f", take-profit {tps}" if tps else "")
+                    + f". {tag}"
+                )
+            else:
+                parts.append(f"No exit levels are available for {d['symbol']}. {tag}")
         cites.append(f"tool:{r.tool}")
     return " ".join(parts), cites
 
@@ -306,6 +453,7 @@ def ask(
     history: HistoryProvider | None = None,
     providers: list[LLMProvider] | None = None,
     settings: Settings | None = None,
+    portfolio_id: int | None = None,
 ) -> AskResult:
     """Answer one question. `providers` is used only if every one declares `privacy == "no_training"`."""
     s = settings or get_settings()
@@ -314,7 +462,7 @@ def ask(
     notes: list[str] = []
     declined = bool(_ACTION.search(question)) or bool(verdict_words_in_text(question))
     results: list[ToolResult] = []
-    for name, args in _plan(question)[: s.ask_max_tools_per_question]:
+    for name, args in _plan(question, portfolio_id)[: s.ask_max_tools_per_question]:
         try:
             results.append(tools.call(name, **args))
         except ToolError as exc:
