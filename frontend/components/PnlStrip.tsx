@@ -23,7 +23,7 @@ export function PnlStrip({ s }: { s: Summary }) {
     <div className="card">
       <p className="text-sm text-muted">{label}</p>
       {sub && <p className="text-caption text-muted">{sub}</p>}
-      <p className="text-lg font-bold"><PnlText value={mainFirst(p.ils, p.usd).main.v} currency={mainFirst(p.ils, p.usd).main.cur} locale={locale} /></p>
+      <p className="whitespace-nowrap text-base font-bold sm:text-lg"><PnlText value={mainFirst(p.ils, p.usd).main.v} currency={mainFirst(p.ils, p.usd).main.cur} locale={locale} /></p>
       <p className="text-sm font-semibold"><PnlText pct={p.pct} locale={locale} /></p>
     </div>
   );

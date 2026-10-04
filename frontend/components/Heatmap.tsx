@@ -16,19 +16,34 @@ export function Heatmap({ items }: { items: HeatmapItem[] }) {
   const sorted = [...items].sort((a, b) => b.weight_pct - a.weight_pct);
   return (
     <ul className="grid grid-flow-dense grid-cols-4 gap-1 md:grid-cols-6" style={{ gridAutoRows: "4.5rem" }} dir="ltr">
-      {sorted.map((i) => (
-        <li
-          key={i.symbol}
-          className="flex flex-col justify-between overflow-hidden rounded-lg p-2 text-white"
-          style={{ background: tileColor(i.day_change_pct), gridColumn: `span ${span(i.weight_pct)}`, gridRow: `span ${i.weight_pct >= 20 ? 2 : 1}` }}
-        >
-          <span className="truncate text-sm font-bold">{i.symbol}</span>
-          <span className="text-xs">{i.sector}</span>
-          <span className="text-xs font-semibold tabular-nums">
-            {formatPct(i.day_change_pct, locale, { signed: true })} · {i.weight_pct.toFixed(1)}%
-          </span>
-        </li>
-      ))}
+      {sorted.map((i) => {
+        const cols = span(i.weight_pct);
+        return (
+          <li
+            key={i.symbol}
+            title={`${i.symbol} · ${i.sector}`}
+            className="flex min-w-0 flex-col justify-between overflow-hidden rounded-lg p-2 text-white"
+            style={{ background: tileColor(i.day_change_pct), gridColumn: `span ${cols}`, gridRow: `span ${i.weight_pct >= 20 ? 2 : 1}` }}
+          >
+            <span className="truncate text-sm font-bold">{i.symbol}</span>
+            {/* Three lines fit a tile. A one-column tile is too narrow for "change · weight" on one
+                line, so it drops the sector (kept in the tooltip) and splits the numbers. */}
+            {cols > 1 ? (
+              <>
+                <span className="truncate text-xs">{i.sector}</span>
+                <span className="truncate text-xs font-semibold tabular-nums">
+                  {formatPct(i.day_change_pct, locale, { signed: true })} · {i.weight_pct.toFixed(1)}%
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="truncate text-xs font-semibold tabular-nums">{formatPct(i.day_change_pct, locale, { signed: true })}</span>
+                <span className="truncate text-xs tabular-nums">{i.weight_pct.toFixed(1)}%</span>
+              </>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -23,5 +23,9 @@ export default defineConfig({
   projects: [
     { name: "mobile", use: { ...iphone } },
     { name: "desktop", use: { viewport: { width: 1280, height: 800 } } },
+    // E2E_DARK=1: the whole suite again on the phone in dark mode (shots get a "-dark" suffix).
+    ...(process.env.E2E_DARK === "1"
+      ? [{ name: "mobile-dark", use: { ...iphone, colorScheme: "dark" as const } }]
+      : []),
   ],
 });
