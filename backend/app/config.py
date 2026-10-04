@@ -410,6 +410,31 @@ class Settings(BaseSettings):
     quotes_interval_minutes: int = 5
     scores_interval_minutes: int = 30
     score_cache_ttl_minutes: int = 360
+    # --- screener / universe (scoring/screener.py, scheduler job run_universe_score_refresh) ---
+    universe_file: str | None = None  # symbols, one per line; default: app/data/universe_seed.txt
+    universe_refresh_interval_minutes: int = Field(default=15, gt=0)
+    universe_refresh_batch_size: int = Field(default=20, gt=0)  # scorecards (history calls) per run
+    universe_score_ttl_minutes: int = Field(default=720, gt=0)  # re-score a symbol after this long
+    universe_quote_chunk_size: int = Field(default=50, gt=0)  # symbols per batched quote call
+    universe_pause_seconds: float = Field(default=0.5, ge=0)  # between history calls (rate limits)
+    screener_top_n: int = Field(default=10, gt=0)
+    screener_max_skipped: int = Field(default=300, gt=0)
+    screener_min_score: float = Field(default=10.0, ge=-100, le=100)  # cached total score floor
+    screener_min_confidence: float = Field(default=0.2, ge=0, le=1)
+    screener_max_score_age_hours: int = Field(default=48, gt=0)
+    screener_diversification_bonus: float = Field(default=10.0, ge=0, le=50)  # rank points, max
+    screener_vol_lookback_days: int = Field(default=60, ge=10)
+    # Annualised volatility ceiling (%) per risk preset; a candidate above it is skipped.
+    screener_max_volatility_pct: dict[str, float] = Field(
+        default_factory=lambda: {
+            "very_conservative": 30.0,
+            "conservative": 40.0,
+            "balanced": 55.0,
+            "balanced_aggressive": 70.0,
+            "aggressive": 90.0,
+            "very_aggressive": 130.0,
+        }
+    )
     snapshot_hour: int = 23
     snapshot_minute: int = 59
     snapshot_misfire_grace_seconds: int = 6 * 3600  # run a late snapshot instead of skipping it

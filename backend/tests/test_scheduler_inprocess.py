@@ -127,7 +127,14 @@ def test_factory_picks_the_lock_by_database_url(tmp_path: Path) -> None:
 
 # --- the scheduler -------------------------------------------------------------------------------
 
-EXPECTED_JOBS = {"quotes", "daily_snapshot", "scores", "purge_drafts", "purge_sessions"}
+EXPECTED_JOBS = {
+    "quotes",
+    "daily_snapshot",
+    "scores",
+    "universe_scores",
+    "purge_drafts",
+    "purge_sessions",
+}
 
 
 def _job_ids(runner: InProcessScheduler) -> set[str]:

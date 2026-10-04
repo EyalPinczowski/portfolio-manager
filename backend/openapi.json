@@ -1598,6 +1598,59 @@
         }
       }
     },
+    "/api/portfolios/{portfolio_id}/buy-ideas": {
+      "post": {
+        "tags": [
+          "screener"
+        ],
+        "summary": "Buy Ideas",
+        "description": "Candidates for `amount` of new money, from cached universe scores only.",
+        "operationId": "buy_ideas_api_portfolios__portfolio_id__buy_ideas_post",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuyIdeasIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -1772,6 +1825,338 @@
           "why"
         ],
         "title": "Breach"
+      },
+      "BuyIdeasIn": {
+        "properties": {
+          "amount": {
+            "type": "number",
+            "maximum": 1000000000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "ILS",
+              "USD"
+            ],
+            "title": "Currency"
+          },
+          "horizon": {
+            "type": "string",
+            "enum": [
+              "1w",
+              "1m",
+              "3m",
+              "6m",
+              "1y"
+            ],
+            "title": "Horizon"
+          },
+          "risk": {
+            "type": "string",
+            "enum": [
+              "very_conservative",
+              "conservative",
+              "balanced",
+              "balanced_aggressive",
+              "aggressive",
+              "very_aggressive"
+            ],
+            "title": "Risk"
+          },
+          "markets": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "US",
+                "TASE",
+                "CRYPTO"
+              ]
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Markets"
+          },
+          "asset_types": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "stock",
+                "etf",
+                "crypto"
+              ]
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Asset Types"
+          },
+          "exclude_symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Exclude Symbols"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "amount",
+          "currency",
+          "horizon",
+          "risk",
+          "markets",
+          "asset_types"
+        ],
+        "title": "BuyIdeasIn",
+        "description": "Everything is required except the optional exclusion list."
+      },
+      "Candidate": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name_en": {
+            "type": "string",
+            "title": "Name En"
+          },
+          "name_he": {
+            "type": "string",
+            "title": "Name He"
+          },
+          "market": {
+            "type": "string",
+            "title": "Market"
+          },
+          "asset_type": {
+            "type": "string",
+            "title": "Asset Type"
+          },
+          "sector": {
+            "type": "string",
+            "title": "Sector"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "rank_score": {
+            "type": "number",
+            "title": "Rank Score"
+          },
+          "diversification_bonus": {
+            "type": "number",
+            "title": "Diversification Bonus"
+          },
+          "score_as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Score As Of"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "price_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price As Of"
+          },
+          "entry": {
+            "type": "number",
+            "title": "Entry"
+          },
+          "stop": {
+            "$ref": "#/components/schemas/ExitLevel"
+          },
+          "take_profits": {
+            "items": {
+              "$ref": "#/components/schemas/ExitLevel"
+            },
+            "type": "array",
+            "title": "Take Profits"
+          },
+          "best_rr": {
+            "type": "number",
+            "title": "Best Rr"
+          },
+          "annualised_volatility_pct": {
+            "type": "number",
+            "title": "Annualised Volatility Pct"
+          },
+          "size": {
+            "$ref": "#/components/schemas/SizeOut"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "explanation": {
+            "$ref": "#/components/schemas/Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "symbol",
+          "name_en",
+          "name_he",
+          "market",
+          "asset_type",
+          "sector",
+          "country",
+          "currency",
+          "score",
+          "confidence",
+          "rank_score",
+          "diversification_bonus",
+          "score_as_of",
+          "price",
+          "entry",
+          "stop",
+          "take_profits",
+          "best_rr",
+          "annualised_volatility_pct",
+          "size",
+          "reasons",
+          "explanation"
+        ],
+        "title": "Candidate"
+      },
+      "CandidatesOut": {
+        "properties": {
+          "portfolio_id": {
+            "type": "integer",
+            "title": "Portfolio Id"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "amount_ils": {
+            "type": "number",
+            "title": "Amount Ils"
+          },
+          "horizon": {
+            "type": "string",
+            "title": "Horizon"
+          },
+          "risk_preset": {
+            "type": "string",
+            "title": "Risk Preset"
+          },
+          "markets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Markets"
+          },
+          "asset_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Asset Types"
+          },
+          "universe_size": {
+            "type": "integer",
+            "title": "Universe Size"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/Candidate"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedItem"
+            },
+            "type": "array",
+            "title": "Skipped"
+          },
+          "launch_gate_open": {
+            "type": "boolean",
+            "title": "Launch Gate Open"
+          },
+          "launch_gate_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Launch Gate Reasons"
+          },
+          "notice": {
+            "type": "string",
+            "title": "Notice",
+            "default": "Scores are not yet validated by a backtest and paper trading. These are neutral candidates for you to research, not instructions to trade. Not financial advice."
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "portfolio_id",
+          "generated_at",
+          "amount",
+          "currency",
+          "amount_ils",
+          "horizon",
+          "risk_preset",
+          "markets",
+          "asset_types",
+          "universe_size",
+          "candidates",
+          "skipped",
+          "launch_gate_open",
+          "launch_gate_reasons"
+        ],
+        "title": "CandidatesOut"
       },
       "ChallengeRequiredOut": {
         "properties": {
@@ -5048,6 +5433,140 @@
         ],
         "title": "SizeGuidance",
         "description": "The stop stays where the chart puts it; this is how many shares fit the risk filter."
+      },
+      "SizeOut": {
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "cost_native": {
+            "type": "number",
+            "title": "Cost Native"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "cost_ils": {
+            "type": "number",
+            "title": "Cost Ils"
+          },
+          "cost_usd": {
+            "type": "number",
+            "title": "Cost Usd"
+          },
+          "pct_of_amount": {
+            "type": "number",
+            "title": "Pct Of Amount"
+          },
+          "position_pct_after": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Pct After"
+          },
+          "sector_pct_after": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector Pct After"
+          },
+          "country_pct_after": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Pct After"
+          },
+          "risk_ils": {
+            "type": "number",
+            "title": "Risk Ils"
+          },
+          "risk_pct_of_portfolio": {
+            "type": "number",
+            "title": "Risk Pct Of Portfolio"
+          },
+          "limited_by": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limited By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "quantity",
+          "cost_native",
+          "currency",
+          "cost_ils",
+          "cost_usd",
+          "pct_of_amount",
+          "risk_ils",
+          "risk_pct_of_portfolio"
+        ],
+        "title": "SizeOut"
+      },
+      "SkippedItem": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name_en": {
+            "type": "string",
+            "title": "Name En"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "excluded_by_user",
+              "no_score",
+              "low_score",
+              "low_confidence",
+              "stale_score",
+              "volatility_cap",
+              "no_quote",
+              "stale_price",
+              "no_levels",
+              "min_rr",
+              "position_cap",
+              "sector_cap",
+              "country_cap",
+              "size_too_small",
+              "duplicate_listing",
+              "ranked_lower"
+            ],
+            "title": "Code"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name_en",
+          "code",
+          "reason"
+        ],
+        "title": "SkippedItem"
       },
       "SkippedSource": {
         "properties": {

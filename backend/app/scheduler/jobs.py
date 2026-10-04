@@ -100,6 +100,19 @@ def run_score_refresh(
     return n
 
 
+def run_universe_score_refresh(
+    db: Session,
+    history: HistoryProvider,
+    quotes: QuoteProvider | None = None,
+    settings: Settings | None = None,
+    now: datetime | None = None,
+) -> int:
+    """Keep the screener's universe warm: score cards + bars (batched, paced) and live quotes."""
+    from app.scoring.universe import refresh_universe
+
+    return refresh_universe(db, history, quotes, settings, now)
+
+
 def run_draft_purge(db: Session, settings: Settings | None = None) -> int:
     """Retention rule: unconfirmed import drafts are deleted 24 h after creation."""
     from app.importer.service import purge_expired_drafts

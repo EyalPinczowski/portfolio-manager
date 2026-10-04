@@ -39,6 +39,12 @@ def _scores() -> None:
         log.info("score refresh: %d", jobs.run_score_refresh(db, get_providers().history))
 
 
+def _universe() -> None:
+    with new_session() as db:
+        p = get_providers()
+        log.info("universe refresh: %d", jobs.run_universe_score_refresh(db, p.history, p.quotes))
+
+
 def _purge_drafts() -> None:
     with new_session() as db:
         log.info("purged %d expired import drafts", jobs.run_draft_purge(db))
@@ -71,6 +77,14 @@ def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> Non
         misfire_grace_time=s.snapshot_misfire_grace_seconds,
     )
     sched.add_job(
+        _universe,
+        IntervalTrigger(minutes=s.universe_refresh_interval_minutes),
+        id="universe_scores",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=s.scheduler_misfire_grace_seconds,
+    )
+    sched.add_job(
         _scores,
         IntervalTrigger(minutes=s.scores_interval_minutes),
         id="scores",
@@ -96,7 +110,14 @@ def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> Non
     )
 
 
-JOB_IDS = ("quotes", "daily_snapshot", "scores", "purge_drafts", "purge_sessions")
+JOB_IDS = (
+    "quotes",
+    "daily_snapshot",
+    "scores",
+    "universe_scores",
+    "purge_drafts",
+    "purge_sessions",
+)
 
 
 def build_scheduler() -> BlockingScheduler:

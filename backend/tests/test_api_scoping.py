@@ -68,6 +68,18 @@ def test_cross_user_access_returns_404(
             f"/api/portfolios/{pid}/exit-review",
             {"horizon": "1m", "prior_stops": {"AAPL": 5}},
         ),
+        (
+            "POST",
+            f"/api/portfolios/{pid}/buy-ideas",
+            {
+                "amount": 1000,
+                "currency": "ILS",
+                "horizon": "1m",
+                "risk": "balanced",
+                "markets": ["US"],
+                "asset_types": ["stock"],
+            },
+        ),
         ("POST", f"/api/portfolios/{pid}/holdings", {"symbol": "MSFT", "quantity": 1}),
     ]:
         assert status_of(method, path, body) == 404, (method, path)
