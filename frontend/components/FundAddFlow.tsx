@@ -41,7 +41,7 @@ export function FundReturns({ d }: { d: FundDetail }) {
     return <span className="text-muted" data-testid={`missing-${r.horizon}`}>{DASH} <span className="text-caption">{t(`missing.${r.missing_reason ?? "no_value"}`)}</span></span>;
   };
   return (
-    <div className="overflow-x-auto">
+    <div className="relative overflow-x-auto">
       <table className="w-full text-sm" data-testid="fund-returns">
         <thead>
           <tr className="border-b border-line text-start text-caption text-muted">

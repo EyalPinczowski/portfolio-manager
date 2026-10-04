@@ -51,7 +51,7 @@ export function ExplanationView({ e, reasons, asOf, currency, showContributions 
       {contributions.length > 0 && (
         <div>
           <h4 className={h}>{t("whyContributions")}</h4>
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full text-start">
               <thead className={`text-xs ${muted}`}>
                 <tr>

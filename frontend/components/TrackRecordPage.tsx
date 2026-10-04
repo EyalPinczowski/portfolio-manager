@@ -83,7 +83,7 @@ function CallsTable({ rows, names }: { rows: TrackRow[]; names: string[] }) {
   return (
     <section className="space-y-2" aria-label={t("tableTitle")}>
       <h2 className="text-heading">{t("tableTitle")}</h2>
-      <div className="card overflow-x-auto p-0">
+      <div className="card relative overflow-x-auto p-0">
         <table className="w-full text-start text-sm">
           <thead>
             <tr className="border-b border-line text-caption text-muted">

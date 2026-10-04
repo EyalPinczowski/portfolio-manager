@@ -6,7 +6,7 @@ Read this file, then `CLAUDE.md`, `docs/status.md` and `docs/reminders.md`, befo
 - Work only on `claude/stock-portfolio-assistant-jgtbq9`. Never open a PR unless the user asks.
 - Opus reviews before each phase. Sonnet agents write code. The main session verifies, commits and pushes.
 - Agents return at most ~150 words and write details to `docs/status.md`.
-- After each phase: `ruff check`, `ruff format --check`, `mypy app`, `pytest -q`, frontend lint, tsc, vitest, build, e2e. Then run `python scripts/test_inventory.py` (never read `docs/testing.md` back) and add tests for what changed.
+- After each phase: `ruff check`, `ruff format --check`, `mypy app`, `pytest -q`, frontend lint, tsc, vitest, build, e2e, `npm run e2e:real` (real backend). Then run `python scripts/test_inventory.py` (never read `docs/testing.md` back) and add tests for what changed.
 - Never commit an agent's in-progress files.
 - Commit trailers:
   - `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`
@@ -19,7 +19,7 @@ Read this file, then `CLAUDE.md`, `docs/status.md` and `docs/reminders.md`, befo
 - After an API change: regenerate `backend/openapi.json`, then `cd frontend && npm run gen:api`.
 
 ## First thing to do
-Queue item 2 (step 5): dark-mode review and a Playwright pass against the real backend. The backtest is closed: the user accepted the result (see `docs/product-decisions.md`, 2026-10-04) and wants no target, cap or stop changes.
+Step 5 is done (dark-mode fixes, `npm run e2e:real`; see `docs/status.md`). Next is queue item 3. The backtest is closed: the user accepted the result (`docs/product-decisions.md`, 2026-10-04) and wants no target, cap or stop changes.
 
 ## Backtest rules (decided)
 - Targets per 6 months (return % / max drawdown %): conservative 3/4, balanced 5/7, balanced_aggressive 8/10, aggressive 12/15.
@@ -30,7 +30,7 @@ Queue item 2 (step 5): dark-mode review and a Playwright pass against the real b
 
 ## Remaining queue
 1. ~~Backtest and tuning on real history~~ done; user accepted the result and relies on paper trading.
-2. Step 5: review the dark-mode screenshots (send the user at most 2–3 that show problems). Add a Playwright pass against the real backend (mock Turnstile, import, null-price flows).
+2. ~~Step 5~~ done (2026-10-04). Was: review the dark-mode screenshots (send the user at most 2–3 that show problems). Add a Playwright pass against the real backend (mock Turnstile, import, null-price flows).
 3. Not built from step 4: ask tools `get_analysis` and `get_exit_levels`, chat history, the ask route and UI, the committee endpoint for Analyze.
 4. Postgres test run, then an Opus review before deploy, then `docs/reminders.md`, then choose a host and deploy.
 5. Optional, not yet accepted by the user:

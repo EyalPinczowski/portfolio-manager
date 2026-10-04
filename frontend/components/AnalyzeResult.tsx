@@ -102,7 +102,7 @@ function ExposureTable({ rows }: { rows: ExposureCheck[] }) {
   const t = useTranslations("analyze");
   const locale = useLocale();
   return (
-    <div className="overflow-x-auto">
+    <div className="relative overflow-x-auto">
       <table className="w-full text-start text-sm">
         <thead className="text-xs text-muted">
           <tr>
@@ -254,7 +254,7 @@ function Signals({ d }: { d: AnalyzeOut }) {
       <p className="text-sm" data-testid="score-line">
         {c.score_available ? t("scoreLine", { score: `${c.score > 0 ? "+" : ""}${formatNumber(c.score, locale, 0)}`, conf: formatWeight(c.confidence * 100, locale, 0) }) : t("scoreNone")}
       </p>
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full text-start text-sm">
           <thead className="text-xs text-muted">
             <tr>

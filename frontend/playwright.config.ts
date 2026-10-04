@@ -8,6 +8,7 @@ void _ignored;
 export default defineConfig({
   testDir: "./e2e",
   testMatch: /.*\.spec\.ts/,
+  testIgnore: /e2e[\\/]real[\\/]/, // the real-backend pass has its own config (playwright.real.config.ts)
   outputDir: "./e2e/.results",
   timeout: 60_000,
   expect: { timeout: 10_000 },

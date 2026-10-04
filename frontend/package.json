@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
+    "e2e:real": "playwright test -c playwright.real.config.ts",
     "gen:api": "openapi-typescript ../backend/openapi.json -o lib/api-schema.d.ts",
     "assets:ocr": "node scripts/copy-ocr-assets.mjs --strict",
     "postinstall": "node scripts/copy-ocr-assets.mjs"

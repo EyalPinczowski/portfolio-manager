@@ -187,7 +187,7 @@ function Body() {
     : error.kind === "rows" ? t("rowErrorsTitle") : t(`error.${error.kind}`));
 
   const renderTable = (draft: ImportDraft, list: ImportRow[]) => (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full min-w-[56rem] text-sm">
               <thead className="bg-surface-2">
                 <tr>
