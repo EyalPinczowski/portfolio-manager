@@ -19,8 +19,7 @@ Read this file, then `CLAUDE.md`, `docs/status.md` and `docs/reminders.md`, befo
 - After an API change: regenerate `backend/openapi.json`, then `cd frontend && npm run gen:api`.
 
 ## First thing to do
-The real-history backtest is done (`docs/reviews/backtest-real-2026-10-04.md`): held-out success 3–9% per profile, far below 80%, and tuning non-risk parameters did not help. Ask the user which way to go: relax targets/caps, revisit stop rules, or accept and rely on paper trading. Do not change risk logic, targets or weights without that answer. Then continue with queue item 2.
-History lives in git-ignored `backend/data/history/`; re-create it with `python -m app.cli fetch-history --symbols-from universe --years 8` (a full `top` backtest takes about 40 min on 4 workers).
+Queue item 2 (step 5): dark-mode review and a Playwright pass against the real backend. The backtest is closed: the user accepted the result (see `docs/product-decisions.md`, 2026-10-04) and wants no target, cap or stop changes.
 
 ## Backtest rules (decided)
 - Targets per 6 months (return % / max drawdown %): conservative 3/4, balanced 5/7, balanced_aggressive 8/10, aggressive 12/15.
@@ -30,7 +29,7 @@ History lives in git-ignored `backend/data/history/`; re-create it with `python 
 - Ask before changing scoring weights or risk logic.
 
 ## Remaining queue
-1. ~~Backtest and tuning on real history~~ done; awaiting the user's decision (see above).
+1. ~~Backtest and tuning on real history~~ done; user accepted the result and relies on paper trading.
 2. Step 5: review the dark-mode screenshots (send the user at most 2–3 that show problems). Add a Playwright pass against the real backend (mock Turnstile, import, null-price flows).
 3. Not built from step 4: ask tools `get_analysis` and `get_exit_levels`, chat history, the ask route and UI, the committee endpoint for Analyze.
 4. Postgres test run, then an Opus review before deploy, then `docs/reminders.md`, then choose a host and deploy.

@@ -143,4 +143,4 @@ Last updated: 2026-10-03 21:05 UTC. Branch: `claude/stock-portfolio-assistant-jg
 - Yahoo reachable (Stooq flaky, unused). `fetch-history` stored 86 symbols, 2015 to 2026-10-02, `synthetic: false` (git-ignored `backend/data/history/`).
 - Baseline (`top`, defaults): held-out success 3/6/9/9% (conservative to aggressive) vs the 80% bar; train 2–6%. Every profile trails ^GSPC by 6–8% per 6 months; 47–75% of trades stop out. Report `docs/reviews/backtest-real-2026-10-04-baseline-top.md`.
 - One-at-a-time tuning of non-risk params (screen 10/20 days, 1/5 new buys, trail update 1/10 days): nothing beat the defaults on train; defaults kept. Holding ^GSPC itself meets the conservative 3%/4% bar in only 11% of windows. Summary `docs/reviews/backtest-real-2026-10-04.md`. Nothing recorded to the launch gate.
-- Waiting for the user: relax targets/caps, revisit stop rules, or accept and rely on paper trading.
+- User decision: accept the result, keep targets/caps/stops, rely on paper trading (recorded in `docs/product-decisions.md`).

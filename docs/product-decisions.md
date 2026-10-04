@@ -61,3 +61,5 @@ The rules here still apply. Read the relevant part before touching that feature.
 
 - **Price-source terms (user accepted the grey area, 2026-10-03):** free price APIs are "personal, non-commercial". Safeguards are mandatory: data only behind login, no public data API, no export or redistribution of market data, a footer credit line ("Data: Yahoo Finance, Finnhub, CoinGecko, ECB / Bank of Israel, TASE" as applicable), limits and TTLs in config. Never scrape sites whose terms forbid it (investing.com, Globes, Bizportal, TASE web pages, TradingView).
 
+
+- **Real-history backtest result accepted (user decision, 2026-10-04):** the technical+patterns walk-forward on real Yahoo history reached 3–9% held-out success per profile against the 80% bar (`docs/reviews/backtest-real-2026-10-04.md`); tuning non-risk parameters did not help. The user chose to keep the targets, drawdown caps and stop rules unchanged. The backtest half of the launch gate stays closed, the screener shows candidates only (no verdicts), and forward paper trading is the real test.
