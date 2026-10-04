@@ -107,8 +107,8 @@ def test_proposed_targets_are_in_config_and_unapproved() -> None:
     assert (
         s.backtest_targets["balanced"].min_return_pct,
         s.backtest_targets["balanced"].max_drawdown_pct,
-    ) == (5.0, 10.0)
-    assert s.backtest_targets["aggressive"].max_drawdown_pct == 22.0
+    ) == (5.0, 7.0)
+    assert s.backtest_targets["aggressive"].max_drawdown_pct == 15.0
     assert s.backtest_targets_approved is False and s.backtest_success_threshold == 0.8
 
 

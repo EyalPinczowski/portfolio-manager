@@ -176,10 +176,10 @@ class BacktestTarget(BaseModel):
 def default_backtest_targets() -> dict[str, BacktestTarget]:
     # PROPOSALS per 6-month window. Not approved by the user yet: do not treat as decided.
     return {
-        "conservative": BacktestTarget(min_return_pct=3.0, max_drawdown_pct=6.0),
-        "balanced": BacktestTarget(min_return_pct=5.0, max_drawdown_pct=10.0),
-        "balanced_aggressive": BacktestTarget(min_return_pct=8.0, max_drawdown_pct=15.0),
-        "aggressive": BacktestTarget(min_return_pct=12.0, max_drawdown_pct=22.0),
+        "conservative": BacktestTarget(min_return_pct=3.0, max_drawdown_pct=4.0),
+        "balanced": BacktestTarget(min_return_pct=5.0, max_drawdown_pct=7.0),
+        "balanced_aggressive": BacktestTarget(min_return_pct=8.0, max_drawdown_pct=10.0),
+        "aggressive": BacktestTarget(min_return_pct=12.0, max_drawdown_pct=15.0),
     }
 
 
@@ -429,6 +429,9 @@ class Settings(BaseSettings):
     quotes_interval_minutes: int = 5
     scores_interval_minutes: int = 30
     score_cache_ttl_minutes: int = 360
+    # --- analyze a stock (analyze/): one cached row per symbol, nothing is fetched while it is fresh ---
+    analyze_cache_ttl_minutes: int = Field(default=15, gt=0)
+    analyze_levels_per_side: int = Field(default=3, ge=1, le=10)  # support / resistance levels shown
     # --- screener / universe (scoring/screener.py, scheduler job run_universe_score_refresh) ---
     universe_file: str | None = None  # symbols, one per line; default: app/data/universe_seed.txt
     universe_refresh_interval_minutes: int = Field(default=15, gt=0)
