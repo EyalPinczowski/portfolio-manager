@@ -57,7 +57,7 @@ function CloseButton({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** The single "+" menu. Review and Analyze are live; Suggest stays disabled until its backend exists. */
+/** The single "+" menu. Every entry is a live screen. */
 export function ActionsSheet({ onClose }: { onClose: () => void }) {
   const t = useTranslations("actions");
   const row = "flex min-h-14 w-full items-center gap-3 rounded-2xl border border-line px-3 py-2 text-start";
@@ -92,13 +92,13 @@ export function ActionsSheet({ onClose }: { onClose: () => void }) {
           </Link>
         </li>
         <li>
-          <button type="button" disabled className={`${row} cursor-not-allowed opacity-75`}>
-            <span className="text-muted"><SuggestIcon /></span>
+          <Link href="/suggest" onClick={onClose} className={`${row} bg-brand-soft hover:bg-surface-2`}>
+            <span className="text-brand-text"><SuggestIcon /></span>
             <span className="flex-1">
-              <span className="block font-semibold">{t("suggest")}</span>
-              <span className="block text-caption text-muted">{t("soon")}. {t("soonNote")}</span>
+              <span className="block font-semibold text-brand-text">{t("suggest")}</span>
+              <span className="block text-caption text-muted">{t("suggestNote")}</span>
             </span>
-          </button>
+          </Link>
         </li>
         <li>
           <Link href="/import" onClick={onClose} className={`${row} bg-brand-soft hover:bg-surface-2`}>

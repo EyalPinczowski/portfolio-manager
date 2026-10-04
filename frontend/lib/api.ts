@@ -106,6 +106,23 @@ export type WatchlistItem = S["WatchlistOut"];
 /** Inputs of the analysis. No defaults anywhere: what is missing comes back in `needs_input`. */
 export interface AnalyzeQuery { portfolioId?: number | null; amount?: number | null; currency?: "ILS" | "USD" | null; horizon?: Horizon | null; risk?: RiskPresetName | null }
 
+export type Settings = Narrow<S["SettingsOut"], { language: "he" | "en" }>;
+export type SettingsPatch = S["SettingsPatch"];
+export type QuietHours = S["QuietHours"];
+export type IdeaAlertsFilter = S["IdeaAlertsFilter"];
+export type IdeaAlerts = S["IdeaAlertsOut"];
+export type WeeklyReview = S["WeeklyReviewOut"];
+export type Weekday = WeeklyReview["day"];
+export type TelegramStatus = S["TelegramStatusOut"];
+export type LinkCode = S["LinkCodeOut"];
+export type AdminUser = S["AdminUserOut"];
+export type Invite = S["InviteOut"];
+export type BuyIdeasIn = S["BuyIdeasIn"];
+export type BuyIdeasOut = S["CandidatesOut"];
+export type BuyCandidate = S["Candidate"];
+export type SkippedItem = S["SkippedItem"];
+export type SkipCode = SkippedItem["code"];
+
 // ---------- Client ----------
 export const isMock = (): boolean => process.env.NEXT_PUBLIC_API_MOCK === "1";
 
@@ -251,6 +268,22 @@ export const api = {
   watchlist: () => get<WatchlistItem[]>("/watchlist"),
   addToWatchlist: (symbol: string) => post<WatchlistItem>("/watchlist", { symbol }),
   removeFromWatchlist: (symbol: string) => del(`/watchlist/${encodeURIComponent(symbol)}`),
+  settings: () => get<Settings>("/settings"),
+  /** Only the fields sent change. `idea_alerts: null` clears the Buy-alerts filter, `quiet_hours: null` clears quiet hours. */
+  patchSettings: (b: SettingsPatch) => patch<Settings>("/settings", b),
+  telegramStatus: () => get<TelegramStatus>("/telegram/status"),
+  /** One-time code, valid for `ttl_minutes`. 503 = the server has no bot configured, 429 = too many codes. */
+  telegramLinkCode: () => post<LinkCode>("/telegram/link-code"),
+  telegramUnlink: () => del("/telegram/link"),
+  /** Admin only: everything under /admin answers 403 to a normal member. */
+  adminUsers: () => get<AdminUser[]>("/admin/users"),
+  adminDisableUser: (id: number) => post<AdminUser>(`/admin/users/${id}/disable`),
+  adminEnableUser: (id: number) => post<AdminUser>(`/admin/users/${id}/enable`),
+  adminInvites: () => get<Invite[]>("/admin/invites"),
+  adminCreateInvite: (days?: number | null) => post<Invite>("/admin/invites", { days: days ?? null }),
+  adminRevokeInvite: (code: string) => post("/admin/invites/revoke", { code }),
+  /** Neutral candidates for new money from cached scores. Every input is required: no defaults. */
+  buyIdeas: (pid: number, b: BuyIdeasIn) => post<BuyIdeasOut>(`/portfolios/${pid}/buy-ideas`, b),
   alerts: () => get<PriceAlert[]>("/alerts"),
   createAlert: (b: { symbol: string; op: "above" | "below"; price: number }) => post<PriceAlert>("/alerts", b),
   deleteAlert: (id: number) => del(`/alerts/${id}`),

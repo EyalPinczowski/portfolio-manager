@@ -33,6 +33,7 @@ describe("activeTab", () => {
     expect(activeTab("/xray")).toBe("portfolio");
     expect(activeTab("/import")).toBe("portfolio");
     expect(activeTab("/holding")).toBe("portfolio");
+    expect(activeTab("/suggest")).toBe("portfolio");
     expect(activeTab("/analyze")).toBe("analyze");
     expect(activeTab("/alerts")).toBe("alerts");
     expect(activeTab("/login")).toBeNull();
@@ -53,11 +54,12 @@ describe.each(["en", "he"] as const)("tab bar (%s)", (locale) => {
 });
 
 describe("actions sheet", () => {
-  it("links the review, analyze and import pages and disables the unbuilt action", () => {
+  it("links the review, suggest, analyze and import pages", () => {
     const onClose = vi.fn();
     wrap("en", <ActionsSheet onClose={onClose} />);
     expect(screen.getByRole("link", { name: new RegExp(en.actions.review) })).toHaveAttribute("href", "/review");
-    expect(screen.getByRole("button", { name: new RegExp(en.actions.suggest) })).toBeDisabled();
+    expect(screen.getByRole("link", { name: new RegExp(en.actions.suggest) })).toHaveAttribute("href", "/suggest");
+    expect(screen.queryByRole("button", { name: new RegExp(en.actions.suggest) })).toBeNull();
     expect(screen.getByRole("link", { name: new RegExp(en.actions.analyze) })).toHaveAttribute("href", "/analyze");
     expect(screen.queryByRole("button", { name: new RegExp(en.actions.analyze) })).toBeNull();
     const link = screen.getByRole("link", { name: new RegExp(en.actions.update) });

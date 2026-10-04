@@ -1,8 +1,10 @@
 "use client";
-import { useCallback, useState, type ComponentType, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { api } from "@/lib/api";
+import { useSettings } from "@/lib/hooks";
+import { applyTheme } from "@/lib/theme";
 import { ActionsSheet } from "./ActionsSheet";
 import { AuthGate } from "./AuthGate";
 import { Disclaimer } from "./Disclaimer";
@@ -11,7 +13,7 @@ import { AnalyzeIcon, BellIcon, HomeIcon, PlusIcon, PortfolioIcon, SettingsIcon 
 export type TabKey = "home" | "portfolio" | "analyze" | "alerts" | "settings";
 export const TABS: { key: TabKey; href: string; icon: ComponentType<{ className?: string }>; match: string[] }[] = [
   { key: "home", href: "/", icon: HomeIcon, match: [] },
-  { key: "portfolio", href: "/xray", icon: PortfolioIcon, match: ["/xray", "/import", "/holding", "/review"] },
+  { key: "portfolio", href: "/xray", icon: PortfolioIcon, match: ["/xray", "/import", "/holding", "/review", "/suggest"] },
   { key: "analyze", href: "/analyze", icon: AnalyzeIcon, match: ["/analyze"] },
   { key: "alerts", href: "/alerts", icon: BellIcon, match: ["/alerts"] },
   { key: "settings", href: "/settings", icon: SettingsIcon, match: ["/settings"] },
@@ -76,6 +78,13 @@ function DesktopNav() {
   );
 }
 
+/** Applies the saved theme on every screen (the phone's setting decides while it is "system" or not yet loaded). */
+function ThemeSync() {
+  const { data } = useSettings();
+  useEffect(() => { if (data) applyTheme(data.theme); }, [data]);
+  return null;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const t = useTranslations("nav");
   const a = useTranslations("actions");
@@ -85,6 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const close = useCallback(() => setMenu(false), []);
   return (
     <AuthGate>
+      <ThemeSync />
       <div className="min-h-dvh pb-[calc(var(--tabbar-h)+var(--safe-b))] md:pb-0">
         <header className="sticky top-0 z-20 border-b border-line bg-surface/90 backdrop-blur">
           <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-2">

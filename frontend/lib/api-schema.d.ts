@@ -730,6 +730,181 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Settings Route */
+        get: operations["get_settings_route_api_settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Settings */
+        patch: operations["patch_settings_api_settings_patch"];
+        trace?: never;
+    };
+    "/api/telegram/link-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Link Code */
+        post: operations["create_link_code_api_telegram_link_code_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/telegram/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Telegram Status */
+        get: operations["telegram_status_api_telegram_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/telegram/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Link */
+        delete: operations["delete_link_api_telegram_link_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/telegram/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Webhook */
+        post: operations["webhook_api_telegram_webhook_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Invites */
+        get: operations["list_invites_api_admin_invites_get"];
+        put?: never;
+        /** Create Invite */
+        post: operations["create_invite_api_admin_invites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/invites/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Invite */
+        post: operations["revoke_invite_api_admin_invites_revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Users */
+        get: operations["list_users_api_admin_users_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{user_id}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Disable User
+         * @description Deactivate: no login, every session revoked, remembered devices forgotten. Reversible.
+         */
+        post: operations["disable_user_api_admin_users__user_id__disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{user_id}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable User */
+        post: operations["enable_user_api_admin_users__user_id__enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -751,6 +926,26 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdminUserOut */
+        AdminUserOut: {
+            /** Id */
+            id: number;
+            /** Email */
+            email: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /** Is Admin */
+            is_admin: boolean;
+            /** Active */
+            active: boolean;
+            /** Telegram Linked */
+            telegram_linked: boolean;
+        };
         /** AlertCreate */
         AlertCreate: {
             /** Symbol */
@@ -1602,6 +1797,40 @@ export interface components {
          * @enum {string}
          */
         Horizon: "1w" | "1m" | "3m" | "6m" | "1y";
+        /**
+         * IdeaAlertsFilter
+         * @description The filter a candidate must match before a push. Every field is required: no defaults.
+         */
+        IdeaAlertsFilter: {
+            /** Min Confidence */
+            min_confidence: number;
+            /**
+             * Horizon
+             * @enum {string}
+             */
+            horizon: "1w" | "1m" | "3m" | "6m" | "1y";
+            /**
+             * Risk Preset
+             * @enum {string}
+             */
+            risk_preset: "very_conservative" | "conservative" | "balanced" | "balanced_aggressive" | "aggressive" | "very_aggressive";
+            /** Markets */
+            markets: ("US" | "TASE" | "CRYPTO")[];
+            /** Asset Types */
+            asset_types: ("stock" | "etf" | "crypto" | "fund" | "bond" | "cash")[];
+            /** Max Per Day */
+            max_per_day: number;
+            quiet_hours: components["schemas"]["QuietHours"] | null;
+        };
+        /** IdeaAlertsOut */
+        IdeaAlertsOut: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "not_set" | "set";
+            filter?: components["schemas"]["IdeaAlertsFilter"] | null;
+        };
         /** ImportDraftOut */
         ImportDraftOut: {
             /** Id */
@@ -1698,6 +1927,38 @@ export interface components {
              */
             scope: "partial" | "full";
         };
+        /** InviteCreate */
+        InviteCreate: {
+            /** Days */
+            days?: number | null;
+        };
+        /** InviteOut */
+        InviteOut: {
+            /** Code */
+            code: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "unused" | "used" | "expired";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Created By Me */
+            created_by_me: boolean;
+        };
+        /** InviteRevoke */
+        InviteRevoke: {
+            /** Code */
+            code: string;
+        };
         /** LaunchGateOut */
         LaunchGateOut: {
             /** Open */
@@ -1718,6 +1979,22 @@ export interface components {
             distance_pct: number;
             /** Touches */
             touches: number;
+        };
+        /** LinkCodeOut */
+        LinkCodeOut: {
+            /** Code */
+            code: string;
+            /** Command */
+            command: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Ttl Minutes */
+            ttl_minutes: number;
+            /** Deep Link */
+            deep_link?: string | null;
         };
         /** LoginIn */
         LoginIn: {
@@ -2065,6 +2342,16 @@ export interface components {
              * @enum {string}
              */
             currency: "ILS" | "USD";
+        };
+        /**
+         * QuietHours
+         * @description No pushes between `start` and `end` (Asia/Jerusalem). The window may wrap midnight.
+         */
+        QuietHours: {
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
         };
         /** ReviewRow */
         ReviewRow: {
@@ -2442,6 +2729,61 @@ export interface components {
             /** Current */
             current: boolean;
         };
+        /** SettingsOut */
+        SettingsOut: {
+            /**
+             * Language
+             * @enum {string}
+             */
+            language: "he" | "en";
+            /**
+             * Theme
+             * @enum {string}
+             */
+            theme: "system" | "light" | "dark";
+            /**
+             * Main Currency
+             * @enum {string}
+             */
+            main_currency: "ILS" | "USD";
+            /**
+             * Number Format
+             * @enum {string}
+             */
+            number_format: "full" | "compact";
+            /**
+             * Week Start Day
+             * @enum {string}
+             */
+            week_start_day: "sunday" | "monday";
+            /** Price Alerts Enabled */
+            price_alerts_enabled: boolean;
+            weekly_review: components["schemas"]["WeeklyReviewOut"];
+            quiet_hours: components["schemas"]["QuietHours"] | null;
+            idea_alerts: components["schemas"]["IdeaAlertsOut"];
+            /** Telegram Linked */
+            telegram_linked: boolean;
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /** SettingsPatch */
+        SettingsPatch: {
+            /** Language */
+            language?: ("he" | "en") | null;
+            /** Theme */
+            theme?: ("system" | "light" | "dark") | null;
+            /** Main Currency */
+            main_currency?: ("ILS" | "USD") | null;
+            /** Number Format */
+            number_format?: ("full" | "compact") | null;
+            /** Week Start Day */
+            week_start_day?: ("sunday" | "monday") | null;
+            /** Price Alerts Enabled */
+            price_alerts_enabled?: boolean | null;
+            weekly_review?: components["schemas"]["WeeklyReviewPatch"] | null;
+            quiet_hours?: components["schemas"]["QuietHours"] | null;
+            idea_alerts?: components["schemas"]["IdeaAlertsFilter"] | null;
+        };
         /** SignalBreakdownOut */
         SignalBreakdownOut: {
             /** Name */
@@ -2666,6 +3008,17 @@ export interface components {
             as_of: string;
             markets: components["schemas"]["Markets"];
         };
+        /** TelegramStatusOut */
+        TelegramStatusOut: {
+            /** Configured */
+            configured: boolean;
+            /** Webhook Ready */
+            webhook_ready: boolean;
+            /** Linked */
+            linked: boolean;
+            /** Bot Username */
+            bot_username?: string | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -2710,6 +3063,29 @@ export interface components {
             pnl_ils: number;
             /** Pct */
             pct: number;
+        };
+        /** WeeklyReviewOut */
+        WeeklyReviewOut: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Day
+             * @enum {string}
+             */
+            day: "sunday" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday";
+            /** Time */
+            time: string;
+            /** Timezone */
+            timezone: string;
+        };
+        /** WeeklyReviewPatch */
+        WeeklyReviewPatch: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Day */
+            day?: ("sunday" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday") | null;
+            /** Time */
+            time?: string | null;
         };
         /** XrayOut */
         XrayOut: {
@@ -4153,6 +4529,322 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_settings_route_api_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsOut"];
+                };
+            };
+        };
+    };
+    patch_settings_api_settings_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_link_code_api_telegram_link_code_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkCodeOut"];
+                };
+            };
+        };
+    };
+    telegram_status_api_telegram_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramStatusOut"];
+                };
+            };
+        };
+    };
+    delete_link_api_telegram_link_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    webhook_api_telegram_webhook_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-telegram-bot-api-secret-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_invites_api_admin_invites_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteOut"][];
+                };
+            };
+        };
+    };
+    create_invite_api_admin_invites_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_invite_api_admin_invites_revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteRevoke"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_users_api_admin_users_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserOut"][];
+                };
+            };
+        };
+    };
+    disable_user_api_admin_users__user_id__disable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_user_api_admin_users__user_id__enable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserOut"];
+                };
             };
             /** @description Validation Error */
             422: {

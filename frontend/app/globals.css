@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Design tokens. Light is the default; dark follows the phone setting (prefers-color-scheme), no manual toggle.
+ * Design tokens. Light is the default; dark follows the phone setting (prefers-color-scheme) unless Settings sets data-theme on <html>.
  * Text pairs are chosen for WCAG AA (4.5:1) on their surface. Gain/loss colours are never the only signal:
  * the UI always adds a +/- sign and an arrow (see components/Pnl.tsx).
  */
@@ -41,7 +41,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0c1118;
     --surface: #141b25;
     --surface-2: #1d2635;
@@ -65,6 +65,32 @@
     --shadow-card: none;
   }
 }
+/* Manual choice from Settings (data-theme is set by the app; absent = follow the phone). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0c1118;
+  --surface: #141b25;
+  --surface-2: #1d2635;
+  --line: #2b3646;
+  --fg: #eaeef5;
+  --muted: #a5b0c0; /* 7.4:1 on surface */
+
+  --brand: #3b6cf0; /* white text 4.8:1 */
+  --brand-hover: #5a83f5;
+  --brand-on: #ffffff;
+  --brand-soft: #1c2b52;
+  --brand-text: #a9c0ff;
+
+  --gain: #4cd9a0;
+  --loss: #ff8a80;
+  --warn-bg: #3a2a0a;
+  --warn-fg: #fcd98a;
+  --danger: #d92d20;
+  --danger-hover: #f04438;
+  --ring: #8fb0ff;
+  --shadow-card: none;
+}
+:root[data-theme="light"] { color-scheme: light; }
 
 @theme inline {
   --color-bg: var(--bg);

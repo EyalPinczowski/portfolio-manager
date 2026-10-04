@@ -8,6 +8,8 @@ import { ApiError } from "./errors";
 import type { Health } from "./api";
 import { mockPostmortem } from "./mock-postmortem";
 import { mockExitLevels, mockExitReview, type ExitSeed } from "./mock-exit";
+import { mockSettingsRequest, NOT_HANDLED } from "./mock-settings";
+import { mockBuyIdeas } from "./mock-ideas";
 import {
   mockAnalyze, mockAsk, mockHistoryDelete, mockSearchHistory, mockSearchHits, mockWatchAdd, mockWatchDelete, mockWatchlist,
   type AnalyzeCtx,
@@ -324,7 +326,7 @@ function validateRows(rows: ImportRow[]): void {
   if (detail.length) throw new ApiError(422, "Validation error", undefined, { detail });
 }
 
-/** Dev/test switch: localStorage "pm.mock" = "empty" shows an account with no portfolio (first-run screens). */
+/** Dev/test switch: localStorage "pm.mock" = "empty" shows an account with no portfolio (first-run screens); "member" = not an admin (403 on /admin); "no-bot" = no Telegram bot configured. */
 function mockScenario(): string | null {
   try { return typeof window === "undefined" ? null : window.localStorage.getItem("pm.mock"); } catch { return null; }
 }
@@ -364,6 +366,11 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
     return undefined;
   }
   if (p === "/launch-gate") return LAUNCH_GATE;
+  if (p === "/settings" || p.startsWith("/telegram/") || p.startsWith("/admin/")) {
+    const r = mockSettingsRequest(method, p, b, mockScenario());
+    if (r !== NOT_HANDLED) return r;
+  }
+  if ((m = p.match(/^\/portfolios\/(\d+)\/buy-ideas$/)) && method === "POST") return mockBuyIdeas(Number(m[1]), b, PORTFOLIOS.some((x) => x.id === Number(m![1])));
   if (p === "/portfolios") {
     if (method === "POST") { const np = { id: PORTFOLIOS.length + 1, name: String(b.name), base_currency: (b.base_currency as "ILS") ?? "ILS", risk_filter: { ...PRESETS[2] }, tracking_started_at: null, last_screenshot_update_at: null, screenshot_update_stale: false, created_at: AS_OF }; PORTFOLIOS.push(np); return np; }
     return mockScenario() === "empty" ? [] : PORTFOLIOS;

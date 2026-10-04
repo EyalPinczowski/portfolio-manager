@@ -4,7 +4,10 @@ import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 import { api, ApiError, toPresets, type RiskFilter } from "@/lib/api";
 import { ageOf, formatDate, formatTime, QUOTES_STALE_MIN } from "@/lib/format";
-import { usePortfolios, useSummary } from "@/lib/hooks";
+import { useAdminUsers, usePortfolios, useSummary } from "@/lib/hooks";
+import { settingsHref, type SettingsSection } from "@/lib/routes";
+import { Link } from "@/i18n/navigation";
+import { ChevronIcon } from "./icons";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { guideActions } from "@/lib/guide";
 import { AppShell } from "./AppShell";
@@ -156,6 +159,37 @@ const FALLBACK: RiskFilter = {
   max_portfolio_risk_per_trade_pct: 1.5, max_total_portfolio_risk_pct: 12, min_rr: 2, stop_type: "both", drawdown_defensive_pct: 15,
 };
 
+/** The list of settings areas; each opens its own screen. Admin shows only when the admin probe succeeds. */
+function SectionList() {
+  const t = useTranslations("prefs");
+  const { data: adminData } = useAdminUsers();
+  const items: { id: SettingsSection; name: string }[] = [
+    { id: "appearance", name: "appearance" }, { id: "portfolio", name: "portfolio" }, { id: "notifications", name: "notifications" }, { id: "ideas", name: "ideaAlerts" },
+    ...(adminData ? [{ id: "admin" as const, name: "admin" }] : []),
+  ];
+  return (
+    <nav className="card space-y-2" aria-label={t("hubTitle")}>
+      <div>
+        <h2 className="text-heading">{t("hubTitle")}</h2>
+        <p className="text-sm text-muted">{t("hubIntro")}</p>
+      </div>
+      <ul className="divide-y divide-line">
+        {items.map((i) => (
+          <li key={i.id}>
+            <Link href={settingsHref(i.id)} className="flex min-h-14 items-center justify-between gap-3 py-2 hover:bg-surface-2">
+              <span>
+                <span className="block font-semibold">{t(`sections.${i.name}`)}</span>
+                <span className="block text-caption text-muted">{t(`sections.${i.name}Note`)}</span>
+              </span>
+              <ChevronIcon className="h-4 w-4 text-muted" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
 function Body() {
   const t = useTranslations("settings");
   const c = useTranslations("common");
@@ -196,6 +230,7 @@ function Body() {
   return (
     <>
       <h1 className="text-2xl font-bold">{t("title")}</h1>
+      <SectionList />
 
       <form onSubmit={save} className="card space-y-4" aria-label={t("risk")}>
         <div>

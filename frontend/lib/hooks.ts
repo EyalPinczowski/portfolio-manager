@@ -44,6 +44,11 @@ export const useAnalyze = (symbol: string | null, q: AnalyzeQuery) =>
   );
 export const useSearchHistory = () => useSWR("search-history", () => api.searchHistory(), { revalidateOnFocus: true });
 export const useWatchlist = () => useSWR("watchlist", () => api.watchlist(), cfg);
+export const useSettings = () => useSWR("settings", () => api.settings(), { revalidateOnFocus: false, shouldRetryOnError: false });
+export const useTelegramStatus = () => useSWR("telegram-status", () => api.telegramStatus(), { revalidateOnFocus: true, shouldRetryOnError: false });
+/** Admin probe: a member gets 403 (data undefined, error set), so the Admin section stays hidden. */
+export const useAdminUsers = () => useSWR("admin-users", () => api.adminUsers(), { revalidateOnFocus: false, shouldRetryOnError: false });
+export const useAdminInvites = (enabled: boolean) => useSWR(enabled ? "admin-invites" : null, () => api.adminInvites(), { revalidateOnFocus: false, shouldRetryOnError: false });
 export const useAlerts = () => useSWR("alerts", () => api.alerts(), cfg);
 /** Post-mortem of one portfolio and period (dates are ISO yyyy-mm-dd or null). On demand, not polled. */
 export const usePostmortem = (pid: number | null, start: string | null, end: string | null) =>
