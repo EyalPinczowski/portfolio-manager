@@ -69,6 +69,18 @@ const CASES: Case[] = [
   { method: "GET", path: "/holdings/11/exit-levels?horizon=3m", api: "/holdings/{holding_id}/exit-levels" }, // no_levels (stale)
   { method: "POST", path: "/portfolios/1/exit-review", api: "/portfolios/{portfolio_id}/exit-review", body: {} },
   { method: "POST", path: "/portfolios/2/exit-review", api: "/portfolios/{portfolio_id}/exit-review", body: { horizon: "1w", risk: "balanced" } },
+  { method: "GET", path: "/analyze/AMD", api: "/analyze/{symbol}" }, // incomplete: needs everything
+  { method: "GET", path: "/analyze/XOM?portfolio_id=1&amount=2000&currency=USD&horizon=3m", api: "/analyze/{symbol}" }, // fits
+  { method: "GET", path: "/analyze/XOM?portfolio_id=1&amount=60000&currency=USD&horizon=3m", api: "/analyze/{symbol}" }, // fits smaller
+  { method: "GET", path: "/analyze/AMD?portfolio_id=1&amount=2000&currency=USD&horizon=3m", api: "/analyze/{symbol}" }, // does not fit (tech sector cap)
+  { method: "GET", path: "/analyze/NVDA?portfolio_id=1&amount=5000&currency=ILS", api: "/analyze/{symbol}" }, // held, horizon from the holding
+  { method: "GET", path: "/analyze/TEVA.TA?portfolio_id=1&amount=500&currency=ILS", api: "/analyze/{symbol}" }, // held
+  { method: "GET", path: "/analyze/ARNA.TA?portfolio_id=1&amount=500&currency=ILS&horizon=1m", api: "/analyze/{symbol}" }, // stale, no levels
+  { method: "POST", path: "/analyze/AMD/ask", api: "/analyze/{symbol}/ask", body: { question: "What is the trend?" } },
+  { method: "POST", path: "/analyze/AMD/ask", api: "/analyze/{symbol}/ask", body: { question: "Should I buy it?", notes: "n" } },
+  { method: "GET", path: "/search-history", api: "/search-history" },
+  { method: "GET", path: "/watchlist", api: "/watchlist" },
+  { method: "POST", path: "/watchlist", api: "/watchlist", body: { symbol: "LUMI.TA" } },
   { method: "GET", path: "/alerts", api: "/alerts" },
   { method: "POST", path: "/alerts", api: "/alerts", body: { symbol: "TEVA.TA", op: "above", price: 70 } },
   { method: "GET", path: "/notifications", api: "/notifications" },
@@ -137,6 +149,26 @@ describe("mock fixtures match backend/openapi.json", () => {
     expect(st(11, "?horizon=3m")).toBe("no_levels");
     expect(st(2, "?horizon=1y")).toBe("levels"); // what-if override
     validate({ $ref: "openapi#/components/schemas/ExitReviewIn" }, { horizon: "1y", risk: "balanced", prior_stops: { "TEVA.TA": 50 } }, "ExitReviewIn");
+  });
+
+  it("analyze: every status and the 404 / list behaviour", () => {
+    const a = (q: string) => mockRequest("GET", `/analyze/${q}`) as { portfolio_fit: { status: string; needs_input: string[]; levels?: { status: string } }; needs_input: string[] };
+    expect(a("AMD").portfolio_fit.status).toBe("incomplete");
+    expect(a("AMD").needs_input).toEqual(["portfolio_id", "amount", "currency", "horizon"]);
+    expect(a("XOM?portfolio_id=1&amount=2000&currency=USD&horizon=3m").portfolio_fit.status).toBe("fits");
+    expect(a("XOM?portfolio_id=1&amount=60000&currency=USD&horizon=3m").portfolio_fit.status).toBe("fits_smaller");
+    expect(a("AMD?portfolio_id=1&amount=2000&currency=USD&horizon=3m").portfolio_fit.status).toBe("does_not_fit");
+    expect(a("ARNA.TA?portfolio_id=1&amount=500&currency=ILS&horizon=1m").portfolio_fit.levels?.status).toBe("no_levels");
+    expect(a("NVDA?portfolio_id=1&amount=100&currency=ILS").needs_input).toEqual([]); // horizon comes from the holding
+    expect(() => mockRequest("GET", "/analyze/NOPE")).toThrow(ApiError);
+    try { mockRequest("GET", "/analyze/NOPE"); } catch (e) { expect((e as ApiError).status).toBe(404); }
+    mockRequest("DELETE", "/search-history/AMD");
+    expect((mockRequest("GET", "/search-history") as { symbol: string }[]).some((h) => h.symbol === "AMD")).toBe(false);
+    mockRequest("DELETE", "/search-history");
+    expect(mockRequest("GET", "/search-history")).toEqual([]);
+    mockRequest("DELETE", "/watchlist/NVDA");
+    expect((mockRequest("GET", "/watchlist") as { symbol: string }[]).some((h) => h.symbol === "NVDA")).toBe(false);
+    validate({ $ref: "openapi#/components/schemas/AskIn" }, { question: "q", notes: null }, "AskIn");
   });
 
   it("manual create: duplicate -> 409, bad symbol -> 422", () => {

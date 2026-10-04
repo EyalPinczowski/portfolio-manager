@@ -7,6 +7,10 @@ import type { LaunchGate, SessionInfo } from "./api";
 import { ApiError } from "./errors";
 import type { Health } from "./api";
 import { mockExitLevels, mockExitReview, type ExitSeed } from "./mock-exit";
+import {
+  mockAnalyze, mockAsk, mockHistoryDelete, mockSearchHistory, mockSearchHits, mockWatchAdd, mockWatchDelete, mockWatchlist,
+  type AnalyzeCtx,
+} from "./mock-analyze";
 
 const exitSeed = (s: { id: number; symbol: string; en: string; he: string; cur: string; qty: number; price: number; cost: number | null; horizon: Horizon | null; stale?: boolean; noData?: boolean }): ExitSeed => s;
 
@@ -326,6 +330,16 @@ function mockScenario(): string | null {
 
 const ME: Me = { id: 1, email: "demo@example.com", locale: "he", disclaimer_accepted: true, ocr_consent: false, csrf_token: "mock-csrf-token" };
 
+function analyzeCtx(pid: number | null): AnalyzeCtx {
+  const seeds = pid === null ? [] : SEEDS.filter((x) => x.pid === pid);
+  const total = seeds.reduce((a, x) => a + valueIls(x), 0) || 1;
+  return {
+    portfolioIds: PORTFOLIOS.map((x) => x.id),
+    riskFilter: PORTFOLIOS.find((x) => x.id === pid)?.risk_filter ?? null,
+    holdings: seeds.map((x) => ({ symbol: x.symbol, sector: x.sector, country: x.country, valueIls: valueIls(x), quantity: x.qty, weightOf: (valueIls(x) / total) * 100, cost: x.cost, horizon: x.horizon, id: x.id, cur: x.cur })),
+  };
+}
+
 export function mockRequest(method: string, path: string, body?: unknown): unknown {
   const [p] = path.split("?");
   const b = (body ?? {}) as Record<string, unknown>;
@@ -408,7 +422,21 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
     }
     return draft;
   }
-  if (p === "/securities/search") return [{ symbol: "TEVA.TA", name_en: "Teva", name_he: "טבע", market: "TASE" }];
+  if (p === "/securities/search") return mockSearchHits(new URLSearchParams(path.split("?")[1] ?? "").get("q") ?? "");
+  if ((m = p.match(/^\/analyze\/([^/]+)\/ask$/)) && method === "POST") return mockAsk(m[1], b as { question?: string; notes?: string | null });
+  if ((m = p.match(/^\/analyze\/([^/]+)$/))) {
+    const qs = new URLSearchParams(path.split("?")[1] ?? "");
+    const num = (k: string) => (qs.get(k) === null || qs.get(k) === "" ? null : Number(qs.get(k)));
+    const pid = num("portfolio_id");
+    if (pid !== null && !PORTFOLIOS.some((x) => x.id === pid)) throw new ApiError(404, "Portfolio not found");
+    return mockAnalyze(m[1], { portfolio_id: pid, amount: num("amount"), currency: qs.get("currency"), horizon: qs.get("horizon") as Horizon | null, risk: qs.get("risk") }, analyzeCtx(pid));
+  }
+  if (p === "/search-history" && method === "DELETE") return mockHistoryDelete();
+  if (p === "/search-history") return mockSearchHistory();
+  if ((m = p.match(/^\/search-history\/([^/]+)$/)) && method === "DELETE") return mockHistoryDelete(m[1]);
+  if (p === "/watchlist" && method === "POST") return mockWatchAdd(String(b.symbol ?? ""));
+  if (p === "/watchlist") return mockWatchlist();
+  if ((m = p.match(/^\/watchlist\/([^/]+)$/)) && method === "DELETE") return mockWatchDelete(m[1]);
   if ((m = p.match(/^\/holdings\/(\d+)\/scorecard$/))) return scorecard(Number(m[1]));
   if ((m = p.match(/^\/holdings\/(\d+)\/exit-levels$/))) {
     const seed = SEEDS.find((x) => x.id === Number(m![1]));

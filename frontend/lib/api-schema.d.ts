@@ -578,6 +578,138 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/portfolios/{portfolio_id}/buy-ideas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Buy Ideas
+         * @description Candidates for `amount` of new money, from cached universe scores only.
+         */
+        post: operations["buy_ideas_api_portfolios__portfolio_id__buy_ideas_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analyze/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Analyze
+         * @description Scout + Chartist reports and, with a portfolio, how this stock fits it. `amount` (with
+         *     `currency`) and `horizon` have no defaults: missing ones come back in `needs_input`.
+         */
+        get: operations["analyze_api_analyze__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analyze/{symbol}/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask
+         * @description Answer a question about a stock from the computed data with a template. The question and
+         *     notes are not stored and are never sent to an AI provider (template-only for now).
+         */
+        post: operations["ask_api_analyze__symbol__ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Search History */
+        get: operations["get_search_history_api_search_history_get"];
+        put?: never;
+        post?: never;
+        /** Clear Search History */
+        delete: operations["clear_search_history_api_search_history_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search-history/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Search History */
+        delete: operations["delete_search_history_api_search_history__symbol__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/watchlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Watchlist */
+        get: operations["get_watchlist_api_watchlist_get"];
+        put?: never;
+        /** Add Watchlist */
+        post: operations["add_watchlist_api_watchlist_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/watchlist/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Watchlist */
+        delete: operations["delete_watchlist_api_watchlist__symbol__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -636,6 +768,77 @@ export interface components {
             /** High */
             high?: number | null;
         };
+        /** AnalyzeOut */
+        AnalyzeOut: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Cached */
+            cached: boolean;
+            scout: components["schemas"]["ScoutReport"];
+            chart: components["schemas"]["ChartReport"];
+            portfolio_fit: components["schemas"]["PortfolioFit"];
+            candidate_info: components["schemas"]["CandidateInfo"];
+            /** Summary */
+            summary: string;
+            /**
+             * Llm Used
+             * @default false
+             */
+            llm_used: boolean;
+            /** Needs Input */
+            needs_input?: ("portfolio_id" | "amount" | "currency" | "horizon")[];
+            /**
+             * Disclaimer
+             * @default Not financial advice.
+             */
+            disclaimer: string;
+        };
+        /** AskIn */
+        AskIn: {
+            /** Question */
+            question: string;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** AskOut */
+        AskOut: {
+            /** Symbol */
+            symbol: string;
+            /** Answer */
+            answer: string;
+            /** Grounded In */
+            grounded_in: string[];
+            /**
+             * Llm Used
+             * @default false
+             */
+            llm_used: boolean;
+            /**
+             * Notes Stored
+             * @default false
+             */
+            notes_stored: boolean;
+            /**
+             * Question Declined
+             * @default false
+             */
+            question_declined: boolean;
+            /**
+             * Privacy Note
+             * @default Your question and notes stay on the server and are never sent to a free AI provider.
+             */
+            privacy_note: string;
+            /**
+             * Disclaimer
+             * @default Not financial advice.
+             */
+            disclaimer: string;
+        };
         /** Breach */
         Breach: {
             /** Rule */
@@ -648,6 +851,174 @@ export interface components {
             why: string;
             /** Symbol */
             symbol?: string | null;
+        };
+        /**
+         * BuyIdeasIn
+         * @description Everything is required except the optional exclusion list.
+         */
+        BuyIdeasIn: {
+            /** Amount */
+            amount: number;
+            /**
+             * Currency
+             * @enum {string}
+             */
+            currency: "ILS" | "USD";
+            /**
+             * Horizon
+             * @enum {string}
+             */
+            horizon: "1w" | "1m" | "3m" | "6m" | "1y";
+            /**
+             * Risk
+             * @enum {string}
+             */
+            risk: "very_conservative" | "conservative" | "balanced" | "balanced_aggressive" | "aggressive" | "very_aggressive";
+            /** Markets */
+            markets: ("US" | "TASE" | "CRYPTO")[];
+            /** Asset Types */
+            asset_types: ("stock" | "etf" | "crypto")[];
+            /** Exclude Symbols */
+            exclude_symbols?: string[];
+        };
+        /** CachedQuoteOut */
+        CachedQuoteOut: {
+            /** Price */
+            price: number;
+            /** Currency */
+            currency: string;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Source */
+            source: string;
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "live" | "last_close";
+            /** Is Fresh */
+            is_fresh: boolean;
+        };
+        /** Candidate */
+        Candidate: {
+            /** Rank */
+            rank: number;
+            /** Symbol */
+            symbol: string;
+            /** Name En */
+            name_en: string;
+            /** Name He */
+            name_he: string;
+            /** Market */
+            market: string;
+            /** Asset Type */
+            asset_type: string;
+            /** Sector */
+            sector: string;
+            /** Country */
+            country: string;
+            /** Currency */
+            currency: string;
+            /** Score */
+            score: number;
+            /** Confidence */
+            confidence: number;
+            /** Rank Score */
+            rank_score: number;
+            /** Diversification Bonus */
+            diversification_bonus: number;
+            /**
+             * Score As Of
+             * Format: date-time
+             */
+            score_as_of: string;
+            /** Price */
+            price: number;
+            /** Price As Of */
+            price_as_of?: string | null;
+            /** Entry */
+            entry: number;
+            stop: components["schemas"]["ExitLevel"];
+            /** Take Profits */
+            take_profits: components["schemas"]["ExitLevel"][];
+            /** Best Rr */
+            best_rr: number;
+            /** Annualised Volatility Pct */
+            annualised_volatility_pct: number;
+            size: components["schemas"]["SizeOut"];
+            /** Reasons */
+            reasons: string[];
+            explanation: components["schemas"]["Explanation"];
+        };
+        /**
+         * CandidateInfo
+         * @description Neutral facts only: no verdict while the launch gate is closed (and none from this route).
+         */
+        CandidateInfo: {
+            /** Score */
+            score: number;
+            /** Confidence */
+            confidence: number;
+            /** Score Available */
+            score_available: boolean;
+            /** Fit Passes */
+            fit_passes?: boolean | null;
+            /** Launch Gate Open */
+            launch_gate_open: boolean;
+            /** Launch Gate Reasons */
+            launch_gate_reasons: string[];
+            /**
+             * Notice
+             * @default Scores are not yet validated by a backtest and paper trading, so this page shows neutral analysis for you to research, not an instruction to trade. Not financial advice.
+             */
+            notice: string;
+        };
+        /** CandidatesOut */
+        CandidatesOut: {
+            /** Portfolio Id */
+            portfolio_id: number;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Amount */
+            amount: number;
+            /** Currency */
+            currency: string;
+            /** Amount Ils */
+            amount_ils: number;
+            /** Horizon */
+            horizon: string;
+            /** Risk Preset */
+            risk_preset: string;
+            /** Markets */
+            markets: string[];
+            /** Asset Types */
+            asset_types: string[];
+            /** Universe Size */
+            universe_size: number;
+            /** Candidates */
+            candidates: components["schemas"]["Candidate"][];
+            /** Skipped */
+            skipped: components["schemas"]["SkippedItem"][];
+            /** Launch Gate Open */
+            launch_gate_open: boolean;
+            /** Launch Gate Reasons */
+            launch_gate_reasons: string[];
+            /**
+             * Notice
+             * @default Scores are not yet validated by a backtest and paper trading. These are neutral candidates for you to research, not instructions to trade. Not financial advice.
+             */
+            notice: string;
+            /**
+             * Disclaimer
+             * @default Not financial advice.
+             */
+            disclaimer: string;
         };
         /**
          * ChallengeRequiredOut
@@ -680,6 +1051,30 @@ export interface components {
             price?: number | null;
             /** As Of */
             as_of?: string | null;
+        };
+        /** ChartReport */
+        ChartReport: {
+            /** Available */
+            available: boolean;
+            /** Score */
+            score: number;
+            /** Confidence */
+            confidence: number;
+            /** Breakdown */
+            breakdown: components["schemas"]["SignalLine"][];
+            /** Indicators */
+            indicators?: {
+                [key: string]: number;
+            };
+            /** Levels */
+            levels?: components["schemas"]["Level"][];
+            /** Annotations */
+            annotations?: components["schemas"]["ChartAnnotation"][];
+            /** Data As Of */
+            data_as_of?: string | null;
+            /** Bars */
+            bars: number;
+            explanation: components["schemas"]["Explanation"];
         };
         /** ExitLevel */
         ExitLevel: {
@@ -850,6 +1245,37 @@ export interface components {
              */
             detail: string;
         };
+        /** ExposureCheck */
+        ExposureCheck: {
+            /**
+             * Dimension
+             * @enum {string}
+             */
+            dimension: "position" | "sector" | "country";
+            /** Name */
+            name: string;
+            /**
+             * Rule
+             * @enum {string}
+             */
+            rule: "max_position_pct" | "max_sector_pct" | "max_country_pct";
+            /** Applies */
+            applies: boolean;
+            /** Limit Pct */
+            limit_pct: number;
+            /** Limit Source */
+            limit_source: string;
+            /** Before Pct */
+            before_pct: number;
+            /** After Pct */
+            after_pct?: number | null;
+            /** Breaks */
+            breaks?: boolean | null;
+            /** Headroom Ils */
+            headroom_ils?: number | null;
+            /** Reason */
+            reason: string;
+        };
         /** ExposureItem */
         ExposureItem: {
             /** Name */
@@ -891,6 +1317,24 @@ export interface components {
             weight_pct: number;
             /** Day Change Pct */
             day_change_pct: number;
+        };
+        /** HeldPosition */
+        HeldPosition: {
+            /** Holding Id */
+            holding_id?: number | null;
+            /** Quantity */
+            quantity: number;
+            /** Value Ils */
+            value_ils: number;
+            /** Weight Pct */
+            weight_pct: number;
+            /** Horizon */
+            horizon?: string | null;
+            /**
+             * Via Dual Listing
+             * @default false
+             */
+            via_dual_listing: boolean;
         };
         /** HoldingCreate */
         HoldingCreate: {
@@ -1089,6 +1533,20 @@ export interface components {
             /** Reasons */
             reasons: string[];
         };
+        /** Level */
+        Level: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "support" | "resistance";
+            /** Price */
+            price: number;
+            /** Distance Pct */
+            distance_pct: number;
+            /** Touches */
+            touches: number;
+        };
         /** LoginIn */
         LoginIn: {
             /** Email */
@@ -1121,6 +1579,21 @@ export interface components {
             /** Score */
             score: number;
         };
+        /** MaxPositionSize */
+        MaxPositionSize: {
+            /** Position Limit Pct */
+            position_limit_pct: number;
+            /** Limit Source */
+            limit_source: string;
+            /** Max Additional Ils */
+            max_additional_ils?: number | null;
+            /** Max Additional Usd */
+            max_additional_usd?: number | null;
+            /** Binding Rule */
+            binding_rule?: string | null;
+            /** Reason */
+            reason: string;
+        };
         /** MeOut */
         MeOut: {
             /** Id */
@@ -1138,6 +1611,21 @@ export interface components {
             ocr_consent: boolean;
             /** Csrf Token */
             csrf_token: string;
+        };
+        /**
+         * MissingInput
+         * @description A signal or data field the Scout has nothing for: reported, never counted as neutral.
+         */
+        MissingInput: {
+            /** Name */
+            name: string;
+            /**
+             * Confidence
+             * @default 0
+             */
+            confidence: number;
+            /** Reason */
+            reason: string;
         };
         /** MissingStop */
         MissingStop: {
@@ -1207,6 +1695,55 @@ export interface components {
              */
             base_currency: "ILS" | "USD";
         };
+        /** PortfolioFit */
+        PortfolioFit: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "fits" | "fits_smaller" | "does_not_fit" | "incomplete";
+            /** Needs Input */
+            needs_input?: ("portfolio_id" | "amount" | "currency" | "horizon")[];
+            /** Summary */
+            summary: string;
+            /** Portfolio Id */
+            portfolio_id?: number | null;
+            /** Mode */
+            mode?: ("new_position" | "increase_existing") | null;
+            held?: components["schemas"]["HeldPosition"] | null;
+            /** Risk Preset */
+            risk_preset?: string | null;
+            /** Risk Source */
+            risk_source?: string | null;
+            /** Horizon */
+            horizon?: string | null;
+            /** Horizon Source */
+            horizon_source?: ("request" | "holding") | null;
+            /** Amount */
+            amount?: number | null;
+            /** Currency */
+            currency?: string | null;
+            /** Amount Ils */
+            amount_ils?: number | null;
+            /** Portfolio Value Ils */
+            portfolio_value_ils?: number | null;
+            max_position_size?: components["schemas"]["MaxPositionSize"] | null;
+            /** Exposures */
+            exposures?: components["schemas"]["ExposureCheck"][];
+            /** Caps Broken At Requested Amount */
+            caps_broken_at_requested_amount?: string[];
+            /** Rules */
+            rules?: components["schemas"]["RuleResult"][];
+            /** Rules Not Checked */
+            rules_not_checked?: string[];
+            suggested_size?: components["schemas"]["SizeOut"] | null;
+            /** Entry */
+            entry?: number | null;
+            levels?: components["schemas"]["ExitLevelsResult"] | null;
+            /** Levels Unavailable Reason */
+            levels_unavailable_reason?: string | null;
+            explanation: components["schemas"]["Explanation"];
+        };
         /** PortfolioOut */
         PortfolioOut: {
             /** Id */
@@ -1241,6 +1778,31 @@ export interface components {
             /** Base Currency */
             base_currency?: ("ILS" | "USD") | null;
             risk_filter?: components["schemas"]["RiskFilterIn"] | null;
+        };
+        /** PriceInfo */
+        PriceInfo: {
+            /** Price */
+            price: number;
+            /** Currency */
+            currency: string;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Source */
+            source: string;
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "live" | "last_close";
+            /** Flag */
+            flag?: string | null;
+            /** Change Pct */
+            change_pct?: number | null;
+            /** Is Fresh */
+            is_fresh: boolean;
         };
         /** ProposedChange */
         ProposedChange: {
@@ -1485,6 +2047,22 @@ export interface components {
             /** Quantity */
             quantity?: number | null;
         };
+        /** RuleResult */
+        RuleResult: {
+            /** Rule */
+            rule: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "fail" | "not_evaluated";
+            /** Value */
+            value?: number | null;
+            /** Limit */
+            limit?: number | null;
+            /** Reason */
+            reason: string;
+        };
         /** ScaleOutStep */
         ScaleOutStep: {
             /**
@@ -1539,6 +2117,47 @@ export interface components {
             patterns: number;
             /** Confidence */
             confidence: number;
+        };
+        /** ScoutReport */
+        ScoutReport: {
+            /** Symbol */
+            symbol: string;
+            /** Name En */
+            name_en: string;
+            /** Name He */
+            name_he: string;
+            /** Market */
+            market: string;
+            /** Asset Type */
+            asset_type: string;
+            /** Sector */
+            sector: string;
+            /** Country */
+            country: string;
+            /** Currency */
+            currency: string;
+            /** Verified */
+            verified: boolean;
+            price?: components["schemas"]["PriceInfo"] | null;
+            /** Price Reason */
+            price_reason?: string | null;
+            /** Bars */
+            bars: number;
+            /** History As Of */
+            history_as_of?: string | null;
+            /** Not Available */
+            not_available?: components["schemas"]["MissingInput"][];
+            explanation: components["schemas"]["Explanation"];
+        };
+        /** SearchHistoryOut */
+        SearchHistoryOut: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Searched At
+             * Format: date-time
+             */
+            searched_at: string;
         };
         /** SecurityHit */
         SecurityHit: {
@@ -1618,6 +2237,28 @@ export interface components {
                 [key: string]: number | string | null;
             };
         };
+        /** SignalLine */
+        SignalLine: {
+            /** Name */
+            name: string;
+            /** Available */
+            available: boolean;
+            /** Score */
+            score: number;
+            /** Confidence */
+            confidence: number;
+            /** Weight */
+            weight: number;
+            /** Nominal Weight */
+            nominal_weight: number;
+            /** Reasons */
+            reasons: string[];
+            /**
+             * Data As Of
+             * Format: date-time
+             */
+            data_as_of: string;
+        };
         /** SignupIn */
         SignupIn: {
             /** Invite Code */
@@ -1653,6 +2294,47 @@ export interface components {
             suggested_quantity: number;
             /** Rules */
             rules: string[];
+            /** Reason */
+            reason: string;
+        };
+        /** SizeOut */
+        SizeOut: {
+            /** Quantity */
+            quantity: number;
+            /** Cost Native */
+            cost_native: number;
+            /** Currency */
+            currency: string;
+            /** Cost Ils */
+            cost_ils: number;
+            /** Cost Usd */
+            cost_usd: number;
+            /** Pct Of Amount */
+            pct_of_amount: number;
+            /** Position Pct After */
+            position_pct_after?: number | null;
+            /** Sector Pct After */
+            sector_pct_after?: number | null;
+            /** Country Pct After */
+            country_pct_after?: number | null;
+            /** Risk Ils */
+            risk_ils: number;
+            /** Risk Pct Of Portfolio */
+            risk_pct_of_portfolio: number;
+            /** Limited By */
+            limited_by?: string[];
+        };
+        /** SkippedItem */
+        SkippedItem: {
+            /** Symbol */
+            symbol: string;
+            /** Name En */
+            name_en: string;
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "excluded_by_user" | "no_score" | "low_score" | "low_confidence" | "stale_score" | "volatility_cap" | "no_quote" | "stale_price" | "no_levels" | "min_rr" | "position_cap" | "sector_cap" | "country_cap" | "size_too_small" | "duplicate_listing" | "ranked_lower";
             /** Reason */
             reason: string;
         };
@@ -1755,6 +2437,26 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** WatchlistAdd */
+        WatchlistAdd: {
+            /** Symbol */
+            symbol: string;
+        };
+        /** WatchlistOut */
+        WatchlistOut: {
+            /** Symbol */
+            symbol: string;
+            /** Market */
+            market: string | null;
+            /** Name */
+            name: string | null;
+            /**
+             * Added At
+             * Format: date-time
+             */
+            added_at: string;
+            quote?: components["schemas"]["CachedQuoteOut"] | null;
         };
         /** WeeklyBar */
         WeeklyBar: {
@@ -2920,6 +3622,262 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ExitReviewOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    buy_ideas_api_portfolios__portfolio_id__buy_ideas_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuyIdeasIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidatesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_api_analyze__symbol__get: {
+        parameters: {
+            query?: {
+                portfolio_id?: number | null;
+                amount?: number | null;
+                currency?: ("ILS" | "USD") | null;
+                horizon?: ("1w" | "1m" | "3m" | "6m" | "1y") | null;
+                risk?: ("very_conservative" | "conservative" | "balanced" | "balanced_aggressive" | "aggressive" | "very_aggressive") | null;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyzeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ask_api_analyze__symbol__ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_search_history_api_search_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchHistoryOut"][];
+                };
+            };
+        };
+    };
+    clear_search_history_api_search_history_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_search_history_api_search_history__symbol__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_watchlist_api_watchlist_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchlistOut"][];
+                };
+            };
+        };
+    };
+    add_watchlist_api_watchlist_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WatchlistAdd"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatchlistOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_watchlist_api_watchlist__symbol__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

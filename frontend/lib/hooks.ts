@@ -1,6 +1,6 @@
 "use client";
 import useSWR, { type SWRConfiguration } from "swr";
-import { api, type ExitReviewIn, type Holding, type Horizon, type Portfolio, type RiskPresetName } from "./api";
+import { api, type AnalyzeQuery, type ExitReviewIn, type Holding, type Horizon, type Portfolio, type RiskPresetName } from "./api";
 import { PORTFOLIO_CHOICE_KEY } from "./session";
 
 /** Polling interval for live data (spec: SWR polling every 60 s). */
@@ -35,6 +35,15 @@ export const useExitLevels = (hid: number, horizon: Horizon | null, risk: RiskPr
   useSWR(["exit-levels", hid, horizon, risk], () => api.exitLevels(hid, { horizon, risk }), cfg);
 export const useExitReview = (pid: number | null, body: ExitReviewIn = {}) =>
   useSWR(pid === null ? null : ["exit-review", pid, body.horizon ?? null, body.risk ?? null], () => api.exitReview(pid as number, body), cfg);
+/** Analysis of any ticker. Results live only in the SWR memory cache (never saved to storage). Not polled: it is on demand. */
+export const useAnalyze = (symbol: string | null, q: AnalyzeQuery) =>
+  useSWR(
+    symbol ? ["analyze", symbol, q.portfolioId ?? null, q.amount ?? null, q.currency ?? null, q.horizon ?? null, q.risk ?? null] : null,
+    () => api.analyze(symbol as string, q),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
+export const useSearchHistory = () => useSWR("search-history", () => api.searchHistory(), { revalidateOnFocus: true });
+export const useWatchlist = () => useSWR("watchlist", () => api.watchlist(), cfg);
 export const useAlerts = () => useSWR("alerts", () => api.alerts(), cfg);
 export const useXray = (pid: number | null) => useSWR(pid === null ? null : ["xray", pid], () => api.xray(pid as number), cfg);
 export const useHeatmap = (pid: number | null) => useSWR(pid === null ? null : ["heatmap", pid], () => api.heatmap(pid as number), cfg);

@@ -53,13 +53,13 @@ describe.each(["en", "he"] as const)("tab bar (%s)", (locale) => {
 });
 
 describe("actions sheet", () => {
-  it("links the review and import pages and disables the unbuilt actions", () => {
+  it("links the review, analyze and import pages and disables the unbuilt action", () => {
     const onClose = vi.fn();
     wrap("en", <ActionsSheet onClose={onClose} />);
     expect(screen.getByRole("link", { name: new RegExp(en.actions.review) })).toHaveAttribute("href", "/review");
-    for (const name of [en.actions.suggest, en.actions.analyze]) {
-      expect(screen.getByRole("button", { name: new RegExp(name) })).toBeDisabled();
-    }
+    expect(screen.getByRole("button", { name: new RegExp(en.actions.suggest) })).toBeDisabled();
+    expect(screen.getByRole("link", { name: new RegExp(en.actions.analyze) })).toHaveAttribute("href", "/analyze");
+    expect(screen.queryByRole("button", { name: new RegExp(en.actions.analyze) })).toBeNull();
     const link = screen.getByRole("link", { name: new RegExp(en.actions.update) });
     expect(link).toHaveAttribute("href", "/import");
     fireEvent.click(link);

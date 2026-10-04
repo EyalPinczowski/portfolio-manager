@@ -41,7 +41,7 @@ function TwoMoney({ ils, usd, signed }: { ils: number; usd: number; signed?: boo
 }
 
 /** Expander that renders a typed Explanation. Facts and reasons only, never a verdict. */
-function WhyToggle({ id, children }: { id: string; children: React.ReactNode }) {
+export function WhyToggle({ id, children }: { id: string; children: React.ReactNode }) {
   const t = useTranslations("exit");
   const [open, setOpen] = useState(false);
   return (
@@ -99,7 +99,7 @@ export function LevelCard({ lv, currency, uid }: { lv: ExitLevel; currency: stri
   );
 }
 
-function Levels({ r, uid }: { r: ExitLevelsResult; uid: string }) {
+export function Levels({ r, uid }: { r: ExitLevelsResult; uid: string }) {
   const t = useTranslations("exit");
   const locale = useLocale();
   const cur = r.currency ?? "ILS";
@@ -196,7 +196,7 @@ function Levels({ r, uid }: { r: ExitLevelsResult; uid: string }) {
   );
 }
 
-function NoLevels({ r }: { r: ExitLevelsResult }) {
+export function NoLevels({ r }: { r: ExitLevelsResult }) {
   const t = useTranslations("exit");
   const code = r.reason_code ?? "stale_price";
   return (

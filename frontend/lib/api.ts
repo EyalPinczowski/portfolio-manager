@@ -80,6 +80,22 @@ export type SecurityHit = Narrow<S["SecurityHit"], { market: MarketKey }>;
 export type PriceAlert = Narrow<S["AlertOut"], { op: "above" | "below" }>;
 export type Notification = S["NotificationOut"];
 
+export type AnalyzeOut = S["AnalyzeOut"];
+export type PortfolioFit = S["PortfolioFit"];
+export type FitStatus = PortfolioFit["status"];
+export type NeedsInput = AnalyzeOut["needs_input"] extends (infer T)[] | undefined ? T : never;
+export type ExposureCheck = S["ExposureCheck"];
+export type ScoutReport = S["ScoutReport"];
+export type ChartReport = S["ChartReport"];
+export type SignalLine = S["SignalLine"];
+export type MissingInput = S["MissingInput"];
+export type SizeOut = S["SizeOut"];
+export type AskOut = S["AskOut"];
+export type SearchHistoryItem = S["SearchHistoryOut"];
+export type WatchlistItem = S["WatchlistOut"];
+/** Inputs of the analysis. No defaults anywhere: what is missing comes back in `needs_input`. */
+export interface AnalyzeQuery { portfolioId?: number | null; amount?: number | null; currency?: "ILS" | "USD" | null; horizon?: Horizon | null; risk?: RiskPresetName | null }
+
 // ---------- Client ----------
 export const isMock = (): boolean => process.env.NEXT_PUBLIC_API_MOCK === "1";
 
@@ -198,6 +214,25 @@ export const api = {
   },
   /** A what-if review: `horizon` / `risk` override every holding's own for this call only. */
   exitReview: (pid: number, b: ExitReviewIn = {}) => post<ExitReviewOut>(`/portfolios/${pid}/exit-review`, b),
+  /** 404 = unknown symbol. Nothing about the result is saved anywhere on the client. */
+  analyze: (symbol: string, q: AnalyzeQuery = {}) => {
+    const qs = new URLSearchParams();
+    if (q.portfolioId) qs.set("portfolio_id", String(q.portfolioId));
+    if (q.amount !== null && q.amount !== undefined) qs.set("amount", String(q.amount));
+    if (q.currency) qs.set("currency", q.currency);
+    if (q.horizon) qs.set("horizon", q.horizon);
+    if (q.risk) qs.set("risk", q.risk);
+    const str = qs.toString();
+    return get<AnalyzeOut>(`/analyze/${encodeURIComponent(symbol)}${str ? `?${str}` : ""}`);
+  },
+  askAboutStock: (symbol: string, b: { question: string; notes?: string | null }) =>
+    post<AskOut>(`/analyze/${encodeURIComponent(symbol)}/ask`, b),
+  searchHistory: () => get<SearchHistoryItem[]>("/search-history"),
+  removeSearch: (symbol: string) => del(`/search-history/${encodeURIComponent(symbol)}`),
+  clearSearchHistory: () => del("/search-history"),
+  watchlist: () => get<WatchlistItem[]>("/watchlist"),
+  addToWatchlist: (symbol: string) => post<WatchlistItem>("/watchlist", { symbol }),
+  removeFromWatchlist: (symbol: string) => del(`/watchlist/${encodeURIComponent(symbol)}`),
   alerts: () => get<PriceAlert[]>("/alerts"),
   createAlert: (b: { symbol: string; op: "above" | "below"; price: number }) => post<PriceAlert>("/alerts", b),
   deleteAlert: (id: number) => del(`/alerts/${id}`),
