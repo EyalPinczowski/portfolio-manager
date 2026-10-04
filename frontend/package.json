@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "e2e": "playwright test",
     "gen:api": "openapi-typescript ../backend/openapi.json -o lib/api-schema.d.ts",
     "assets:ocr": "node scripts/copy-ocr-assets.mjs --strict",
     "postinstall": "node scripts/copy-ocr-assets.mjs"
@@ -23,6 +24,7 @@
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@tesseract.js-data/eng": "^1.0.0",
     "@tesseract.js-data/heb": "^1.0.0",

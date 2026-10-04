@@ -7,3 +7,9 @@ next-env.d.ts
 .env
 .env.local
 public/tesseract/
+
+# Playwright e2e (e2e/screenshots/*.png is the curated set and IS committed)
+/e2e/.site
+/e2e/.results
+/e2e/screenshots/all/
+/out.e2e-bak
