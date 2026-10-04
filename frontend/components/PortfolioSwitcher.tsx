@@ -7,6 +7,7 @@ export function PortfolioSwitcher({
   portfolios, value, onChange, allowCombined = true,
 }: { portfolios: Portfolio[]; value: PortfolioRef; onChange: (v: PortfolioRef) => void; allowCombined?: boolean }) {
   const t = useTranslations("switcher");
+  if (portfolios.length < 2) return null;
   return (
     <div>
       <label htmlFor="portfolio-switcher" className="label">{t("label")}</label>
