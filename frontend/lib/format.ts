@@ -1,4 +1,33 @@
+import { useSyncExternalStore } from "react";
+
 export type Currency = "ILS" | "USD";
+
+/**
+ * The saved display preferences (Settings: main currency, number format). One module-level store read by
+ * formatMoney / formatNumber, so every screen follows the setting without threading it through each call.
+ * Screens re-render on a change through `useFormatPrefs` (AppShell re-keys its content on it).
+ */
+export type FormatPrefs = { mainCurrency: Currency; numberFormat: "full" | "compact" };
+const DEFAULT_PREFS: FormatPrefs = { mainCurrency: "ILS", numberFormat: "full" };
+let prefs: FormatPrefs = DEFAULT_PREFS;
+const listeners = new Set<() => void>();
+/** `notify: false` updates the store without waking subscribers (used while rendering, where waking them would warn). */
+export function setFormatPrefs(next: Partial<FormatPrefs>, opts: { notify?: boolean } = {}): void {
+  const merged = { ...prefs, ...next };
+  if (merged.mainCurrency === prefs.mainCurrency && merged.numberFormat === prefs.numberFormat) return;
+  prefs = merged;
+  if (opts.notify !== false) listeners.forEach((l) => l());
+}
+export const getFormatPrefs = (): FormatPrefs => prefs;
+export const resetFormatPrefs = (): void => setFormatPrefs(DEFAULT_PREFS);
+export function useFormatPrefs(): FormatPrefs {
+  return useSyncExternalStore((cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; }, getFormatPrefs, () => DEFAULT_PREFS);
+}
+/** The two currencies of a pair, the saved main currency first (it is shown large, the other small). */
+export function mainFirst<T>(ils: T, usd: T): { main: { cur: Currency; v: T }; other: { cur: Currency; v: T } } {
+  const a = { cur: "ILS" as const, v: ils }, b = { cur: "USD" as const, v: usd };
+  return prefs.mainCurrency === "USD" ? { main: b, other: a } : { main: a, other: b };
+}
 
 export function intlLocale(locale: string): string {
   return locale === "he" ? "he-IL" : "en-US";
@@ -10,6 +39,12 @@ export function formatMoney(
   locale: string,
   opts: { signed?: boolean; compact?: boolean } = {},
 ): string {
+  // "Compact" number format: 1,234,567 -> 1.2M. Small values (under 1,000) keep their exact decimals.
+  if (prefs.numberFormat === "compact" && Math.abs(value) >= 1000) {
+    return new Intl.NumberFormat(intlLocale(locale), {
+      style: "currency", currency, notation: "compact", maximumFractionDigits: 1, signDisplay: opts.signed ? "exceptZero" : "auto",
+    }).format(value);
+  }
   return new Intl.NumberFormat(intlLocale(locale), {
     style: "currency",
     currency,
@@ -29,6 +64,9 @@ export function formatPct(value: number, locale: string, opts: { signed?: boolea
 }
 
 export function formatNumber(value: number, locale: string, digits = 2): string {
+  if (prefs.numberFormat === "compact" && Math.abs(value) >= 1000) {
+    return new Intl.NumberFormat(intlLocale(locale), { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  }
   return new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: digits }).format(value);
 }
 

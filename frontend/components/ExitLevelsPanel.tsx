@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { api, type ExitLevel, type ScaleOutPlan, type ExitLevelsResult, type Horizon } from "@/lib/api";
-import { DASH, formatMoney, formatNumber, formatPct, formatTime, formatWeight } from "@/lib/format";
+import { DASH, mainFirst, formatMoney, formatNumber, formatPct, formatTime, formatWeight } from "@/lib/format";
 import { useExitLevels } from "@/lib/hooks";
 import { horizonFromLabel, isPlanNote, matchStopReason, sourceKey } from "@/lib/server-text";
 import { ExplanationView } from "./ExplanationView";
@@ -31,12 +31,13 @@ export function HorizonPicker({ value, onPick, label, disabled }: {
   );
 }
 
-/** ILS large, USD small beside it. */
+/** The main currency large, the other small beside it. */
 function TwoMoney({ ils, usd, signed }: { ils: number; usd: number; signed?: boolean }) {
   const locale = useLocale();
+  const m = mainFirst(ils, usd);
   return (
     <span dir="ltr" className="tabular-nums">
-      {formatMoney(ils, "ILS", locale, { signed })} <span className="text-caption text-muted">({formatMoney(usd, "USD", locale, { signed })})</span>
+      {formatMoney(m.main.v, m.main.cur, locale, { signed })} <span className="text-caption text-muted">({formatMoney(m.other.v, m.other.cur, locale, { signed })})</span>
     </span>
   );
 }

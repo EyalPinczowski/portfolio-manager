@@ -58,7 +58,7 @@ describe("hub", () => {
     await waitFor(() => expect(hrefs(hub)).toEqual([
       "/settings?section=account", "/settings?section=language", "/settings?section=appearance", "/settings?section=currency", "/settings?section=numberFormat",
       "/settings?section=weekStart", "/settings?section=weeklyReview", "/settings?section=quietHours", "/settings?section=telegram", "/settings?section=ideas",
-      "/settings?section=risk", "/settings?section=status", "/settings?section=admin",
+      "/settings?section=risk", "/settings?section=privacy", "/settings?section=status", "/settings?section=admin",
     ]));
     expect(await within(hub).findByText("demo@example.com")).toBeInTheDocument();
     // current values are shown as muted trailing text

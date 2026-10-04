@@ -495,7 +495,14 @@
     "relDays": "{n} d ago",
     "guideTitle": "Setup guide",
     "guideDesc": "A short walkthrough: portfolio, screenshot import, risk level and holding periods.",
-    "guideOpen": "Open the setup guide"
+    "guideOpen": "Open the setup guide",
+    "about": {
+      "title": "About",
+      "webVersion": "App version",
+      "sourcesTitle": "Data sources",
+      "sources": "Yahoo Finance, Finnhub, CoinGecko, ECB / Bank of Israel and TASE, as available.",
+      "sourcesNote": "Free public sources for personal use. Prices can be delayed. Market data is shown only to you and is never shared."
+    }
   },
   "createPortfolio": {
     "title": "Create your first portfolio",
@@ -986,7 +993,8 @@
       "account": "Account",
       "status": "System status",
       "guide": "Setup guide",
-      "priceAlerts": "Price alerts"
+      "priceAlerts": "Price alerts",
+      "privacy": "Privacy and AI"
     },
     "back": "Back to settings",
     "saving": "Saving…",
@@ -1174,6 +1182,33 @@
       "logoutYes": "Sign out",
       "dataGroup": "Your data",
       "dangerGroup": "Sign out and delete"
+    },
+    "privacy": {
+      "aiTitle": "AI explanations",
+      "aiLead": "When the app asks a free AI to explain something, it sends public stock data only.",
+      "aiSeesTitle": "What the AI can see",
+      "aiSees": [
+        "Public facts about a stock: its name, ticker, price, indicators and public news."
+      ],
+      "aiNeverTitle": "What it never sees",
+      "aiNever": [
+        "What you own, how much, or what you paid.",
+        "Your notes, your accounts or your email."
+      ],
+      "aiFooter": "For anything about your own holdings the app writes the text itself, with no AI. Free AI providers may use what they receive to train their models, which is one more reason only public data is sent.",
+      "shotsTitle": "Screenshots",
+      "shotsLead": "Screenshots are never kept.",
+      "shots": [
+        "The picture is read on your phone by default and is not stored.",
+        "Only the stock rows you confirm are saved: name, symbol, quantity, price, value, cost and currency.",
+        "Account numbers, owner names and the raw text are never saved.",
+        "Rows you did not confirm are deleted after 24 hours."
+      ],
+      "shotsFooter": "Nothing from a screenshot is saved until you review and confirm it.",
+      "yoursTitle": "Your data",
+      "accountLink": "Export my data or delete my account",
+      "yoursFooter": "Both ask for your password.",
+      "statusLink": "See system status"
     }
   },
   "suggest": {

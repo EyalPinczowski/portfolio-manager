@@ -21,6 +21,7 @@ export const SendGlyph = () => <G><path d="M21 4 3 11l6 2.5L11.5 20 21 4Z" /><pa
 export const SparkGlyph = () => <G><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /><path d="m12 8 1.6 2.4L16 12l-2.4 1.6L12 16l-1.6-2.4L8 12l2.4-1.6L12 8Z" /></G>;
 export const ShieldGlyph = () => <G><path d="M12 3 5 6v5.5c0 4.2 2.9 7.6 7 9 4.1-1.4 7-4.8 7-9V6l-7-3Z" /><path d="m9 12 2 2 4-4" /></G>;
 export const DeviceGlyph = () => <G><rect x="7" y="3" width="10" height="18" rx="2.5" /><path d="M11 18h2" /></G>;
+export const LockGlyph = () => <G><rect x="5" y="10.5" width="14" height="9.5" rx="2.5" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5M12 14.5v2" /></G>;
 export const PulseGlyph = () => <G><path d="M3 12h4l2-6 4 12 2-6h6" /></G>;
 export const KeyGlyph = () => <G><circle cx="8" cy="15" r="3.5" /><path d="m10.5 12.5 8-8M15.5 7.5l2 2M13.5 9.5l2 2" /></G>;
 export const UserGlyph = () => <G><circle cx="12" cy="8.5" r="3.5" /><path d="M5 20c.8-3.6 3.5-5.5 7-5.5s6.2 1.9 7 5.5" /></G>;

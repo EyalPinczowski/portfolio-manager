@@ -2,6 +2,7 @@
 import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import useSWR from "swr";
+import pkg from "@/package.json";
 import { api } from "@/lib/api";
 import { ageOf, formatDate, QUOTES_STALE_MIN } from "@/lib/format";
 import { useAdminUsers, useMe, usePortfolios, useSettings, useSummary, useTelegramStatus } from "@/lib/hooks";
@@ -10,7 +11,7 @@ import { useRouter } from "@/i18n/navigation";
 import { guideActions } from "@/lib/guide";
 import { SaveStatus, useSettingsSave } from "./SettingsControls";
 import {
-  BellGlyph, BookGlyph, CalendarGlyph, ClockGlyph, CoinGlyph, GlobeGlyph, HashGlyph, KeyGlyph, PulseGlyph, SendGlyph, ShieldGlyph, SparkGlyph, SunGlyph, UserGlyph,
+  BellGlyph, BookGlyph, CalendarGlyph, ClockGlyph, CoinGlyph, GlobeGlyph, HashGlyph, KeyGlyph, LockGlyph, PulseGlyph, SendGlyph, ShieldGlyph, SparkGlyph, SunGlyph, UserGlyph,
 } from "./SettingsIcons";
 import { GroupItem, SettingsGroup, SettingsRow, ToggleRow } from "./SettingsUI";
 import { ChevronIcon } from "./icons";
@@ -61,8 +62,22 @@ function LaunchGateNote() {
   );
 }
 
+/** App version, data-sources credit and the disclaimer: plain read-only facts. */
+export function AboutGroup() {
+  const t = useTranslations("settings.about");
+  const d = useTranslations("disclaimer");
+  const line = "flex min-h-12 items-center justify-between gap-3 px-4 py-2";
+  return (
+    <SettingsGroup label={t("title")} title={t("title")}>
+      <li className={line}><span>{t("webVersion")}</span><span className="text-muted tabular-nums" dir="ltr" data-testid="web-version">{pkg.version}</span></li>
+      <GroupItem><p className="text-sm font-medium">{t("sourcesTitle")}</p><p className="text-sm text-muted" data-testid="data-sources">{t("sources")}</p><p className="mt-1 text-caption text-muted">{t("sourcesNote")}</p></GroupItem>
+      <GroupItem><p className="text-caption text-muted">{d("footer")}</p></GroupItem>
+    </SettingsGroup>
+  );
+}
+
 export function StatusScreen() {
-  return <><SystemStatus /><LaunchGateNote /></>;
+  return <><SystemStatus /><LaunchGateNote /><AboutGroup /></>;
 }
 
 type HubRow = { id: string; label: string; node: ReactNode };
@@ -124,6 +139,7 @@ export function SettingsHub() {
       {
         id: "help", title: t("hub.groupHelp"), footer: t("hub.footerHelp"),
         rows: [
+          r("privacy", sec("privacy"), <SettingsRow key="privacy" label={sec("privacy")} icon={<LockGlyph />} tone="indigo" href={settingsHref("privacy")} />),
           r("status", sec("status"), <SettingsRow key="status" label={sec("status")} icon={<PulseGlyph />} tone="pink" href={settingsHref("status")} />),
           r("guide", sec("guide"), <SettingsRow key="guide" label={sec("guide")} icon={<BookGlyph />} tone="gray" chevron onClick={() => { guideActions.reopen(); router.push("/"); }} />),
         ],

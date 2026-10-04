@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { checkScreen, LOCALES, msg, open, shot, watchErrors, type Locale } from "./helpers";
+import { checkScreen, expectDir, LOCALES, msg, open, shot, watchErrors, type Locale } from "./helpers";
 
 const heading = (page: Page, text: string) => page.getByRole("heading", { name: text, exact: true }).first();
 
@@ -167,6 +167,29 @@ for (const locale of LOCALES) {
       await shot(page, info, `settings-confirm-${locale}`);
       await dlg.getByRole("button", { name: m("common.cancel") }).click();
       await expect(dlg).toHaveCount(0);
+      errs.expectNone();
+    });
+
+    test("settings: privacy and AI page, system about, main currency reaches the home page", async ({ page }, info) => {
+      const errs = watchErrors(page);
+      await open(page, locale, "/settings/?section=privacy");
+      await expect(heading(page, m("prefs.sections.privacy"))).toBeVisible();
+      await expect(page.getByText(m("prefs.privacy.aiLead"))).toBeVisible();
+      await expect(page.getByText(m("prefs.privacy.shotsLead"))).toBeVisible();
+      await checkScreen(page, locale);
+      await shot(page, info, `settings-privacy-${locale}`);
+      await open(page, locale, "/settings/?section=status");
+      await expect(page.getByTestId("data-sources")).toBeVisible();
+      await expect(page.getByTestId("web-version")).toBeVisible();
+      await expectDir(page, locale); // the launch-gate heading on this page names "suggestions" by design, so no wording check
+
+      // Client-side navigation keeps the mock state: pick the dollar, then the home page shows it large.
+      await open(page, locale, "/settings/?section=currency");
+      await page.getByRole("radio", { name: m("prefs.appearance.currencies.USD") }).click();
+      await expect(page.getByRole("radio", { name: m("prefs.appearance.currencies.USD") })).toHaveAttribute("aria-checked", "true");
+      await page.locator("nav[aria-label]:visible").getByRole("link", { name: m("nav.home") }).first().click();
+      await expect(page.getByTestId("total-main")).toContainText("$");
+      await expect(page.getByTestId("total-other")).toContainText("₪");
       errs.expectNone();
     });
 

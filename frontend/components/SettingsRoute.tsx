@@ -9,6 +9,7 @@ import { AppearanceScreen, CurrencyScreen, LanguageScreen, NumberFormatScreen, W
 import { AppShell } from "./AppShell";
 import { IdeaAlertsForm } from "./IdeaAlertsForm";
 import { QuietHoursScreen, TelegramScreen, WeeklyReviewScreen } from "./NotificationSettings";
+import { PrivacyScreen } from "./PrivacySettings";
 import { RiskScreen } from "./RiskSettings";
 import { WithSettings } from "./SettingsControls";
 import { SettingsHub, StatusScreen } from "./SettingsPage";
@@ -19,7 +20,7 @@ const isSection = (v: string | null): v is SettingsSection => (SETTINGS_SECTIONS
 /** Message key under prefs.sections for each page title. */
 const NAMES: Record<SettingsSection, string> = {
   account: "account", sessions: "sessions", language: "language", appearance: "appearance", currency: "currency", numberFormat: "numberFormat", weekStart: "weekStart",
-  weeklyReview: "weeklyReview", quietHours: "quietHours", telegram: "telegram", ideas: "ideaAlerts", risk: "risk", status: "status", admin: "admin",
+  weeklyReview: "weeklyReview", quietHours: "quietHours", telegram: "telegram", ideas: "ideaAlerts", risk: "risk", privacy: "privacy", status: "status", admin: "admin",
 };
 /** Pages that were opened from another sub-page go back to it; everything else goes back to the hub. */
 const PARENT: Partial<Record<SettingsSection, SettingsSection>> = { sessions: "account" };
@@ -30,6 +31,7 @@ function Body({ section }: { section: SettingsSection }) {
     case "account": return <AccountScreen />;
     case "sessions": return <SessionsScreen />;
     case "telegram": return <TelegramScreen />;
+    case "privacy": return <PrivacyScreen />;
     case "status": return <StatusScreen />;
     case "risk": return <RiskScreen />;
     default:
@@ -54,7 +56,7 @@ function Body({ section }: { section: SettingsSection }) {
 
 /** The shared frame: a narrow centred column (phone width), with a gentle slide-in per page. */
 function Frame({ children, k }: { children: ReactNode; k: string }) {
-  return <AppShell><div key={k} className="settings-slide mx-auto w-full max-w-xl space-y-5">{children}</div></AppShell>;
+  return <AppShell stable><div key={k} className="settings-slide mx-auto w-full max-w-xl space-y-5">{children}</div></AppShell>;
 }
 
 function Screen({ section }: { section: SettingsSection }) {

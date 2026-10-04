@@ -15,7 +15,7 @@ export const postmortemHref = (portfolioId?: number | null): string => (portfoli
 
 export const SETTINGS_SECTIONS = [
   "account", "sessions", "language", "appearance", "currency", "numberFormat", "weekStart",
-  "weeklyReview", "quietHours", "telegram", "ideas", "risk", "status", "admin",
+  "weeklyReview", "quietHours", "telegram", "ideas", "risk", "privacy", "status", "admin",
 ] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 /** Path of the settings hub, or of one section. Query-based so it works in a static export. */

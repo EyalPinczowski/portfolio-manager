@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { Summary } from "@/lib/api";
-import { formatDate } from "@/lib/format";
+import { formatDate, mainFirst } from "@/lib/format";
 import { palette, PnlBarChart, SinceStartChart } from "./charts";
 import { Link } from "@/i18n/navigation";
 import { PnlText } from "./Pnl";
@@ -23,7 +23,7 @@ export function PnlStrip({ s }: { s: Summary }) {
     <div className="card">
       <p className="text-sm text-muted">{label}</p>
       {sub && <p className="text-caption text-muted">{sub}</p>}
-      <p className="text-lg font-bold"><PnlText value={p.ils} currency="ILS" locale={locale} /></p>
+      <p className="text-lg font-bold"><PnlText value={mainFirst(p.ils, p.usd).main.v} currency={mainFirst(p.ils, p.usd).main.cur} locale={locale} /></p>
       <p className="text-sm font-semibold"><PnlText pct={p.pct} locale={locale} /></p>
     </div>
   );

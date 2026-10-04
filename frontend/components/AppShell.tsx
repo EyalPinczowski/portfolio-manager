@@ -1,9 +1,10 @@
 "use client";
-import { useCallback, useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { api } from "@/lib/api";
 import { useSettings } from "@/lib/hooks";
+import { setFormatPrefs } from "@/lib/format";
 import { applyTheme } from "@/lib/theme";
 import { ActionsSheet } from "./ActionsSheet";
 import { AuthGate } from "./AuthGate";
@@ -85,7 +86,20 @@ function ThemeSync() {
   return null;
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+/**
+ * Applies the saved main currency and number format to the shared formatter, and re-keys the page content when
+ * they change so every figure on screen re-renders. `stable` (Settings pages show no money) keeps state such as
+ * the "saved" confirmation.
+ */
+function FormatKeyed({ children, stable }: { children: ReactNode; stable?: boolean }) {
+  const { data } = useSettings();
+  // Set before the children render (silently: this is a render), then the key re-mounts them with the new look.
+  if (data) setFormatPrefs({ mainCurrency: data.main_currency, numberFormat: data.number_format }, { notify: false });
+  const key = data ? `${data.main_currency}-${data.number_format}` : "ILS-full";
+  return <Fragment key={stable ? "stable" : key}>{children}</Fragment>;
+}
+
+export function AppShell({ children, stable }: { children: ReactNode; stable?: boolean }) {
   const t = useTranslations("nav");
   const a = useTranslations("actions");
   const app = useTranslations("app");
@@ -115,7 +129,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
           </div>
         </header>
-        <main id="main" className="mx-auto max-w-5xl space-y-4 px-4 py-4 pb-24 md:pb-4">{children}</main>
+        <main id="main" className="mx-auto max-w-5xl space-y-4 px-4 py-4 pb-24 md:pb-4"><FormatKeyed stable={stable}>{children}</FormatKeyed></main>
         <Disclaimer />
       </div>
       <button

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { ExitReviewOut, ReviewRow } from "@/lib/api";
-import { DASH, formatMoney, formatPct } from "@/lib/format";
+import { DASH, formatMoney, formatPct, mainFirst } from "@/lib/format";
 import { loadPortfolioChoice, useExitReview, usePortfolios } from "@/lib/hooks";
 import { holdingHref } from "@/lib/routes";
 import { Link } from "@/i18n/navigation";
@@ -19,9 +19,10 @@ export const sortRows = (rows: ReviewRow[]): ReviewRow[] =>
 
 function Money2({ ils, usd }: { ils: number; usd: number }) {
   const locale = useLocale();
+  const m = mainFirst(ils, usd);
   return (
     <span dir="ltr" className="tabular-nums">
-      {formatMoney(ils, "ILS", locale)} <span className="text-caption text-muted">({formatMoney(usd, "USD", locale)})</span>
+      {formatMoney(m.main.v, m.main.cur, locale)} <span className="text-caption text-muted">({formatMoney(m.other.v, m.other.cur, locale)})</span>
     </span>
   );
 }
