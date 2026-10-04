@@ -188,6 +188,30 @@ class PriceAlert(SQLModel, table=True):
     created_at: NaiveDatetime = Field(default_factory=utcnow)
 
 
+class SearchHistory(SQLModel, table=True):
+    """Symbols a user analyzed, nothing else: no result, note, question or score is stored."""
+
+    __tablename__ = "search_history"
+    __table_args__ = (UniqueConstraint("user_id", "symbol", name="uq_search_history_user_symbol"),)
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True, ondelete="CASCADE")
+    symbol: str
+    searched_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
+class WatchlistItem(SQLModel, table=True):
+    """A symbol the user follows. `market` and `name` are copied from a known Security, if any."""
+
+    __tablename__ = "watchlist_item"
+    __table_args__ = (UniqueConstraint("user_id", "symbol", name="uq_watchlist_user_symbol"),)
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True, ondelete="CASCADE")
+    symbol: str
+    market: str | None = None
+    name: str | None = None
+    added_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
 class Notification(SQLModel, table=True):
     __tablename__ = "notification"
     id: int | None = Field(default=None, primary_key=True)

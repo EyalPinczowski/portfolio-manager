@@ -18,7 +18,13 @@ from alembic.config import Config as AlembicConfig
 from sqlalchemy import Engine, text
 from sqlmodel import Session
 
-from app.db import MIGRATIONS_DIR, head_revision, make_engine, run_migrations
+from app.db import (
+    MIGRATIONS_DIR,
+    downgrade_migrations,
+    head_revision,
+    make_engine,
+    run_migrations,
+)
 from app.models import AuthSession, Holding, Portfolio, User
 
 REBUILD_USER = '''"""test-only: rebuild `user` through a batch migration (DROP TABLE + rename)."""
@@ -154,4 +160,38 @@ def test_a_migration_that_leaves_dangling_references_is_rolled_back(tmp_path: Pa
         _upgrade(cfg, engine)
     assert _counts(engine) == {"user": 1, "portfolio": 1, "session": 1, "holding": 1}
     assert _fk_pragma(engine) == 1
+    engine.dispose()
+
+
+def test_0010_adds_history_and_watchlist_without_touching_existing_data(tmp_path: Path) -> None:
+    engine = make_engine(f"sqlite:///{tmp_path / 'm.db'}")
+    run_migrations(engine)
+    downgrade_migrations(
+        engine, "0009_quote_source"
+    )  # the database as the previous release left it
+    with engine.connect() as conn:
+        assert not {"search_history", "watchlist_item"} & set(
+            r[0] for r in conn.exec_driver_sql("SELECT name FROM sqlite_master")
+        )
+    _seed(engine)
+    run_migrations(engine)  # expand-only: 0009 -> 0010 with data present
+    assert _counts(engine) == {"user": 1, "portfolio": 1, "session": 1, "holding": 1}
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO search_history (user_id, symbol, searched_at) "
+                "VALUES (1, 'AAPL', '2026-01-01')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO watchlist_item (user_id, symbol, added_at) VALUES (1, 'AAPL', '2026-01-01')"
+            )
+        )
+        assert conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
+    with engine.begin() as conn:  # the cascade works on the migrated schema
+        conn.execute(text('DELETE FROM "user"'))
+    with engine.connect() as conn:
+        for t in ("search_history", "watchlist_item"):
+            assert conn.execute(text(f"SELECT count(*) FROM {t}")).scalar() == 0
     engine.dispose()

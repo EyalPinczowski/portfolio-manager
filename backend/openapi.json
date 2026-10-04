@@ -1848,6 +1848,177 @@
         }
       }
     },
+    "/api/search-history": {
+      "get": {
+        "tags": [
+          "lists"
+        ],
+        "summary": "Get Search History",
+        "operationId": "get_search_history_api_search_history_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SearchHistoryOut"
+                  },
+                  "type": "array",
+                  "title": "Response Get Search History Api Search History Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "lists"
+        ],
+        "summary": "Clear Search History",
+        "operationId": "clear_search_history_api_search_history_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/search-history/{symbol}": {
+      "delete": {
+        "tags": [
+          "lists"
+        ],
+        "summary": "Delete Search History",
+        "operationId": "delete_search_history_api_search_history__symbol__delete",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/watchlist": {
+      "get": {
+        "tags": [
+          "lists"
+        ],
+        "summary": "Get Watchlist",
+        "operationId": "get_watchlist_api_watchlist_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WatchlistOut"
+                  },
+                  "type": "array",
+                  "title": "Response Get Watchlist Api Watchlist Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "lists"
+        ],
+        "summary": "Add Watchlist",
+        "operationId": "add_watchlist_api_watchlist_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistAdd"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/watchlist/{symbol}": {
+      "delete": {
+        "tags": [
+          "lists"
+        ],
+        "summary": "Delete Watchlist",
+        "operationId": "delete_watchlist_api_watchlist__symbol__delete",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -2258,6 +2429,49 @@
         ],
         "title": "BuyIdeasIn",
         "description": "Everything is required except the optional exclusion list."
+      },
+      "CachedQuoteOut": {
+        "properties": {
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "live",
+              "last_close"
+            ],
+            "title": "Basis"
+          },
+          "is_fresh": {
+            "type": "boolean",
+            "title": "Is Fresh"
+          }
+        },
+        "type": "object",
+        "required": [
+          "price",
+          "currency",
+          "as_of",
+          "source",
+          "basis",
+          "is_fresh"
+        ],
+        "title": "CachedQuoteOut"
       },
       "Candidate": {
         "properties": {
@@ -6318,6 +6532,25 @@
         ],
         "title": "ScoutReport"
       },
+      "SearchHistoryOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "searched_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Searched At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "searched_at"
+        ],
+        "title": "SearchHistoryOut"
+      },
       "SecurityHit": {
         "properties": {
           "symbol": {
@@ -7081,6 +7314,73 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WatchlistAdd": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symbol"
+        ],
+        "title": "WatchlistAdd"
+      },
+      "WatchlistOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "added_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Added At"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CachedQuoteOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "market",
+          "name",
+          "added_at"
+        ],
+        "title": "WatchlistOut"
       },
       "WeeklyBar": {
         "properties": {

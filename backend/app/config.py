@@ -272,6 +272,8 @@ class Settings(BaseSettings):
     turnstile_verify_url: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
     turnstile_timeout_seconds: float = 5.0
     max_alerts_per_user: int = 50
+    max_search_history_per_user: int = Field(default=50, ge=1)  # oldest rows are pruned
+    max_watchlist_per_user: int = Field(default=100, ge=1)  # adding past it is a 422
     invite_ttl_days: int = 14
 
     # --- market data ---

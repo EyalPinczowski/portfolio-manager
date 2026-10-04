@@ -125,6 +125,17 @@ def test_cross_user_access_returns_404(
     assert [p["id"] for p in mine["portfolios"]] == [bpid] and mine["alerts"] == []
     assert mine["user"]["email"] == "b@mail.com"
 
+    # search history and watchlist: B sees and removes only B's own rows
+    assert a.get("/api/analyze/AAPL").status_code == 200
+    assert a.post("/api/watchlist", json={"symbol": "AAPL"}).status_code == 201
+    assert b.get("/api/search-history").json() == [] and b.get("/api/watchlist").json() == []
+    assert status_of("DELETE", "/api/search-history/AAPL") == 404
+    assert status_of("DELETE", "/api/watchlist/AAPL") == 404
+    assert b.delete("/api/search-history").status_code == 204  # clears B's (empty) history only
+    assert (
+        len(a.get("/api/search-history").json()) == 1 and len(a.get("/api/watchlist").json()) == 1
+    )
+
     # alerts and notifications
     assert status_of("DELETE", f"/api/alerts/{aid}") == 404
     assert b.get("/api/alerts").json() == []
@@ -161,6 +172,8 @@ def test_unauthenticated_requests_are_rejected(client: TestClient) -> None:
         "/api/launch-gate",
         "/api/portfolios/1/xray",
         "/api/imports/1",
+        "/api/search-history",
+        "/api/watchlist",
     ]:
         assert client.get(path).status_code == 401, path
     for method, path, body in [

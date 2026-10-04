@@ -43,3 +43,6 @@ The Opus Phase 1 review is auditing: owner scoping on every endpoint, CSRF, rate
 - Rate-limit login, signup, and upload endpoints per IP and per account.
 - Encrypt backups. Offer data export and deletion.
 - Free-tier third-party APIs (Gemini, Groq) may use the data they receive. Send them only what the user has consented to, and nothing that identifies the account holder.
+
+## Data retention: search history and watchlist (2026-10-04)
+Analyze a stock keeps two per-user lists and nothing else about a search: `search_history` (symbol and `searched_at`, one row per user and symbol, newest first, at most `MAX_SEARCH_HISTORY_PER_USER` = 50, the oldest pruned) and `watchlist_item` (symbol, market and name copied from a known security, `added_at`, at most `MAX_WATCHLIST_PER_USER` = 100). The analysis result, notes, questions and scores are never stored. The user can delete one history entry or clear it (`/api/search-history`), and remove watchlist items. Both tables cascade on account deletion and are included in the data export (`search_history`, `watchlist`). A test asserts the table columns so output cannot be added by accident.

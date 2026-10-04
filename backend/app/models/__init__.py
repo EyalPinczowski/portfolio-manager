@@ -15,10 +15,12 @@ from app.models.tables import (
     PortfolioSnapshot,
     PriceAlert,
     PriceQuote,
+    SearchHistory,
     Security,
     SignalCache,
     Transaction,
     User,
+    WatchlistItem,
 )
 
 __all__ = [
@@ -37,8 +39,10 @@ __all__ = [
     "PortfolioSnapshot",
     "PriceAlert",
     "PriceQuote",
+    "SearchHistory",
     "Security",
     "SignalCache",
     "Transaction",
     "User",
+    "WatchlistItem",
 ]

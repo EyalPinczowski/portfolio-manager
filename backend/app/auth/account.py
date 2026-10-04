@@ -14,8 +14,10 @@ from app.models import (
     Portfolio,
     PortfolioSnapshot,
     PriceAlert,
+    SearchHistory,
     Transaction,
     User,
+    WatchlistItem,
 )
 from app.timeutil import utcnow
 
@@ -63,6 +65,14 @@ def export_user_data(db: Session, user: User) -> dict[str, Any]:
             a.model_dump(mode="json")
             for a in db.exec(select(PriceAlert).where(PriceAlert.user_id == user.id))
         ],
+        "search_history": [
+            h.model_dump(mode="json")
+            for h in db.exec(select(SearchHistory).where(SearchHistory.user_id == user.id))
+        ],
+        "watchlist": [
+            w.model_dump(mode="json")
+            for w in db.exec(select(WatchlistItem).where(WatchlistItem.user_id == user.id))
+        ],
         "notifications": [
             n.model_dump(mode="json")
             for n in db.exec(select(Notification).where(Notification.user_id == user.id))
@@ -74,7 +84,7 @@ def delete_user(db: Session, user: User) -> None:
     """Permanently delete the user and everything they own.
 
     One DELETE: the foreign keys cascade (portfolios -> holdings, transactions, snapshots, drafts;
-    sessions, alerts, notifications, invites they created) and set `Invite.used_by` to NULL.
+    sessions, alerts, notifications, search history, watchlist, invites they created) and set `Invite.used_by` to NULL.
     """
     db.delete(user)
     db.commit()

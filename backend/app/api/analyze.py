@@ -44,6 +44,7 @@ from app.scoring.screener import _valued
 from app.securities import infer_security
 from app.strictjson import StrictJsonRoute
 from app.timeutil import as_utc, utcnow
+from app.userlists import record_search
 from app.verdict_words import verdict_words_in_text
 
 router = APIRouter(tags=["analyze"], route_class=StrictJsonRoute)
@@ -156,6 +157,8 @@ def analyze(
         )
         needs = list(fit.needs_input)
 
+    # Only the symbol is remembered (search history); nothing about the result is stored.
+    record_search(db, user.id, sym, settings.max_search_history_per_user)
     gate_status = gate.evaluate()
     facts = public_facts(scout, md.chart)
     text, llm_used = summarize(facts, None)
