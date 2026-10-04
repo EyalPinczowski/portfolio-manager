@@ -1401,6 +1401,203 @@
         }
       }
     },
+    "/api/holdings/{holding_id}/exit-levels": {
+      "get": {
+        "tags": [
+          "exit-levels"
+        ],
+        "summary": "Holding Exit Levels",
+        "description": "Stop / take-profit levels. `horizon` overrides the holding's own (a what-if, not saved); a\nholding with no horizon and no override answers `needs_horizon`. `risk` is a preset name.",
+        "operationId": "holding_exit_levels_api_holdings__holding_id__exit_levels_get",
+        "parameters": [
+          {
+            "name": "holding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Holding Id"
+            }
+          },
+          {
+            "name": "horizon",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "1w",
+                    "1m",
+                    "3m",
+                    "6m",
+                    "1y"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Horizon"
+            }
+          },
+          {
+            "name": "risk",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "very_conservative",
+                    "conservative",
+                    "balanced",
+                    "balanced_aggressive",
+                    "aggressive",
+                    "very_aggressive"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Risk"
+            }
+          },
+          {
+            "name": "prior_stop",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1000000000000.0,
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prior Stop"
+            }
+          },
+          {
+            "name": "analyst_mean",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1000000000000.0,
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Analyst Mean"
+            }
+          },
+          {
+            "name": "analyst_high",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1000000000000.0,
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Analyst High"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitLevelsResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolios/{portfolio_id}/exit-review": {
+      "post": {
+        "tags": [
+          "exit-levels"
+        ],
+        "summary": "Exit Review",
+        "description": "Levels for every holding plus portfolio totals: the total risk to the stops, the biggest\ncontributors, the positions with no stop and stops that look too tight or too wide.",
+        "operationId": "exit_review_api_portfolios__portfolio_id__exit_review_post",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExitReviewIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExitReviewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -1503,6 +1700,39 @@
           "active"
         ],
         "title": "AlertOut"
+      },
+      "AnalystTargetsIn": {
+        "properties": {
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AnalystTargetsIn"
       },
       "Breach": {
         "properties": {
@@ -1622,6 +1852,461 @@
         ],
         "title": "ChartAnnotation",
         "description": "Something the chart should draw: a level, a moving average or a detected pattern."
+      },
+      "ExitLevel": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "stop",
+              "trailing_stop",
+              "breakeven",
+              "take_profit"
+            ],
+            "title": "Kind"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Label"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "distance_pct": {
+            "type": "number",
+            "title": "Distance Pct"
+          },
+          "vs_price_ils": {
+            "type": "number",
+            "title": "Vs Price Ils"
+          },
+          "vs_price_usd": {
+            "type": "number",
+            "title": "Vs Price Usd"
+          },
+          "pnl_native": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pnl Native"
+          },
+          "pnl_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pnl Ils"
+          },
+          "pnl_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pnl Usd"
+          },
+          "rr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rr"
+          },
+          "reached": {
+            "type": "boolean",
+            "title": "Reached",
+            "default": false
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Reason"
+          },
+          "explanation": {
+            "$ref": "#/components/schemas/Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "label",
+          "price",
+          "distance_pct",
+          "vs_price_ils",
+          "vs_price_usd",
+          "source",
+          "reason",
+          "explanation"
+        ],
+        "title": "ExitLevel"
+      },
+      "ExitLevelsResult": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "levels",
+              "needs_horizon",
+              "no_levels"
+            ],
+            "title": "Status"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "needs_horizon",
+                  "stale_price",
+                  "no_history",
+                  "insufficient_history",
+                  "history_price_mismatch"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Reason"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Horizon"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "horizon_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon Label"
+          },
+          "risk_preset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Preset"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "price_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price As Of"
+          },
+          "atr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Atr"
+          },
+          "atr_timeframe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Atr Timeframe"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExitLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trailing_stop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExitLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "breakeven": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExitLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "take_profits": {
+            "items": {
+              "$ref": "#/components/schemas/ExitLevel"
+            },
+            "type": "array",
+            "title": "Take Profits"
+          },
+          "scale_out": {
+            "items": {
+              "$ref": "#/components/schemas/ScaleOutStep"
+            },
+            "type": "array",
+            "title": "Scale Out"
+          },
+          "size_guidance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SizeGuidance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "risk_to_stop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiskToStop"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stop_fit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ok",
+                  "too_tight",
+                  "too_wide"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Fit"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/StopCandidate"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedSource"
+            },
+            "type": "array",
+            "title": "Skipped"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StopState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "explanation": {
+            "$ref": "#/components/schemas/Explanation"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "reason",
+          "symbol",
+          "explanation"
+        ],
+        "title": "ExitLevelsResult"
+      },
+      "ExitReviewIn": {
+        "properties": {
+          "horizon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "1w",
+                  "1m",
+                  "3m",
+                  "6m",
+                  "1y"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          },
+          "risk": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "very_conservative",
+                  "conservative",
+                  "balanced",
+                  "balanced_aggressive",
+                  "aggressive",
+                  "very_aggressive"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk"
+          },
+          "prior_stops": {
+            "additionalProperties": {
+              "type": "number",
+              "maximum": 1000000000000.0,
+              "exclusiveMinimum": 0.0
+            },
+            "type": "object",
+            "maxProperties": 500,
+            "title": "Prior Stops"
+          },
+          "analyst_targets": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AnalystTargetsIn"
+            },
+            "type": "object",
+            "maxProperties": 500,
+            "title": "Analyst Targets"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ExitReviewIn",
+        "description": "A what-if: `horizon` / `risk` override every holding's own for this review only."
+      },
+      "ExitReviewOut": {
+        "properties": {
+          "portfolio_id": {
+            "type": "integer",
+            "title": "Portfolio Id"
+          },
+          "portfolio_value_ils": {
+            "type": "number",
+            "title": "Portfolio Value Ils"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ReviewTotals"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "portfolio_id",
+          "portfolio_value_ils",
+          "rows",
+          "totals"
+        ],
+        "title": "ExitReviewOut"
       },
       "Explanation": {
         "properties": {
@@ -2191,6 +2876,17 @@
         "type": "object",
         "title": "HoldingPatch"
       },
+      "Horizon": {
+        "type": "string",
+        "enum": [
+          "1w",
+          "1m",
+          "3m",
+          "6m",
+          "1y"
+        ],
+        "title": "Horizon"
+      },
       "ImportDraftOut": {
         "properties": {
           "id": {
@@ -2670,6 +3366,42 @@
         ],
         "title": "MeOut"
       },
+      "MissingStop": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "needs_horizon",
+                  "stale_price",
+                  "no_history",
+                  "insufficient_history",
+                  "history_price_mismatch"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "reason"
+        ],
+        "title": "MissingStop"
+      },
       "Money": {
         "properties": {
           "ils": {
@@ -3000,6 +3732,331 @@
           "currency"
         ],
         "title": "ProposedChange"
+      },
+      "ReviewRow": {
+        "properties": {
+          "holding_id": {
+            "type": "integer",
+            "title": "Holding Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name_en": {
+            "type": "string",
+            "title": "Name En"
+          },
+          "name_he": {
+            "type": "string",
+            "title": "Name He"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "avg_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Cost"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "1w",
+                  "1m",
+                  "3m",
+                  "6m",
+                  "1y"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          },
+          "horizon_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "holding",
+                  "override"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon Source"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "levels",
+              "needs_horizon",
+              "no_levels"
+            ],
+            "title": "Status"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "needs_horizon",
+                  "stale_price",
+                  "no_history",
+                  "insufficient_history",
+                  "history_price_mismatch"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "stop_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Price"
+          },
+          "stop_distance_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Distance Pct"
+          },
+          "take_profit_prices": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Take Profit Prices"
+          },
+          "risk_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Ils"
+          },
+          "risk_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Usd"
+          },
+          "risk_pct_of_portfolio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Pct Of Portfolio"
+          },
+          "smaller_size_needed": {
+            "type": "boolean",
+            "title": "Smaller Size Needed",
+            "default": false
+          },
+          "keep_fraction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep Fraction"
+          },
+          "stop_fit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ok",
+                  "too_tight",
+                  "too_wide"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Fit"
+          },
+          "levels": {
+            "$ref": "#/components/schemas/ExitLevelsResult"
+          }
+        },
+        "type": "object",
+        "required": [
+          "holding_id",
+          "symbol",
+          "name_en",
+          "name_he",
+          "quantity",
+          "currency",
+          "status",
+          "levels"
+        ],
+        "title": "ReviewRow"
+      },
+      "ReviewTotals": {
+        "properties": {
+          "total_risk_ils": {
+            "type": "number",
+            "title": "Total Risk Ils"
+          },
+          "total_risk_usd": {
+            "type": "number",
+            "title": "Total Risk Usd"
+          },
+          "total_risk_pct_of_portfolio": {
+            "type": "number",
+            "title": "Total Risk Pct Of Portfolio"
+          },
+          "limit_pct": {
+            "type": "number",
+            "title": "Limit Pct"
+          },
+          "over_limit": {
+            "type": "boolean",
+            "title": "Over Limit"
+          },
+          "positions_with_stop": {
+            "type": "integer",
+            "title": "Positions With Stop"
+          },
+          "top_contributors": {
+            "items": {
+              "$ref": "#/components/schemas/RiskContributor"
+            },
+            "type": "array",
+            "title": "Top Contributors"
+          },
+          "positions_without_stop": {
+            "items": {
+              "$ref": "#/components/schemas/MissingStop"
+            },
+            "type": "array",
+            "title": "Positions Without Stop"
+          },
+          "stops_too_tight": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Stops Too Tight"
+          },
+          "stops_too_wide": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Stops Too Wide"
+          },
+          "smaller_size_needed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Smaller Size Needed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_risk_ils",
+          "total_risk_usd",
+          "total_risk_pct_of_portfolio",
+          "limit_pct",
+          "over_limit",
+          "positions_with_stop",
+          "top_contributors",
+          "positions_without_stop",
+          "stops_too_tight",
+          "stops_too_wide",
+          "smaller_size_needed"
+        ],
+        "title": "ReviewTotals"
+      },
+      "RiskContributor": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "risk_ils": {
+            "type": "number",
+            "title": "Risk Ils"
+          },
+          "risk_pct_of_portfolio": {
+            "type": "number",
+            "title": "Risk Pct Of Portfolio"
+          },
+          "share_of_total_risk_pct": {
+            "type": "number",
+            "title": "Share Of Total Risk Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "risk_ils",
+          "risk_pct_of_portfolio",
+          "share_of_total_risk_pct"
+        ],
+        "title": "RiskContributor"
       },
       "RiskFilterIn": {
         "properties": {
@@ -3438,6 +4495,45 @@
         ],
         "title": "RiskPresetOut"
       },
+      "RiskToStop": {
+        "properties": {
+          "native": {
+            "type": "number",
+            "title": "Native"
+          },
+          "ils": {
+            "type": "number",
+            "title": "Ils"
+          },
+          "usd": {
+            "type": "number",
+            "title": "Usd"
+          },
+          "pct_of_position": {
+            "type": "number",
+            "title": "Pct Of Position"
+          },
+          "pct_of_portfolio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pct Of Portfolio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "native",
+          "ils",
+          "usd",
+          "pct_of_position"
+        ],
+        "title": "RiskToStop"
+      },
       "RowConflict": {
         "properties": {
           "price": {
@@ -3484,6 +4580,53 @@
         "type": "object",
         "title": "RowConflict",
         "description": "The numbers of the copy that lost when the same card is in two screenshots with different\nvalues (the later screenshot wins). Reported so the user can see what was dropped."
+      },
+      "ScaleOutStep": {
+        "properties": {
+          "step": {
+            "type": "string",
+            "enum": [
+              "take_profit",
+              "trail_rest"
+            ],
+            "title": "Step"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Label"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "fraction": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Fraction"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Quantity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step",
+          "label",
+          "fraction",
+          "quantity"
+        ],
+        "title": "ScaleOutStep"
       },
       "ScoreCardDetail": {
         "properties": {
@@ -3859,6 +5002,144 @@
           "accept_disclaimer"
         ],
         "title": "SignupIn"
+      },
+      "SizeGuidance": {
+        "properties": {
+          "needed": {
+            "type": "boolean",
+            "title": "Needed"
+          },
+          "keep_fraction": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Keep Fraction"
+          },
+          "current_quantity": {
+            "type": "number",
+            "title": "Current Quantity"
+          },
+          "suggested_quantity": {
+            "type": "number",
+            "title": "Suggested Quantity"
+          },
+          "rules": {
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "needed",
+          "keep_fraction",
+          "current_quantity",
+          "suggested_quantity",
+          "rules",
+          "reason"
+        ],
+        "title": "SizeGuidance",
+        "description": "The stop stays where the chart puts it; this is how many shares fit the risk filter."
+      },
+      "SkippedSource": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "reason"
+        ],
+        "title": "SkippedSource"
+      },
+      "StopCandidate": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "atr",
+              "structure",
+              "moving_average",
+              "max_loss",
+              "saved_stop",
+              "trailing"
+            ],
+            "title": "Source"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "distance_pct": {
+            "type": "number",
+            "title": "Distance Pct"
+          },
+          "chosen": {
+            "type": "boolean",
+            "title": "Chosen",
+            "default": false
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "price",
+          "distance_pct",
+          "note"
+        ],
+        "title": "StopCandidate"
+      },
+      "StopState": {
+        "properties": {
+          "highest_high": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highest High"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop"
+          }
+        },
+        "type": "object",
+        "title": "StopState",
+        "description": "What a trailing stop remembers between runs: the highest high seen and the stop so far."
       },
       "SummaryOut": {
         "properties": {

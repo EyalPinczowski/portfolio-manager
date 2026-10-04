@@ -23,3 +23,8 @@ Last updated: 2026-10-03 21:05 UTC. Branch: `claude/stock-portfolio-assistant-jg
 
 ## 2026-10-04
 - Backend 2.0-E importer verified (1186 tests, ruff/mypy clean) and committed. Next: frontend follow-up (gen:api, new flags, scope UI), then 2.1, exit levels, Analyze a stock (with a headline "fits my portfolio?" section), portfolio post-mortem (user idea), settings, committee.
+
+## 2026-10-04 (exit levels, backend)
+- Built `backend/app/scoring/exit_levels.py` (engine, `StopState` ratchet, typed `Explanation` on every level), `backend/app/api/exit_levels.py` (`GET /api/holdings/{id}/exit-levels?horizon=&risk=` plus optional `prior_stop`, `analyst_mean`, `analyst_high`; `POST /api/portfolios/{id}/exit-review` with per-holding rows and totals) and `exit_levels_*` tunables in `Settings`. Result kinds: `levels | needs_horizon | no_levels` (stale price, no history, history/price mismatch). Tests: `tests/test_exit_levels.py`, `tests/test_api_exit_levels.py`, scoping rows in `tests/test_api_scoping.py`; `openapi.json` regenerated.
+- Deliberate deferrals: no migration 0010 (no `UserSettings` / saved named filters / persisted `StopState` yet; the caller passes `prior_stop` / `prior_stops`, so the ratchet works without storage); analyst targets are an optional input (no provider feeds them, the source is skipped with a reason); 4h bars are not offered by the history provider (daily bars stand in); `stop_ma_period` is read in daily bars at every horizon; market-context tightening (Extreme Greed, earnings dates) and "accept and save levels" are not built.
+- Next: frontend `npm run gen:api` and the exit-levels panel and review table; then Settings backend.

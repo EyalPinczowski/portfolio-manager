@@ -323,6 +323,59 @@ class Settings(BaseSettings):
     # The holding-period table that drives exit levels (README "Holding period"). Keys must be
     # exactly HORIZONS; override it as JSON in the HORIZON_TABLE env var.
     horizon_table: dict[str, HorizonSpec] = Field(default_factory=default_horizon_table)
+    # Exit-level tunables (`scoring/exit_levels.py`); the per-horizon numbers are in `horizon_table`.
+    exit_levels_min_bars: int = Field(default=60, gt=0)  # fewer daily bars: no levels at all
+    exit_levels_support_buffer_pct: float = Field(
+        default=0.5, ge=0
+    )  # a stop sits this far under a level
+    exit_levels_min_stop_atr: float = Field(
+        default=1.0, gt=0
+    )  # a chart stop closer than this is noise
+    # Stop width by preset: multiplies the middle of the horizon's ATR range (riskier = wider).
+    exit_levels_preset_atr_scale: dict[str, float] = Field(
+        default_factory=lambda: {
+            "very_conservative": 0.85,
+            "conservative": 0.9,
+            "balanced": 1.0,
+            "balanced_aggressive": 1.05,
+            "aggressive": 1.15,
+            "very_aggressive": 1.25,
+        }
+    )
+    # A chart level this far (in ATRs) beyond the ATR stop may replace it, so the stop sits behind it.
+    exit_levels_structure_reach_atr: float = Field(default=1.5, ge=0)
+    # History and live quote must agree within this many percent (a x100 agorot slip never passes).
+    exit_levels_max_history_gap_pct: float = Field(default=50.0, gt=0)
+    exit_levels_crypto_atr_multiplier: float = Field(default=1.5, gt=0)  # crypto stops are wider
+    exit_levels_chandelier_lookback: int = Field(default=22, gt=1)  # bars for the highest high
+    exit_levels_trailing_atr_default: float = Field(
+        default=3.0, gt=0
+    )  # horizons without an ATR range
+    exit_levels_breakeven_atr_multiple: float = Field(default=1.0, gt=0)
+    # Scale-out plan: shares to take partial profit on at TP1, TP2 (the rest follows the trail).
+    exit_levels_scale_out_fractions: list[float] = Field(default_factory=lambda: [1 / 3, 1 / 3])
+    exit_levels_max_take_profits: int = Field(default=3, gt=0)
+    exit_levels_pivot_cluster_pct: float = Field(default=1.5, gt=0)
+    exit_levels_pivot_windows: dict[str, int] = Field(
+        default_factory=lambda: {
+            "minor_support": 3,
+            "swing_low": 5,
+            "major_support": 10,
+            "weekly_swing_low": 3,
+            "multi_month_support": 2,
+            "resistance": 5,
+            "weekly_resistance": 3,
+            "long_term_resistance": 3,
+        }
+    )
+    exit_levels_fib_extensions: list[float] = Field(default_factory=lambda: [1.272, 1.618])
+    exit_levels_fib_lookback_bars: int = Field(default=120, gt=1)  # daily bars for the swing
+    exit_levels_bollinger_period: int = Field(default=20, gt=1)
+    exit_levels_dedupe_pct: float = Field(default=0.5, ge=0)  # take-profits closer than this merge
+    # Review: a saved stop is "too tight" under this many ATRs and "too wide" over that many.
+    exit_levels_too_tight_atr: float = Field(default=1.0, gt=0)
+    exit_levels_too_wide_atr: float = Field(default=5.0, gt=0)
+    exit_review_top_contributors: int = Field(default=5, gt=0)
     history_cache_ttl_seconds: int = 6 * 3600
     history_failure_ttl_seconds: int = 300
     history_cache_max_entries: int = 200  # one entry per symbol; the oldest is evicted

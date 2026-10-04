@@ -62,6 +62,12 @@ def test_cross_user_access_returns_404(
         ("GET", f"/api/portfolios/{pid}/holdings", None),
         ("GET", f"/api/portfolios/{pid}/xray", None),
         ("GET", f"/api/portfolios/{pid}/heatmap", None),
+        ("POST", f"/api/portfolios/{pid}/exit-review", {}),
+        (
+            "POST",
+            f"/api/portfolios/{pid}/exit-review",
+            {"horizon": "1m", "prior_stops": {"AAPL": 5}},
+        ),
         ("POST", f"/api/portfolios/{pid}/holdings", {"symbol": "MSFT", "quantity": 1}),
     ]:
         assert status_of(method, path, body) == 404, (method, path)
@@ -71,6 +77,8 @@ def test_cross_user_access_returns_404(
         assert status_of("PATCH", f"/api/portfolios/{pth}/holdings/{hid}", {"quantity": 99}) == 404
         assert status_of("DELETE", f"/api/portfolios/{pth}/holdings/{hid}") == 404
     assert status_of("GET", f"/api/holdings/{hid}/scorecard") == 404
+    assert status_of("GET", f"/api/holdings/{hid}/exit-levels") == 404
+    assert status_of("GET", f"/api/holdings/{hid}/exit-levels?horizon=1m&risk=balanced") == 404
 
     # imports
     r = b.post(
