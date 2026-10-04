@@ -239,11 +239,12 @@ def test_health_survives_a_database_error(env: None, monkeypatch: pytest.MonkeyP
         raise RuntimeError("db down")
 
     monkeypatch.setattr(health, "new_session", boom)
-    assert HealthProbe().read() == (None, None)
+    assert HealthProbe().read() == (None, None, None)
 
 
 def test_health_is_in_the_openapi_contract(client: TestClient) -> None:
     schema = client.get("/api/openapi.json").json()["components"]["schemas"]["HealthOut"]
     assert set(schema["properties"]) == {
         "status", "scheduler", "leader", "last_quotes_at", "last_snapshot_at",
+        "last_paper_resolve_at",
     }  # fmt: skip

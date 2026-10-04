@@ -46,11 +46,11 @@ def test_a_hanging_database_cannot_queue_health_requests(
     started = time.monotonic()
     answers = [probe.read() for _ in range(50)]  # the lock is held by the hanging read
     assert time.monotonic() - started < 0.5
-    assert answers == [(None, None)] * 50  # the last known value
+    assert answers == [(None, None, None)] * 50  # the last known value
     release.set()
     reader.join(5)
     assert not reader.is_alive()
-    assert probe.read() == (None, None)  # and the probe works again afterwards
+    assert probe.read() == (None, None, None)  # and the probe works again afterwards
 
 
 def test_health_keeps_serving_the_last_known_values_while_a_read_is_slow(

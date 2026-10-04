@@ -122,13 +122,14 @@ def create_app() -> FastAPI:
         state, leader = scheduler_state(
             getattr(request.app.state, "scheduler", None), get_settings().scheduler_in_process
         )
-        quotes_at, snapshot_at = request.app.state.health_probe.read()
+        quotes_at, snapshot_at, paper_at = request.app.state.health_probe.read()
         return HealthOut(
             status="ok",
             scheduler=state,
             leader=leader,
             last_quotes_at=quotes_at,
             last_snapshot_at=snapshot_at,
+            last_paper_resolve_at=paper_at,
         )
 
     app.include_router(api)

@@ -5482,6 +5482,18 @@
               }
             ],
             "title": "Last Snapshot At"
+          },
+          "last_paper_resolve_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Paper Resolve At"
           }
         },
         "type": "object",
@@ -5490,7 +5502,8 @@
           "scheduler",
           "leader",
           "last_quotes_at",
-          "last_snapshot_at"
+          "last_snapshot_at",
+          "last_paper_resolve_at"
         ],
         "title": "HealthOut"
       },

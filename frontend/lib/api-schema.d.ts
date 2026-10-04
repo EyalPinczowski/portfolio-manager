@@ -1952,6 +1952,8 @@ export interface components {
             last_quotes_at: string | null;
             /** Last Snapshot At */
             last_snapshot_at: string | null;
+            /** Last Paper Resolve At */
+            last_paper_resolve_at: string | null;
         };
         /** HeatmapItem */
         HeatmapItem: {

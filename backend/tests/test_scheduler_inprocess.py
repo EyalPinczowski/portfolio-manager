@@ -135,6 +135,7 @@ EXPECTED_JOBS = {
     "purge_drafts",
     "purge_sessions",
     "weekly_review",
+    "paper_resolve",
 }
 
 

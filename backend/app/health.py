@@ -1,7 +1,7 @@
 """`/api/health`: liveness plus the scheduler state, with at most one cheap DB read per 10 seconds.
 
 Render and UptimeRobot hit this every few minutes, so the DB read is cached (`HealthProbe`). The
-read is one SELECT of two MAX() values (the newest quote and the newest portfolio snapshot), so a
+read is one SELECT of three MAX() values (the newest quote, portfolio snapshot and paper-call resolution), so a
 stalled scheduler is visible from outside: `last_quotes_at` stops moving while the API still looks
 healthy. A database error never fails the endpoint; the last known values are kept.
 """
@@ -20,7 +20,7 @@ from sqlalchemy import func
 from sqlmodel import select
 
 from app.db import new_session
-from app.models import PortfolioSnapshot, PriceQuote
+from app.models import PaperCall, PortfolioSnapshot, PriceQuote
 
 log = logging.getLogger(__name__)
 
@@ -35,6 +35,7 @@ class HealthOut(BaseModel):
     leader: bool  # this process runs the jobs
     last_quotes_at: datetime | None  # newest stored quote (UTC); None if there is none yet
     last_snapshot_at: date | None  # newest portfolio snapshot day
+    last_paper_resolve_at: datetime | None  # newest paper-call resolution (UTC); None if none yet
 
 
 class HealthProbe:
@@ -45,9 +46,9 @@ class HealthProbe:
         self._clock = clock
         self._lock = threading.Lock()
         self._at: float | None = None
-        self._value: tuple[datetime | None, date | None] = (None, None)
+        self._value: tuple[datetime | None, date | None, datetime | None] = (None, None, None)
 
-    def read(self) -> tuple[datetime | None, date | None]:
+    def read(self) -> tuple[datetime | None, date | None, datetime | None]:
         """The last quote and snapshot times, at most one DB read per `ttl` seconds.
 
         The lock is a try-lock: while one request is reading (a hanging database), every other
@@ -66,10 +67,12 @@ class HealthProbe:
                         select(
                             select(func.max(PriceQuote.as_of)).scalar_subquery(),
                             select(func.max(PortfolioSnapshot.date)).scalar_subquery(),
+                            select(func.max(PaperCall.resolved_at)).scalar_subquery(),
                         )
                     ).one()
                 quotes_at = row[0].replace(tzinfo=UTC) if row[0] is not None else None
-                self._value = (quotes_at, row[1])
+                resolved_at = row[2].replace(tzinfo=UTC) if row[2] is not None else None
+                self._value = (quotes_at, row[1], resolved_at)
             except Exception as exc:
                 log.warning("health: could not read last quote/snapshot (%s)", type(exc).__name__)
             return self._value

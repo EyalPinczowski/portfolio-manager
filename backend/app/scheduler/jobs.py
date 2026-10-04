@@ -134,3 +134,12 @@ def run_weekly_review_job(
     from app.alerts.weekly_review import run_weekly_review
 
     return run_weekly_review(db, history, settings)
+
+
+def run_paper_resolve_job(
+    db: Session, history: HistoryProvider, settings: Settings | None = None
+) -> int:
+    """Resolve the paper calls whose horizon has ended. Returns how many were resolved."""
+    from app.paper_resolver import resolve_due_calls
+
+    return resolve_due_calls(db, history, settings).resolved

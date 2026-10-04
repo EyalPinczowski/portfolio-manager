@@ -60,6 +60,13 @@ def _weekly_review() -> None:
         log.info("weekly reviews sent: %d", jobs.run_weekly_review_job(db, get_providers().history))
 
 
+def _paper_resolve() -> None:
+    with new_session() as db:
+        log.info(
+            "paper calls resolved: %d", jobs.run_paper_resolve_job(db, get_providers().history)
+        )
+
+
 def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> None:
     """Add the recurring jobs (shared by `python -m app.scheduler` and the in-process scheduler)."""
     s = settings or get_settings()
@@ -121,6 +128,14 @@ def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> Non
         coalesce=True,
         misfire_grace_time=s.scheduler_misfire_grace_seconds,
     )
+    sched.add_job(
+        _paper_resolve,
+        IntervalTrigger(minutes=s.paper_resolve_interval_minutes),
+        id="paper_resolve",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=s.scheduler_misfire_grace_seconds,
+    )
 
 
 JOB_IDS = (
@@ -131,6 +146,7 @@ JOB_IDS = (
     "purge_drafts",
     "purge_sessions",
     "weekly_review",
+    "paper_resolve",
 )
 
 

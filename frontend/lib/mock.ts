@@ -318,7 +318,7 @@ const LAUNCH_GATE: LaunchGate = {
 /** Mock login: an email starting with "challenge" demands a Turnstile token (valid: MOCK_TURNSTILE_TOKEN); "ratelimit" gets a 429. */
 export const MOCK_TURNSTILE_TOKEN = "mock-turnstile-token";
 export const MOCK_SITE_KEY = "1x00000000000000000000AA";
-const HEALTH: Health = { status: "ok", scheduler: "leader", leader: true, last_quotes_at: new Date().toISOString(), last_snapshot_at: "2026-10-02" };
+const HEALTH: Health = { status: "ok", scheduler: "leader", leader: true, last_quotes_at: new Date().toISOString(), last_snapshot_at: "2026-10-02", last_paper_resolve_at: null };
 function mockLogin(b: Record<string, unknown>): unknown {
   const email = String(b.email ?? "");
   if (email.startsWith("ratelimit")) throw new ApiError(429, "Too many attempts", 30);
