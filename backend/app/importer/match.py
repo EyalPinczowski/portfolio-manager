@@ -59,7 +59,11 @@ class MatchResult:
 class SecurityIndex:
     def __init__(self, securities: Sequence[Security]) -> None:
         self.by_symbol = {s.symbol.upper(): s for s in securities}
-        self.by_tase = {s.tase_number: s for s in securities if s.tase_number}
+        # A verified security wins a TASE number: a user-scoped one never shadows a seeded one.
+        self.by_tase: dict[str, Security] = {}
+        for s in sorted(securities, key=lambda x: (x.verified, x.symbol)):
+            if s.tase_number:
+                self.by_tase[s.tase_number] = s
         self.groups: dict[str, list[Security]] = {}
         for s in securities:
             if s.dual_listing_group:
@@ -164,6 +168,45 @@ def match_row(
     return MatchResult(None, "none", candidates[0][1], candidates, low_confidence=True)
 
 
+US_TICKER = re.compile(r"^[A-Z]{1,5}$")
+# What a user may type for a TASE security that is not in the seed: Yahoo's `<id>.TA`.
+MANUAL_TASE_SYMBOL = re.compile(r"^[A-Z0-9-]{1,15}\.TA$")
+
+
+def new_security_kind(row: ParsedRow) -> str | None:
+    """Can this row introduce a security the seed does not know? The evidence is explicit:
+
+    - `us`: the broker printed `NASDAQ|NYSE|AMEX • TICKER` (`row.exchange`), the ticker is 1-5
+      capital letters and the row is in dollars. Accepted as an unverified, user-scoped security;
+      a successful quote verifies it.
+    - `tase`: a TASE security number plus a symbol the user typed (`<id>.TA`) for a shekel row.
+    Names are never evidence (they are truncated, reversed and unreliable).
+    """
+    sym = (row.symbol or "").upper()
+    if row.exchange is not None and US_TICKER.fullmatch(sym) and row_currency(row) == "USD":
+        return "us"
+    if row.tase_number and MANUAL_TASE_SYMBOL.fullmatch(sym) and row_currency(row) == "ILS":
+        return "tase"
+    return None
+
+
+def resolve_row(
+    row: ParsedRow, index: SecurityIndex, settings: Settings | None = None
+) -> MatchResult:
+    """`match_row`, except that an explicit exchange + ticker is an identity: it matches the
+    security with that symbol or nothing (never a fuzzy name), and an unknown one is accepted."""
+    if row.exchange is not None and row.symbol:
+        sec = index.by_symbol.get(row.symbol.upper())
+        if sec is not None:
+            return MatchResult(sec, "symbol", 100.0)
+        if new_security_kind(row) == "us":
+            return MatchResult(None, "new", 100.0)
+    result = match_row(row, index, settings)
+    if result.security is None and new_security_kind(row) == "tase":
+        return MatchResult(None, "new", 100.0)
+    return result
+
+
 def currency_flag(row: ParsedRow, sec: Security) -> str | None:
     """`currency_changed` / `unit_mismatch` when the row's currency or unit disagrees with the
     security's own. Compares what confirm stores (`row_currency`, from the unit)."""
@@ -183,7 +226,11 @@ def apply_match(
     managed = ("unmatched", "low_confidence_match", "currency_changed", "unit_mismatch")
     flags = [f for f in row.flags if f not in managed]
     row.candidates = []
-    if result.security is None:
+    if result.method == "new":
+        # Not in the seed, but the row carries the evidence for a user-scoped, unverified
+        # security (created at confirm, verified by the first quote). The symbol stays.
+        row.matched_name = None
+    elif result.security is None:
         flags.append("unmatched")
         row.symbol = None
         row.matched_name = None

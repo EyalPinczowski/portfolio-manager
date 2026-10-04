@@ -12,7 +12,6 @@ from app.config import Settings, get_settings
 from app.importer import service
 from app.importer.diff import ProposedChange
 from app.importer.imageio import CONTENT_TYPES, sniff_image_type, wipe
-from app.importer.parse import ParsedRow
 from app.importer.service import draft_expires_at
 from app.models import ImportDraft, Portfolio, User
 from app.providers.registry import get_providers
@@ -30,6 +29,7 @@ def _out(d: ImportDraft, settings: Settings | None = None) -> ImportDraftOut:
         id=d.id,
         portfolio_id=d.portfolio_id,
         status=d.status,  # type: ignore[arg-type]
+        scope=d.scope,  # type: ignore[arg-type]
         rows=[ImportRowModel.model_validate(r) for r in d.rows],
         proposed_changes=[ProposedChange.model_validate(c) for c in d.proposed_changes],
         expires_at=draft_expires_at(d, s),
@@ -122,8 +122,8 @@ def create_import_from_rows(
     assert user.id is not None
     p = get_portfolio(db, user.id, portfolio_id)
     enforce_limit(upload_limiter, f"user:{user.id}", settings.upload_rate_limit_per_hour, 3600.0)
-    rows = [ParsedRow.model_validate(r.model_dump()) for r in body.rows]
-    return _out(service.build_draft_from_rows(db, p, rows, settings), settings)
+    rows = service.rows_from_models(body.rows)
+    return _out(service.build_draft_from_rows(db, p, rows, settings, body.scope), settings)
 
 
 def _live_draft(
@@ -156,17 +156,24 @@ def patch_import(
     d, p = _live_draft(db, user.id, draft_id, settings)
     if d.status != "draft":
         raise HTTPException(status.HTTP_409_CONFLICT, "This import can no longer be edited")
+    previous = [ProposedChange.model_validate(c) for c in d.proposed_changes]
+    scope_changed = body.scope is not None and body.scope != d.scope
+    if body.scope is not None:
+        d.scope = body.scope
     if body.rows is not None:
-        rows = [ParsedRow.model_validate(r.model_dump()) for r in body.rows]
+        rows = service.rows_from_models(body.rows)
         service.finalize_rows(
             db, rows, settings, p.owner_id, rematch=False, previous=service.draft_rows(d)
         )
         d.rows = [r.model_dump() for r in rows]
-        if body.proposed_changes is None:
-            assert p.id is not None
-            d.proposed_changes = [c.model_dump() for c in service.recompute_changes(db, p.id, rows)]
     if body.proposed_changes is not None:
         d.proposed_changes = [c.model_dump() for c in body.proposed_changes]
+    elif body.rows is not None or scope_changed:
+        assert p.id is not None
+        d.proposed_changes = [
+            c.model_dump()
+            for c in service.recompute_changes(db, p.id, service.draft_rows(d), d.scope, previous)
+        ]
     db.add(d)
     db.commit()
     db.refresh(d)

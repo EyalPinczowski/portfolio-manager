@@ -169,6 +169,7 @@ def test_summary_shape_and_combined_starts_at_earliest_start(
         "value", "day_pnl", "week_pnl", "month_pnl", "since_start_pnl", "since_start_date",
         "weekly_bars", "monthly_bars", "since_start_series", "as_of", "markets",
             "week_start", "fx_stale",
+            "last_screenshot_update_at", "screenshot_update_stale",  # 2.0-E
     }  # fmt: skip
     assert set(one["value"]) == {"ils", "usd"} and set(one["day_pnl"]) == {"ils", "usd", "pct"}
     assert (

@@ -135,6 +135,10 @@ class PortfolioOut(BaseModel):
     base_currency: Literal["ILS", "USD"]
     risk_filter: RiskFilterOut
     tracking_started_at: str | None = None
+    # Last confirmed screenshot import (null: never), and whether it is older than the nudge
+    # setting (`screenshot_update_nudge_days`, default 7).
+    last_screenshot_update_at: datetime | None = None
+    screenshot_update_stale: bool = False
     created_at: datetime
 
 
@@ -190,6 +194,10 @@ class SummaryOut(BaseModel):
     month_pnl: Pnl
     since_start_pnl: Pnl
     since_start_date: str | None = None
+    # The (oldest) last screenshot update among the portfolios in this view, and whether any of
+    # them is past the nudge age.
+    last_screenshot_update_at: datetime | None = None
+    screenshot_update_stale: bool = False
     week_start: date  # Sunday of the current week in Asia/Jerusalem (setting `week_start_day`)
     fx_stale: bool  # USD/ILS is old or a fallback: the ILS/USD figures are approximate
     weekly_bars: list[WeeklyBar]
@@ -280,18 +288,31 @@ ImportFlag = Literal[
     "low_confidence_match",  # weak name match: pick one of `candidates` (symbol stays null)
     "currency_changed",  # the row currency differs from the security's: confirm before import
     "unit_mismatch",  # agorot shown for a non-shekel security
+    "quantity_uncertain",  # no quantity (value too small to infer it): the user must enter one
+    "quantity_fractional",  # value / price is not a whole number: worth a look
+    "cost_inferred",  # `cost` was derived from the broker's P&L %, not read from the screen
+    "duplicate_removed",  # the same card was in two screenshots and is counted once
+    "conflict",  # two screenshots disagree; the later one was kept, see `conflict`
 ]
 
 
 class ImportRowModel(ParsedRow):
     model_config = ConfigDict(extra="forbid")
-    flags: list[ImportFlag] = Field(default_factory=list, max_length=10)  # type: ignore[assignment]
+    flags: list[ImportFlag] = Field(default_factory=list, max_length=12)  # type: ignore[assignment]
+
+
+ImportScope = Literal["partial", "full"]
 
 
 class ImportDraftOut(BaseModel):
     id: int
     portfolio_id: int
     status: Literal["draft", "confirmed", "discarded"]
+    # partial (default): holdings missing from the screenshots stay untouched and produce no
+    # proposed changes. full: they are proposed as `row_index = -1` changes whose `type` is the
+    # user's choice (`sell`, `withdrawal` or `keep`, default `keep`); nothing is applied for them
+    # unless the user picks sold or withdrawn.
+    scope: ImportScope = "partial"
     rows: list[ImportRowModel]
     proposed_changes: list[ProposedChange]
     expires_at: datetime  # an unconfirmed draft is deleted then (24 h after creation)
@@ -301,11 +322,13 @@ class ImportRowsBody(Body):
     """On-device OCR: the browser parsed the screenshot, only the stock rows are sent."""
 
     rows: list[ImportRowModel] = Field(max_length=200)
+    scope: ImportScope = "partial"
 
 
 class ImportPatch(Body):
     rows: list[ImportRowModel] | None = Field(default=None, max_length=200)
     proposed_changes: list[ProposedChange] | None = Field(default=None, max_length=400)
+    scope: ImportScope | None = None  # switching it recomputes the proposed changes
 
 
 class LaunchGateOut(BaseModel):

@@ -196,6 +196,7 @@ class Settings(BaseSettings):
     signup_rate_limit_per_hour: int = 10  # per IP, every attempt counts
     upload_rate_limit_per_hour: int = 30  # per user, screenshot and on-device rows imports
     import_edit_rate_limit_per_hour: int = 300  # per user, PATCH of an import draft (review edits)
+    holding_add_rate_limit_per_hour: int = 120  # per user, manual POST of a holding
     # Client IP behind the Cloudflare Pages Function proxy (docs/deployment.md). The Function sends
     # the visitor's IP in `trusted_proxy_header` (e.g. "X-Client-IP") and the shared secret in
     # `proxy_auth_header`. The IP header is trusted ONLY when the secret matches (constant-time
@@ -346,9 +347,20 @@ class Settings(BaseSettings):
     import_strip_rows: int = 256
     import_draft_ttl_hours: int = 24  # unconfirmed drafts are purged after this long
     import_max_rows: int = 200
+    screenshot_update_nudge_days: int = (
+        7  # "update from a screenshot" is stale after this many days
+    )
     import_name_max_chars: int = 200
     draft_purge_interval_minutes: int = 60
     redact_header_fraction: float = 0.12
+    # Meitav Trade: the status bar and the app header span the top ~14 % of the screenshot.
+    redact_header_fraction_meitav_trade: float = 0.14
+    # Meitav Trade has no quantity or cost column: quantity = value / price, cost from the P&L %.
+    import_infer_min_value: float = (
+        1.0  # below this (value's own currency) a quantity is not inferred
+    )
+    import_infer_round_slack: float = 1.5  # slack on the rounding error of value and price
+    import_infer_min_pnl_pct: float = -99.9  # lower P&L % gives no usable cost
     redact_min_digit_run: int = 6
     redact_blur_radius: int = 12
     import_value_tolerance: float = 0.02

@@ -21,6 +21,7 @@ from app.portfolio.performance import (
     period_result,
     week_start,
 )
+from app.portfolio.screenshot import oldest_update, update_is_stale
 from app.portfolio.valuation import (
     PortfolioValuation,
     all_user_snapshots,
@@ -106,6 +107,10 @@ def build_summary(
         "month_pnl": _pnl(month.pnl_ils, month.pct, usd_ils),
         "since_start_pnl": _pnl(since.pnl_ils, since.pct, usd_ils),
         "since_start_date": since_date.isoformat() if since_date else None,
+        "last_screenshot_update_at": (
+            as_utc(oldest) if (oldest := oldest_update(portfolios)) else None
+        ),
+        "screenshot_update_stale": any(update_is_stale(p, s, now_dt) for p in portfolios),
         "weekly_bars": [
             {"week_start": k, "pnl_ils": round(r.pnl_ils, 2), "pct": round(r.pct, 4)}
             for k, r in grouped_bars(points, lambda d: week_start(d, s.week_start_day), 12)

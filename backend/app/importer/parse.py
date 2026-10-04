@@ -94,6 +94,20 @@ class MatchCandidate(BaseModel):
     score: float = Field(ge=0, le=100, allow_inf_nan=False)  # 0-100 name similarity
 
 
+Exchange = Literal["NASDAQ", "NYSE", "AMEX"]
+
+
+class RowConflict(BaseModel):
+    """The numbers of the copy that lost when the same card is in two screenshots with different
+    values (the later screenshot wins). Reported so the user can see what was dropped."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    price: RowMoney | None = None
+    value: RowMoney | None = None
+    quantity: RowQuantity | None = None
+
+
 class ParsedRow(BaseModel):
     """One broker row. Bounded and strict: it is also the request schema of the review screen.
 
@@ -115,7 +129,12 @@ class ParsedRow(BaseModel):
     # Weak name matches are never picked silently: `symbol` stays None, `flags` contains
     # "low_confidence_match" and the best guesses are listed here (best first) for the user.
     candidates: list[MatchCandidate] = Field(default_factory=list, max_length=20)
-    flags: list[str] = Field(default_factory=list, max_length=10)
+    flags: list[str] = Field(default_factory=list, max_length=12)
+    # The listing exchange when the broker prints `NASDAQ • TICKER`. With it, a ticker that is not
+    # in the seed is accepted as a user-scoped, unverified security (see `importer/match.py`).
+    exchange: Exchange | None = None
+    # Set with the `conflict` flag: what the other (earlier) screenshot said.
+    conflict: RowConflict | None = None
 
     @model_validator(mode="after")
     def _unit_agrees_with_currency(self) -> ParsedRow:
@@ -319,7 +338,11 @@ def parse_ocr_result(result: OcrResult, settings: Settings | None = None) -> lis
 def validate_row(row: ParsedRow, settings: Settings | None = None) -> ParsedRow:
     """Flag incomplete rows and rows where quantity x price differs from value by > tolerance."""
     s = settings or get_settings()
-    flags = [f for f in row.flags if f not in ("missing_fields", "value_mismatch")]
+    flags = [
+        f for f in row.flags if f not in ("missing_fields", "value_mismatch", "quantity_uncertain")
+    ]
+    if row.quantity is None:
+        flags.append("quantity_uncertain")  # the user must enter one (confirm stays blocked)
     if row.quantity is None or row.price is None or row.value is None:
         flags.append("missing_fields")
     else:

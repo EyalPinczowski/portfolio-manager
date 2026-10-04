@@ -228,8 +228,23 @@ def test_draft_contains_only_stock_fields_and_never_the_account_lines(
     assert r.status_code == 201, r.text
     draft = r.json()
     assert [row["symbol"] for row in draft["rows"]] == ["TEVA.TA", "LUMI.TA"]
-    allowed = {"index", "name", "symbol", "tase_number", "quantity", "price", "value", "cost",
-               "currency", "unit", "matched_name", "candidates", "flags"}  # fmt: skip
+    allowed = {
+        "index",
+        "name",
+        "symbol",
+        "tase_number",
+        "quantity",
+        "price",
+        "value",
+        "cost",
+        "currency",
+        "unit",
+        "matched_name",
+        "candidates",
+        "flags",
+        "exchange",
+        "conflict",
+    }  # fmt: skip  (2.0-E: listing exchange, the losing copy)
     for row in draft["rows"]:
         assert set(row) <= allowed
     with new_session() as db:

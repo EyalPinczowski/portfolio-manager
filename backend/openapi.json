@@ -2162,6 +2162,15 @@
             ],
             "title": "Status"
           },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "partial",
+              "full"
+            ],
+            "title": "Scope",
+            "default": "partial"
+          },
           "rows": {
             "items": {
               "$ref": "#/components/schemas/ImportRowModel"
@@ -2224,6 +2233,21 @@
               }
             ],
             "title": "Proposed Changes"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "partial",
+                  "full"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
           }
         },
         "additionalProperties": false,
@@ -2369,12 +2393,43 @@
                 "unmatched",
                 "low_confidence_match",
                 "currency_changed",
-                "unit_mismatch"
+                "unit_mismatch",
+                "quantity_uncertain",
+                "quantity_fractional",
+                "cost_inferred",
+                "duplicate_removed",
+                "conflict"
               ]
             },
             "type": "array",
-            "maxItems": 10,
+            "maxItems": 12,
             "title": "Flags"
+          },
+          "exchange": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "NASDAQ",
+                  "NYSE",
+                  "AMEX"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange"
+          },
+          "conflict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RowConflict"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -2390,6 +2445,15 @@
             "type": "array",
             "maxItems": 200,
             "title": "Rows"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "partial",
+              "full"
+            ],
+            "title": "Scope",
+            "default": "partial"
           }
         },
         "additionalProperties": false,
@@ -2733,6 +2797,23 @@
             ],
             "title": "Tracking Started At"
           },
+          "last_screenshot_update_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Screenshot Update At"
+          },
+          "screenshot_update_stale": {
+            "type": "boolean",
+            "title": "Screenshot Update Stale",
+            "default": false
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -2820,7 +2901,8 @@
               "buy",
               "sell",
               "deposit",
-              "withdrawal"
+              "withdrawal",
+              "keep"
             ],
             "title": "Type"
           },
@@ -3308,6 +3390,53 @@
         ],
         "title": "RiskPresetOut"
       },
+      "RowConflict": {
+        "properties": {
+          "price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RowConflict",
+        "description": "The numbers of the copy that lost when the same card is in two screenshots with different\nvalues (the later screenshot wins). Reported so the user can see what was dropped."
+      },
       "ScoreCardDetail": {
         "properties": {
           "holding_id": {
@@ -3710,6 +3839,23 @@
               }
             ],
             "title": "Since Start Date"
+          },
+          "last_screenshot_update_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Screenshot Update At"
+          },
+          "screenshot_update_stale": {
+            "type": "boolean",
+            "title": "Screenshot Update Stale",
+            "default": false
           },
           "week_start": {
             "type": "string",

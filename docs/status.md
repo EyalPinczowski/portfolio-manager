@@ -20,3 +20,6 @@ Last updated: 2026-10-03 21:05 UTC. Branch: `claude/stock-portfolio-assistant-jg
 ## Rules to keep
 - Opus for review agents, Sonnet for code agents; failing test first; keep the tree green after each item; commit only verified work; never enable paid services or add accounts without the user.
 - Stop only for decisions that are the user's: product choices, paid services, accounts/keys, legal.
+
+## 2026-10-04
+- Backend 2.0-E importer verified (1186 tests, ruff/mypy clean) and committed. Next: frontend follow-up (gen:api, new flags, scope UI), then 2.1, exit levels, Analyze a stock (with a headline "fits my portfolio?" section), portfolio post-mortem (user idea), settings, committee.

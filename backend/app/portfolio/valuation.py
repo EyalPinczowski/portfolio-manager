@@ -380,9 +380,15 @@ def flows_since_previous_point(txs: list[Transaction], dates: list[date]) -> dic
 
 
 def take_snapshot(
-    db: Session, portfolio: Portfolio, d: date | None = None, settings: Settings | None = None
+    db: Session,
+    portfolio: Portfolio,
+    d: date | None = None,
+    settings: Settings | None = None,
+    commit: bool = True,
 ) -> PortfolioSnapshot | None:
     """Upsert the end-of-day snapshot. Only for portfolios whose tracking has started.
+
+    `commit=False` only flushes: the caller owns the transaction (the screenshot confirm is one).
 
     The stored flow is that of the transactions in (previous snapshot date, `d`], so a day without
     a snapshot does not lose its flows.
@@ -419,7 +425,10 @@ def take_snapshot(
         snap.value_usd = val.performance_total_ils / val.usd_ils if val.usd_ils else 0.0
         snap.net_flow_ils = flow
     db.add(snap)
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     return snap
 
 
@@ -446,7 +455,9 @@ def take_catchup_snapshots(
     return n
 
 
-def ensure_tracking_started(db: Session, portfolio: Portfolio, today: date | None = None) -> bool:
+def ensure_tracking_started(
+    db: Session, portfolio: Portfolio, today: date | None = None, commit: bool = True
+) -> bool:
     """Set `tracking_started_at` on the first confirmed import / manual add and take the baseline.
 
     Returns True if tracking was started by this call. The baseline is the portfolio value on that
@@ -460,8 +471,11 @@ def ensure_tracking_started(db: Session, portfolio: Portfolio, today: date | Non
     db.flush()
     # Holdings without a real price are out of the baseline; each waits in its one marker.
     register_unpriced(db, portfolio, value_portfolio(db, portfolio), day)
-    db.commit()
-    take_snapshot(db, portfolio, day)
+    if commit:
+        db.commit()
+    else:
+        db.flush()
+    take_snapshot(db, portfolio, day, commit=commit)
     return True
 
 

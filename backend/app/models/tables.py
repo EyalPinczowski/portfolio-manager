@@ -81,6 +81,9 @@ class Portfolio(SQLModel, table=True):
     base_currency: str = "ILS"
     risk_filter: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     tracking_started_at: date | None = None
+    # When a screenshot import was last confirmed (aware-UTC semantics, stored naive like the rest).
+    # Drives "Last updated from a screenshot" and the nudge (`update_is_stale`).
+    last_screenshot_update_at: NaiveDatetime | None = None
     created_at: NaiveDatetime = Field(default_factory=utcnow)
 
 
@@ -113,6 +116,9 @@ class ImportDraft(SQLModel, table=True):
     rows: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
     proposed_changes: list[dict[str, Any]] = Field(default_factory=list, sa_column=Column(JSON))
     status: str = "draft"  # draft|confirmed|discarded
+    # partial: holdings missing from the screenshots are left alone; full: they are listed as
+    # "not in these screenshots" for the user to decide (sold / withdrawn / keep).
+    scope: str = Field(default="partial", sa_column_kwargs={"server_default": "partial"})
     created_at: NaiveDatetime = Field(default_factory=utcnow)
 
 

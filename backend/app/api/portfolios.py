@@ -21,6 +21,7 @@ from app.api.schemas import (
     XrayOut,
 )
 from app.auth.deps import DbDep, SettingsDep, UserDep
+from app.auth.ratelimit import enforce_limit, holding_add_limiter
 from app.config import Settings
 from app.db import new_session
 from app.models import (
@@ -33,6 +34,7 @@ from app.models import (
 )
 from app.portfolio.heatmap import build_heatmap
 from app.portfolio.quotes import refresh_symbols
+from app.portfolio.screenshot import update_is_stale
 from app.portfolio.summary import build_summary
 from app.portfolio.valuation import (
     PortfolioValuation,
@@ -63,6 +65,10 @@ def portfolio_out(p: Portfolio, settings: Settings) -> PortfolioOut:
         base_currency=p.base_currency,
         risk_filter=resolve_risk_filter(p.risk_filter, settings).model_dump(),  # type: ignore[arg-type]
         tracking_started_at=p.tracking_started_at.isoformat() if p.tracking_started_at else None,
+        last_screenshot_update_at=(
+            as_utc(p.last_screenshot_update_at) if p.last_screenshot_update_at else None
+        ),
+        screenshot_update_stale=update_is_stale(p, settings),
         created_at=as_utc(p.created_at),
     )
 
@@ -288,6 +294,9 @@ def add_holding(
     assert user.id is not None
     p = get_portfolio(db, user.id, portfolio_id)
     assert p.id is not None
+    enforce_limit(
+        holding_add_limiter, f"user:{user.id}", settings.holding_add_rate_limit_per_hour, 3600.0
+    )
     symbol = body.symbol  # already trimmed, upper-cased and pattern-checked
     sec = get_or_create_security(db, symbol)
     dup = db.exec(

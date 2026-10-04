@@ -32,7 +32,13 @@ def test_enums_are_real_enums() -> None:
     assert enum_of("HoldingOut", "asset_type") == ["stock", "etf", "crypto", "fund", "bond", "cash"]
     assert enum_of("MeOut", "locale") == ["he", "en"]
     assert enum_of("SignupIn", "locale") == ["he", "en"]
-    assert enum_of("ProposedChange", "type") == ["buy", "sell", "deposit", "withdrawal"]
+    assert enum_of("ProposedChange", "type") == [
+        "buy",
+        "sell",
+        "deposit",
+        "withdrawal",
+        "keep",  # 2.0-E: a holding missing from a full update that the user keeps
+    ]
     assert enum_of("RiskFilterOut", "stop_type") == ["fixed", "trailing", "both"]
     flags = schemas["ImportRowModel"]["properties"]["flags"]["items"]
     assert {"currency_changed", "low_confidence_match", "missing_fields"} <= set(flags["enum"])
