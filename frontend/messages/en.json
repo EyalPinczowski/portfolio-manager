@@ -661,7 +661,30 @@
     "skipped": "Sources skipped",
     "state": "Trailing stop memory: highest high {high}, stop {stop}",
     "units": "{n} units",
-    "fundNoLevelsNote": "Funds have monthly returns only, so no numbers are shown here. The value on your holdings list is the one you entered."
+    "fundNoLevelsNote": "Funds have monthly returns only, so no numbers are shown here. The value on your holdings list is the one you entered.",
+    "sources": {
+      "atr": "ATR distance",
+      "structure": "chart support",
+      "moving_average": "moving average",
+      "max_loss": "your max loss",
+      "trailing": "trailing stop",
+      "trailing_stop": "trailing stop",
+      "cost": "your cost",
+      "saved_stop": "your saved stop",
+      "resistance": "chart resistance",
+      "long_term_resistance": "long-term resistance",
+      "analyst": "analyst target",
+      "bollinger": "Bollinger band",
+      "fibonacci": "Fibonacci extension",
+      "r_multiple": "reward-to-risk multiple",
+      "weekly_swing_low": "weekly swing low",
+      "multi_month_support": "multi-month support",
+      "sma": "{n}-day moving average"
+    },
+    "reasonText": {
+      "atr": "{mult} x ATR({period}) below the price.",
+      "trailing": "Follows the highest high; it only moves up."
+    }
   },
   "review": {
     "title": "Review my portfolio",
@@ -851,7 +874,8 @@
     "askTemplate": "Template answer (no AI used)",
     "askLlm": "AI-assisted answer from public stock data only",
     "askEmpty": "Type a question first.",
-    "disclaimer": "Not financial advice."
+    "disclaimer": "Not financial advice.",
+    "fitIncompleteSummary": "The fit cannot be checked until the missing details are filled in. Nothing is assumed for you."
   },
   "postmortem": {
     "title": "Portfolio post-mortem",
@@ -1085,7 +1109,9 @@
       "clear": "Clear filter (stop alerts)",
       "pickAll": "Fill in every field to save.",
       "cleared": "Filter cleared. No alerts will be sent.",
-      "summary": "Confidence at least {conf}, {horizon}, {risk}, up to {max} per day."
+      "summary": "Confidence at least {conf}, {horizon}, {risk}, up to {max} per day.",
+      "rowSet": "Active",
+      "rowNotSet": "Not set"
     },
     "admin": {
       "title": "Admin",

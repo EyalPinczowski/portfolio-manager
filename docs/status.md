@@ -106,3 +106,10 @@ Last updated: 2026-10-03 21:05 UTC. Branch: `claude/stock-portfolio-assistant-jg
 - DONE: API test that a request preset and a per-holding override reach `scale_out_plan` (GET exit-levels and POST exit-review). It passed without code changes: per-holding beats the portfolio preset, a request preset applies for that call only. Note: a request `risk` also beats a holding override for that call (documented what-if).
 - DONE: `papertrading.benchmark_returns_for` + `resolve_call_with_benchmarks` fill `benchmark_returns` (^GSPC, ^TA125.TA, % change from the call's made_on to resolved_on, last close within `paper_benchmark_max_gap_days`=5) inside the single allowed resolution write. A benchmark without data is left out (null if none) with the reason logged and returned; never 0. Tests: `tests/test_paper_benchmarks.py`.
 - NOT BUILT: no scheduler job resolves PaperCall rows yet (only `resolve_call` exists, used by tests); the new function is what such a job must call. No response shapes changed.
+
+## Hebrew UI leftovers (frontend only)
+- New `frontend/lib/server-text.ts` maps stable codes and known fixed server sentences to messages: stop/target source codes (`exit.sources.*`, incl. `sma_N`), backend horizon labels ("3 months" -> `holding.horizons.*`), the plan note (hidden, the translated `exit.planNote` already shows), ATR/trailing reason shapes (`exit.reasonText.*`), and the incomplete-fit summary (`analyze.fitIncompleteSummary`). Unknown server text stays, wrapped in `<bdi dir="auto">`.
+- Source now sits on its own line (no more ":מקור" misplacement).
+- Mobile "+" button: `<main>` has `pb-24` below md. Settings hub row: short status (`prefs.ideas.rowSet/rowNotSet`), value wraps instead of truncating.
+- Tests: `tests/server-text.test.ts`, he case in `tests/exit-levels.test.tsx`. Vitest 468, lint, tsc, build, e2e (50) green. No backend change.
+- Note: other free-text reasons (e.g. support-level sentences, size-guidance rules) are still English server text; a backend reason code would be needed to translate them.

@@ -63,7 +63,7 @@ describe("hub", () => {
     expect(await within(hub).findByText("demo@example.com")).toBeInTheDocument();
     // current values are shown as muted trailing text
     expect(within(hub).getByRole("link", { name: new RegExp(`${en.prefs.sections.language}.*English|${en.prefs.sections.language}.*עברית`) })).toBeInTheDocument();
-    expect(within(hub).getByRole("link", { name: new RegExp(`${en.prefs.sections.ideaAlerts}.*${en.prefs.ideas.stateNotSet}`) })).toBeInTheDocument();
+    expect(within(hub).getByRole("link", { name: new RegExp(`${en.prefs.sections.ideaAlerts}.*${en.prefs.ideas.rowNotSet}`) })).toBeInTheDocument();
     expect(within(hub).getByRole("link", { name: new RegExp(`${en.prefs.sections.quietHours}.*${en.prefs.hub.off}`) })).toBeInTheDocument();
     cleanup();
     window.localStorage.setItem("pm.mock", "member");

@@ -114,7 +114,7 @@ export function SettingsHub() {
           r("weeklyReview", sec("weeklyReview"), <SettingsRow key="weeklyReview" label={sec("weeklyReview")} value={`${nf(`weekdays.${w.day}`)} ${w.time}`} icon={<ClockGlyph />} tone="orange" href={settingsHref("weeklyReview")} />),
           r("quietHours", sec("quietHours"), <SettingsRow key="quietHours" label={sec("quietHours")} value={s.quiet_hours ? `${s.quiet_hours.start}–${s.quiet_hours.end}` : t("hub.off")} icon={<ClockGlyph />} tone="purple" href={settingsHref("quietHours")} />),
           r("telegram", sec("telegram"), <SettingsRow key="telegram" label={sec("telegram")} value={telegramValue} icon={<SendGlyph />} tone="blue" href={settingsHref("telegram")} />),
-          r("ideas", sec("ideaAlerts"), <SettingsRow key="ideas" label={sec("ideaAlerts")} value={s.idea_alerts.state === "set" ? idea("stateSet") : idea("stateNotSet")} icon={<SparkGlyph />} tone="teal" href={settingsHref("ideas")} />),
+          r("ideas", sec("ideaAlerts"), <SettingsRow key="ideas" label={sec("ideaAlerts")} value={s.idea_alerts.state === "set" ? idea("rowSet") : idea("rowNotSet")} icon={<SparkGlyph />} tone="teal" href={settingsHref("ideas")} />),
         ],
       },
       {

@@ -183,3 +183,16 @@ describe("exit levels panel", () => {
     });
   });
 });
+
+describe("he exit levels show no English server sentences", () => {
+  it("translates plan note, reason, source and horizon", async () => {
+    vi.spyOn(api, "exitLevels").mockResolvedValue(result(1, "?risk=balanced"));
+    wrap("he", <ExitLevelsPanel holdingId={1} portfolioId={1} />);
+    const el = await screen.findByTestId("scale-plan");
+    expect(el.textContent).not.toMatch(/not an instruction/);
+    const stop = screen.getByTestId("level-stop");
+    expect(stop.textContent).not.toMatch(/ATR\(14\) below|Source:/);
+    expect(stop.textContent).toContain(he.exit.sources.atr);
+    expect(document.body.textContent).not.toMatch(/3 months/);
+  });
+});

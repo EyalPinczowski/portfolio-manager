@@ -115,7 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
           </div>
         </header>
-        <main id="main" className="mx-auto max-w-5xl space-y-4 px-4 py-4">{children}</main>
+        <main id="main" className="mx-auto max-w-5xl space-y-4 px-4 py-4 pb-24 md:pb-4">{children}</main>
         <Disclaimer />
       </div>
       <button

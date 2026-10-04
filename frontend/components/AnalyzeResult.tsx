@@ -5,6 +5,7 @@ import { api, ApiError, type AnalyzeOut, type AnalyzeQuery, type AskOut, type Ex
 import { DASH, formatMoney, formatNumber, formatPct, formatTime, formatWeight } from "@/lib/format";
 import { useAnalyze, usePortfolios, useWatchlist } from "@/lib/hooks";
 import { Link } from "@/i18n/navigation";
+import { isFitIncompleteSummary } from "@/lib/server-text";
 import { ExplanationView } from "./ExplanationView";
 import { HorizonPicker, Levels, NoLevels, WhyToggle } from "./ExitLevelsPanel";
 import { PnlText } from "./Pnl";
@@ -194,7 +195,7 @@ function FitSection({ d, portfolios, query, setQuery }: { d: AnalyzeOut; portfol
     <section className="card space-y-4" aria-label={t("fitTitle")} data-testid="fit-section" data-status={f.status}>
       <h2 className="text-lg font-bold">{t("fitTitle")}</h2>
       <p className={`${tone} text-sm`} role="status" data-testid="fit-status">{t(`fit.${f.status}`)}</p>
-      <p className="text-sm" dir="auto"><Txt>{f.summary}</Txt></p>
+      {f.status === "incomplete" && isFitIncompleteSummary(f.summary) ? <p className="text-sm">{t("fitIncompleteSummary")}</p> : <p className="text-sm" dir="auto"><Txt>{f.summary}</Txt></p>}
       {f.held ? (
         <p className="text-sm" data-testid="held">
           <span className="chip-brand">{t("held")}</span>{" "}

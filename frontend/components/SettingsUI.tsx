@@ -48,8 +48,8 @@ export function SettingsRow({ label, value, icon, tone, href, onClick, destructi
   const body = (
     <>
       {icon && <RowIcon tone={tone}>{icon}</RowIcon>}
-      <span className={`min-w-0 flex-1 ${destructive ? "font-medium text-loss" : ""}`}>{label}</span>
-      {value && <span className="max-w-[50%] truncate text-muted">{value}</span>}
+      <span className={`min-w-0 flex-1 break-words ${destructive ? "font-medium text-loss" : ""}`}>{label}</span>
+      {value && <span className="max-w-[45%] shrink-0 break-words text-end text-sm text-muted">{value}</span>}
       {(href || chevron) && <ChevronIcon className="h-4 w-4 shrink-0 text-muted" />}
     </>
   );

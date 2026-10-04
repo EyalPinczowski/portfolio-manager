@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { api, type ExitLevel, type ScaleOutPlan, type ExitLevelsResult, type Horizon } from "@/lib/api";
 import { DASH, formatMoney, formatNumber, formatPct, formatTime, formatWeight } from "@/lib/format";
 import { useExitLevels } from "@/lib/hooks";
+import { horizonFromLabel, isPlanNote, matchStopReason, sourceKey } from "@/lib/server-text";
 import { ExplanationView } from "./ExplanationView";
 import { PnlText } from "./Pnl";
 
@@ -63,6 +64,20 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
+/** Reason in the user's language when the sentence is a known shape (else server text in a <bdi>), then the source on its own line. */
+function LevelReason({ lv }: { lv: ExitLevel }) {
+  const t = useTranslations("exit");
+  const m = matchStopReason(lv.reason);
+  const sk = sourceKey(lv.source);
+  const src = sk ? t(`sources.${sk.key}` as "sources.atr", { n: sk.n ?? "" }) : lv.source;
+  return (
+    <div className="text-sm text-muted">
+      <p dir="auto">{m ? t(`reasonText.${m.key}` as "reasonText.atr", m.values) : <bdi dir="auto">{lv.reason}</bdi>}</p>
+      <p className="text-caption">{t("source", { source: src })}</p>
+    </div>
+  );
+}
+
 export function LevelCard({ lv, currency, uid }: { lv: ExitLevel; currency: string; uid: string }) {
   const t = useTranslations("exit");
   const locale = useLocale();
@@ -92,7 +107,7 @@ export function LevelCard({ lv, currency, uid }: { lv: ExitLevel; currency: stri
           <Stat label={t("rr")}><span dir="ltr" className="tabular-nums">{finite(lv.rr) ? `1:${formatNumber(lv.rr, locale, 2)}` : DASH}</span></Stat>
         )}
       </dl>
-      <p className="text-sm text-muted" dir="auto"><bdi dir="auto">{lv.reason}</bdi> · {t("source", { source: lv.source })}</p>
+      <LevelReason lv={lv} />
       {lv.kind === "trailing_stop" && <p className="text-caption text-muted">{t("trailNote")}</p>}
       <WhyToggle id={`why-${uid}`}><ExplanationView e={lv.explanation} currency={currency} /></WhyToggle>
     </li>
@@ -131,7 +146,7 @@ export function ScalePlan({ plan, r, uid }: { plan: ScaleOutPlan; r: ExitLevelsR
       </ul>
       <p className="text-sm">{t("planTrailRule", { scale: formatNumber(plan.trail_atr_scale, locale, 2) })}</p>
       <p className="text-sm">{t("planBreakeven", { atr: formatNumber(plan.breakeven_atr_multiple, locale, 2) })}</p>
-      <p className="text-sm text-muted" dir="auto"><bdi dir="auto">{plan.note}</bdi></p>
+      {!isPlanNote(plan.note) && <p className="text-sm text-muted" dir="auto"><bdi dir="auto">{plan.note}</bdi></p>}
       <p className="text-caption text-muted">{t("planNote")}</p>
       <WhyToggle id={`why-${uid}-plan`}><ExplanationView e={plan.explanation} currency={cur} /></WhyToggle>
     </section>
@@ -140,14 +155,17 @@ export function ScalePlan({ plan, r, uid }: { plan: ScaleOutPlan; r: ExitLevelsR
 
 export function Levels({ r, uid }: { r: ExitLevelsResult; uid: string }) {
   const t = useTranslations("exit");
+  const h = useTranslations("holding");
   const locale = useLocale();
   const cur = r.currency ?? "ILS";
+  const hz = horizonFromLabel(r.horizon_label) ?? r.horizon ?? null;
+  const horizonText = hz ? h(`horizons.${hz}`) : (r.horizon_label ?? "");
   const stops = [r.stop, r.trailing_stop, r.breakeven].filter((x): x is ExitLevel => !!x);
   const sg = r.size_guidance;
   const rs = r.risk_to_stop;
   return (
     <div className="space-y-4">
-      <p className="font-medium">{t("headline", { horizon: r.horizon_label ?? "" })}</p>
+      <p className="font-medium">{t("headline", { horizon: horizonText })}</p>
       {finite(r.price) && (
         <p className="text-sm text-muted">
           {t("priceAsOf", { price: formatMoney(r.price, cur, locale), time: r.price_as_of ? `${formatTime(r.price_as_of, locale)}` : DASH })}
