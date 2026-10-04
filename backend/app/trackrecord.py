@@ -32,7 +32,7 @@ _OUTCOME_NAMES: dict[str, CallOutcome] = {
 
 class BenchmarkResult(BaseModel):
     name: str
-    return_pct: float  # buy-and-hold over the same span, as recorded when the call was resolved
+    return_pct: float  # holding the index unchanged over the same span, as recorded when the call was resolved
     excess_pct: float | None  # the call's edge over it, in percentage points
 
 
@@ -91,7 +91,7 @@ def _methodology(s: Settings) -> list[str]:
         "Calls are recorded when they are made and are never edited afterwards; the outcome is "
         "added once.",
         "Return is the asset's own move from the price at the call to the price at the outcome. "
-        "The benchmark return is a buy-and-hold of the index over the same span.",
+        "The benchmark return is the return of simply holding the index over the same span.",
         "Excess return is measured in the direction the call was made, in percentage points. A "
         "call is a hit against a benchmark when its excess return is above zero.",
         "Calls that ended in an operational error, and calls still waiting for a resolution, are "
