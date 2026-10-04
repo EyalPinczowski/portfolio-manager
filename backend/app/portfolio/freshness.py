@@ -23,6 +23,8 @@ def price_is_fresh(
     s = settings or get_settings()
     if holding.price_source != "quote" or holding.stale or holding.as_of is None:
         return False  # a cost or screenshot price is never fresh
+    if holding.price_basis != "live" or holding.quote_flag is not None:
+        return False  # a daily/last-close fallback, or two sources that disagree: never fresh
     market = holding.security.market
     window = timedelta(
         minutes=s.price_fresh_window_minutes.get(market, s.quote_stale_after_minutes)
@@ -37,3 +39,29 @@ def price_is_fresh(
         return False  # the market is open and the quote did not move for a whole window
     close = last_session_close(market, at, s)
     return close is not None and quote_at >= close - window
+
+
+class StalePriceError(ValueError):
+    """Exit levels were asked for on a price that is not a fresh market price."""
+
+    def __init__(self, symbol: str, reason: str) -> None:
+        super().__init__(f"{symbol}: no fresh price for exit levels ({reason})")
+        self.symbol, self.reason = symbol, reason
+
+
+def exit_level_price(
+    holding: ValuedHolding, now: datetime | None = None, settings: Settings | None = None
+) -> float:
+    """The only price exit-level code may start from: a fresh live quote, never a cost price, a
+    screenshot price, a last-close fallback, a flagged quote or an old row. Raises
+    `StalePriceError` (the API answers `needs_fresh_price`) instead of guessing."""
+    sym = holding.holding.symbol
+    if holding.price_source != "quote":
+        raise StalePriceError(sym, f"price is a {holding.price_source} placeholder")
+    if holding.quote_flag is not None:
+        raise StalePriceError(sym, holding.quote_flag)
+    if holding.price_basis != "live":
+        raise StalePriceError(sym, "last close only, dated " + str(holding.as_of))
+    if not price_is_fresh(holding, now, settings) or holding.price <= 0:
+        raise StalePriceError(sym, f"quote from {holding.as_of} is too old")
+    return holding.price

@@ -2046,6 +2046,54 @@
             "type": "boolean",
             "title": "Price Stale",
             "default": false
+          },
+          "price_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Source"
+          },
+          "price_basis": {
+            "type": "string",
+            "enum": [
+              "live",
+              "last_close"
+            ],
+            "title": "Price Basis",
+            "default": "live"
+          },
+          "price_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price As Of"
+          },
+          "price_is_fresh": {
+            "type": "boolean",
+            "title": "Price Is Fresh",
+            "default": false
+          },
+          "price_flag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Flag"
           }
         },
         "type": "object",
@@ -3865,6 +3913,46 @@
           "fx_stale": {
             "type": "boolean",
             "title": "Fx Stale"
+          },
+          "fx_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Source"
+          },
+          "fx_basis": {
+            "type": "string",
+            "enum": [
+              "live",
+              "last_close"
+            ],
+            "title": "Fx Basis",
+            "default": "live"
+          },
+          "fx_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx As Of"
+          },
+          "price_sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Price Sources",
+            "default": []
           },
           "weekly_bars": {
             "items": {

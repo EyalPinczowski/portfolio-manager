@@ -122,6 +122,16 @@ def build_summary(
         "since_start_series": series,
         "week_start": this_week,
         "fx_stale": any(v.fx_stale for v in valuations) if valuations else False,
+        "fx_source": valuations[0].fx_source if valuations else None,
+        "fx_basis": valuations[0].fx_basis if valuations else "live",
+        "fx_as_of": (
+            as_utc(valuations[0].fx_as_of).astimezone(UTC).isoformat()
+            if valuations and valuations[0].fx_as_of is not None
+            else None
+        ),
+        "price_sources": sorted(
+            {h.quote_source for v in valuations for h in v.holdings if h.quote_source}
+        ),
         "as_of": as_utc(as_of).astimezone(UTC).isoformat(),
         "markets": markets_status(now_dt, s),
     }

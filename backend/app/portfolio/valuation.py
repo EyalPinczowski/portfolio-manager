@@ -56,6 +56,9 @@ class ValuedHolding:
     # In the time-weighted return: a real (quote/screenshot) price and no outstanding marker.
     performance_priced: bool = False
     usd_ils: float = 1.0  # the FX rate this valuation used
+    quote_source: str | None = None  # which provider produced the price (quote rows only)
+    price_basis: str = "live"  # live | last_close (a daily/EOD price, shown with its date)
+    quote_flag: str | None = None  # e.g. price_disagreement
 
 
 @dataclass
@@ -63,6 +66,9 @@ class PortfolioValuation:
     holdings: list[ValuedHolding] = field(default_factory=list)
     usd_ils: float = 1.0
     fx_stale: bool = False
+    fx_source: str | None = None  # provider of the USD/ILS quote (yfinance, frankfurter, boi)
+    fx_basis: str = "live"  # "last_close": a daily reference rate
+    fx_as_of: datetime | None = None
     total_ils: float = 0.0
     total_usd: float = 0.0
     performance_total_ils: float = 0.0  # holdings with a real price only: what snapshots store
@@ -106,7 +112,13 @@ def value_portfolio(
     fx = get_fx_rate(db, s)
     usd_ils = fx.usd_ils
     holdings = db.exec(select(Holding).where(Holding.portfolio_id == portfolio.id)).all()
-    out = PortfolioValuation(usd_ils=usd_ils, fx_stale=fx.stale)
+    out = PortfolioValuation(
+        usd_ils=usd_ils,
+        fx_stale=fx.stale,
+        fx_source=fx.quote_source,
+        fx_basis=fx.basis,
+        fx_as_of=fx.as_of,
+    )
     broker_prices = screenshot_prices(db, portfolio.id) if portfolio.id is not None else {}
     waiting = set(pending_markers(db, portfolio.id)) if portfolio.id is not None else set()
     for h in holdings:
@@ -162,6 +174,11 @@ def value_portfolio(
                 source,
                 performance_priced=source != "cost" and price > 0 and h.id not in waiting,
                 usd_ils=usd_ils,
+                quote_source=quote.source if source == "quote" and quote is not None else None,
+                price_basis=quote.basis
+                if source == "quote" and quote is not None
+                else "last_close",
+                quote_flag=quote.flag if source == "quote" and quote is not None else None,
             )
         )
         if as_of is not None and (out.as_of is None or as_of > out.as_of):

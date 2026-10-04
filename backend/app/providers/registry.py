@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from functools import lru_cache
 
+from app.config import get_settings
 from app.providers.base import HistoryProvider, OcrProvider, QuoteProvider
+from app.providers.chain import ChainedHistoryProvider, ChainedQuoteProvider, build_sources
 from app.providers.ocr import get_ocr_provider
 from app.providers.yfinance_provider import YFinanceProvider
 
@@ -67,7 +69,12 @@ def _default() -> Providers:
     yf.currency_hint = _security_currency
     yf.stored_currency = _stored_yahoo_currency
     yf.store_currency = _store_yahoo_currency
-    return Providers(quotes=yf, history=yf)
+    settings = get_settings()
+    sources = build_sources(settings)  # shared: one budget and cache per vendor
+    return Providers(
+        quotes=ChainedQuoteProvider(yf, settings, sources),
+        history=ChainedHistoryProvider(yf, settings, sources),
+    )
 
 
 def get_providers() -> Providers:

@@ -43,6 +43,30 @@ StopStructure = Literal[
 ]
 
 
+class QuoteSourceLimits(BaseModel):
+    """Cache, rate and back-off settings of one price source (config, never code constants)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    ttl_seconds: float = Field(default=300.0, ge=0)  # a fetched quote/bar set is reused this long
+    max_calls_per_minute: int = Field(default=30, gt=0)  # our own budget, below the vendor's
+    breaker_cooldown_seconds: float = Field(default=900.0, ge=0)  # pause after a 403/429
+    timeout_seconds: float = Field(default=8.0, gt=0)
+
+
+def default_quote_source_limits() -> dict[str, QuoteSourceLimits]:
+    """quote-sources-2026-10-03.md: Finnhub 60/min, CoinGecko demo 30/min, Stooq quota unpublished,
+    FMP 250/day, FX daily rates cached 24 h."""
+    return {
+        "finnhub": QuoteSourceLimits(ttl_seconds=300, max_calls_per_minute=50),
+        "coingecko": QuoteSourceLimits(ttl_seconds=180, max_calls_per_minute=20),
+        "stooq": QuoteSourceLimits(ttl_seconds=6 * 3600, max_calls_per_minute=10),
+        "fmp": QuoteSourceLimits(ttl_seconds=24 * 3600, max_calls_per_minute=10),
+        "frankfurter": QuoteSourceLimits(ttl_seconds=24 * 3600, max_calls_per_minute=10),
+        "boi": QuoteSourceLimits(ttl_seconds=24 * 3600, max_calls_per_minute=10),
+    }
+
+
 class HorizonSpec(BaseModel):
     """How exit levels are computed for one holding period (the README horizon table)."""
 
@@ -243,6 +267,59 @@ class Settings(BaseSettings):
     price_fresh_window_minutes: dict[str, int] = Field(
         default_factory=lambda: {"US": 60, "TASE": 60, "CRYPTO": 30}
     )
+    # --- fallback price sources (docs/reviews/quote-sources-2026-10-03.md) ---
+    # A source with no key is disabled (never an error). Yahoo stays the primary.
+    finnhub_api_key: str | None = None  # US live quote, free 60/min
+    coingecko_api_key: str | None = None  # crypto, demo key (attribution required)
+    fmp_api_key: str | None = None  # US daily history, free 250 calls/day
+    stooq_api_key: str | None = None  # US last close + history (optional third source)
+    quote_fallback_enabled: bool = True
+    # Source order per market (first success wins). TASE has no free fallback: it keeps the last
+    # stored close, labelled with its date, and is never fresh through a fallback.
+    quote_fallback_order: dict[str, list[str]] = Field(
+        default_factory=lambda: {
+            "US": ["finnhub", "stooq"],
+            "CRYPTO": ["coingecko"],
+            "TASE": [],
+            "FX": ["frankfurter", "boi"],
+        }
+    )
+    history_fallback_order: dict[str, list[str]] = Field(
+        default_factory=lambda: {"US": ["fmp", "stooq"], "CRYPTO": [], "TASE": []}
+    )
+    quote_source_limits: dict[str, QuoteSourceLimits] = Field(
+        default_factory=default_quote_source_limits
+    )
+    finnhub_base_url: str = "https://finnhub.io/api/v1"
+    coingecko_base_url: str = "https://api.coingecko.com/api/v3"
+    stooq_base_url: str = "https://stooq.com"
+    fmp_base_url: str = "https://financialmodelingprep.com"
+    frankfurter_base_url: str = "https://api.frankfurter.dev/v1"
+    boi_rates_url: str = "https://www.boi.org.il/PublicApi/GetExchangeRates?asXml=true"
+    # Yahoo crypto symbol (BTC-USD) -> CoinGecko coin id.
+    coingecko_ids: dict[str, str] = Field(
+        default_factory=lambda: {
+            "BTC-USD": "bitcoin",
+            "ETH-USD": "ethereum",
+            "SOL-USD": "solana",
+            "XRP-USD": "ripple",
+            "ADA-USD": "cardano",
+            "DOGE-USD": "dogecoin",
+            "LTC-USD": "litecoin",
+            "BNB-USD": "binancecoin",
+        }
+    )
+    # Two live sources more than this far apart: the quote is flagged `price_disagreement` (and is
+    # never "fresh" for exit levels) instead of being stored silently.
+    quote_disagreement_pct: float = 5.0
+    # Cross-check the primary against a live fallback for at most this many symbols per cycle.
+    quote_crosscheck_max_symbols: int = 10
+    # A fallback history is used only when it matches the primary's overlapping closes this closely;
+    # otherwise it carries `history_source_mismatch`.
+    history_mismatch_tolerance_pct: float = 2.0
+    history_overlap_min_days: int = 5
+    # A USD/ILS rate outside this range is a parse error, not a rate.
+    fx_plausible_range: tuple[float, float] = (1.5, 8.0)
     # The holding-period table that drives exit levels (README "Holding period"). Keys must be
     # exactly HORIZONS; override it as JSON in the HORIZON_TABLE env var.
     horizon_table: dict[str, HorizonSpec] = Field(default_factory=default_horizon_table)

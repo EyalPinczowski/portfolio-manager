@@ -169,6 +169,11 @@ class PriceQuote(SQLModel, table=True):
     currency: str
     change_pct: float | None = None
     as_of: NaiveDatetime = Field(default_factory=utcnow)
+    source: str = Field(default="yfinance", sa_column_kwargs={"server_default": "yfinance"})
+    basis: str = Field(
+        default="live", sa_column_kwargs={"server_default": "live"}
+    )  # live|last_close
+    flag: str | None = None
 
 
 class PriceAlert(SQLModel, table=True):

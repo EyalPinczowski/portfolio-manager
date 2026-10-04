@@ -33,15 +33,21 @@ def store_quotes(db: Session, quotes: Iterable[Quote]) -> int:
                     currency=q.currency,
                     change_pct=q.change_pct,
                     as_of=q.as_of,
+                    source=q.source,
+                    basis=q.basis,
+                    flag=q.flag,
                 )
             )
         else:
+            if q.as_of < row.as_of:
+                continue  # an older price (a daily fallback) never overwrites a newer one
             row.price, row.currency, row.change_pct, row.as_of = (
                 q.price,
                 q.currency,
                 q.change_pct,
                 q.as_of,
             )
+            row.source, row.basis, row.flag = q.source, q.basis, q.flag
             db.add(row)
         n += 1
         sec = db.get(Security, q.symbol)

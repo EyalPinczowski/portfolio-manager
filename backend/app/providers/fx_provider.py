@@ -24,6 +24,8 @@ class FxRate:
     stale: bool  # True when the rate is old, or is a last-known / configured fallback
     as_of: datetime | None  # naive UTC; None when the value is the configured constant
     source: str  # quote | stale_quote | last_transaction | config
+    quote_source: str | None = None  # provider of a quote row (yfinance, frankfurter, boi)
+    basis: str = "live"  # "last_close": a daily reference rate, shown with its date
 
 
 def get_fx_rate(
@@ -40,7 +42,14 @@ def get_fx_rate(
     if quote is not None and quote.price > 0:
         age = now_dt - quote.as_of
         stale = age > timedelta(hours=s.fx_stale_after_hours)
-        return FxRate(float(quote.price), stale, quote.as_of, "stale_quote" if stale else "quote")
+        return FxRate(
+            float(quote.price),
+            stale,
+            quote.as_of,
+            "stale_quote" if stale else "quote",
+            quote.source,
+            quote.basis,
+        )
     last = db.exec(
         select(Transaction)
         .where(Transaction.currency == "USD", Transaction.fx_to_ils > 0)

@@ -32,6 +32,7 @@ from app.models import (
     PortfolioSnapshot,
     Transaction,
 )
+from app.portfolio.freshness import price_is_fresh
 from app.portfolio.heatmap import build_heatmap
 from app.portfolio.quotes import refresh_symbols
 from app.portfolio.screenshot import update_is_stale
@@ -130,6 +131,11 @@ def holding_outs(
                 stop_tp_status="needs_horizon" if h.horizon is None else "missing",
                 score_card=mini,
                 price_stale=v.stale,
+                price_source=v.quote_source,
+                price_basis=v.price_basis,  # type: ignore[arg-type]
+                price_as_of=as_utc(v.as_of) if v.as_of is not None else None,
+                price_is_fresh=price_is_fresh(v),
+                price_flag=v.quote_flag,
             )
         )
     out.sort(key=lambda x: x.value_ils, reverse=True)

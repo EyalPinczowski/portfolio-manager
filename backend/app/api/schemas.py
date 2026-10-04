@@ -200,6 +200,10 @@ class SummaryOut(BaseModel):
     screenshot_update_stale: bool = False
     week_start: date  # Sunday of the current week in Asia/Jerusalem (setting `week_start_day`)
     fx_stale: bool  # USD/ILS is old or a fallback: the ILS/USD figures are approximate
+    fx_source: str | None = None  # yfinance | frankfurter | boi
+    fx_basis: Literal["live", "last_close"] = "live"  # last_close: a daily reference rate
+    fx_as_of: datetime | None = None
+    price_sources: list[str] = []  # providers behind the holdings' prices (for the footer credit)
     weekly_bars: list[WeeklyBar]
     monthly_bars: list[MonthlyBar]
     since_start_series: list[SeriesPoint]
@@ -233,6 +237,12 @@ class HoldingOut(BaseModel):
     stop_tp_status: Literal["missing", "needs_horizon"]
     score_card: ScoreCardMini
     price_stale: bool = False
+    # Where the price came from and how current it is (the UI shows "Delayed" / "Last close, <date>").
+    price_source: str | None = None  # yfinance | finnhub | coingecko | ... ; null: cost/screenshot
+    price_basis: Literal["live", "last_close"] = "live"
+    price_as_of: datetime | None = None
+    price_is_fresh: bool = False  # true only for a fresh live quote (the exit-level gate)
+    price_flag: str | None = None  # e.g. price_disagreement
 
 
 class HoldingCreate(Body):

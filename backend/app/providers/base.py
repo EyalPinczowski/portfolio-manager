@@ -25,12 +25,21 @@ AGOROT_CODES = {"ILA", "ILX"}
 OHLC_COLUMNS = ("Open", "High", "Low", "Close")
 
 
+QuoteBasis = Literal["live", "last_close"]
+QUOTE_FLAG_DISAGREEMENT = "price_disagreement"
+
+
 class Quote(BaseModel):
     symbol: str
     price: float  # normalised (ILA -> ILS)
     currency: str  # normalised
     change_pct: float | None = None
     as_of: datetime  # naive UTC
+    source: str = "yfinance"  # which provider produced the price
+    # "live": a current market price. "last_close": an end-of-day or daily reference price, shown
+    # with its date and never fresh enough for exit levels.
+    basis: QuoteBasis = "live"
+    flag: str | None = None  # e.g. "price_disagreement" (two live sources > N % apart)
 
 
 def is_pence(currency: str | None) -> bool:
