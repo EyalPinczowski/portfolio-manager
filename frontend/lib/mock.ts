@@ -11,12 +11,13 @@ import { mockPatchXrayRules, mockTrackRecord, mockXrayRuleResults, mockXrayRules
 import { mockExitLevels, mockExitReview, type ExitSeed } from "./mock-exit";
 import { mockSettingsRequest, NOT_HANDLED } from "./mock-settings";
 import { mockBuyIdeas } from "./mock-ideas";
+import { mockDividends, mockFund, mockFundSearch } from "./mock-funds";
 import {
   mockAnalyze, mockAsk, mockHistoryDelete, mockSearchHistory, mockSearchHits, mockWatchAdd, mockWatchDelete, mockWatchlist,
   type AnalyzeCtx,
 } from "./mock-analyze";
 
-const exitSeed = (s: { id: number; symbol: string; en: string; he: string; cur: string; qty: number; price: number; cost: number | null; horizon: Horizon | null; stale?: boolean; noData?: boolean }): ExitSeed => s;
+const exitSeed = (s: { id: number; symbol: string; en: string; he: string; cur: string; qty: number; price: number; cost: number | null; horizon: Horizon | null; stale?: boolean; noData?: boolean; fund?: unknown }): ExitSeed => ({ ...s, fund: !!s.fund });
 
 const FX = 3.7; // USD/ILS
 const AS_OF = "2026-10-03T08:55:00Z";
@@ -52,6 +53,8 @@ interface Seed {
   stale?: boolean;
   /** No signal data yet (new listing): score card is unavailable, confidence 0. */
   noData?: boolean;
+  /** An Israeli fund (symbol GEMEL-<id>): no unit price, only the value the user entered. */
+  fund?: { fundId: string; track: string | null; manual: number | null; asOf: string | null; costOnly: boolean };
 }
 const SEEDS: Seed[] = [
   { id: 1, pid: 1, symbol: "TEVA.TA", en: "Teva", he: "טבע", type: "stock", market: "TASE", qty: 600, price: 62.4, cur: "ILS", chg: 1.8, cost: 51.2, horizon: "3m", tech: 42, pat: 25, conf: 0.7, sector: "Healthcare", country: "Israel" },
@@ -85,8 +88,14 @@ function holdingsFor(pid: number): Holding[] {
       id: s.id, symbol: s.symbol, name_en: s.en, name_he: s.he, asset_type: s.type, market: s.market,
       quantity: s.qty, price: s.price, currency: s.cur, day_change_pct: s.chg, value_ils: v,
       pnl: cost === null ? null : { ils: v - cost, usd: (v - cost) / FX, pct: ((v - cost) / cost) * 100 },
-      price_stale: !!s.stale,
-      price_basis: s.stale ? "last_close" : "live", price_is_fresh: !s.stale,
+      price_stale: !!s.stale || !!s.fund,
+      price_basis: s.stale || s.fund ? "last_close" : "live", price_is_fresh: !s.stale && !s.fund,
+      ...(s.fund ? { fund: {
+        fund_id: s.fund.fundId, track: s.fund.track, value_basis: s.fund.manual !== null ? "manual_value" : s.fund.costOnly ? "cost_only" : "no_value",
+        manual_value_ils: s.fund.manual, manual_value_as_of: s.fund.asOf,
+        flags: s.fund.manual !== null ? ["monthly_data_only", "no_price_manual_value"] : ["monthly_data_only", "no_price_manual_value", s.fund.costOnly ? "cost_only" : "no_value"],
+        credit: "Data: GemelNet (Ministry of Finance), personal non-commercial use.",
+      } } : {}),
       weight_pct: (v / total) * 100, horizon: s.horizon,
       stop_tp_status: s.horizon ? "missing" : "needs_horizon",
       score_card: {
@@ -378,6 +387,12 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
     if (r !== NOT_HANDLED) return r;
   }
   if ((m = p.match(/^\/portfolios\/(\d+)\/buy-ideas$/)) && method === "POST") return mockBuyIdeas(Number(m[1]), b, PORTFOLIOS.some((x) => x.id === Number(m![1])));
+  if (p === "/funds/search") return mockFundSearch(new URLSearchParams(path.split("?")[1] ?? "").get("q") ?? "");
+  if ((m = p.match(/^\/funds\/([^/]+)$/))) return mockFund(decodeURIComponent(m[1]));
+  if ((m = p.match(/^\/portfolios\/(\d+)\/dividends$/))) {
+    if (!PORTFOLIOS.some((x) => x.id === Number(m![1]))) throw new ApiError(404, "Not found");
+    return mockDividends(Number(m[1]));
+  }
   if (p === "/portfolios") {
     if (method === "POST") { const np = { id: PORTFOLIOS.length + 1, name: String(b.name), base_currency: (b.base_currency as "ILS") ?? "ILS", risk_filter: { ...PRESETS[2] }, tracking_started_at: null, last_screenshot_update_at: null, screenshot_update_stale: false, created_at: AS_OF }; PORTFOLIOS.push(np); return np; }
     return mockScenario() === "empty" ? [] : PORTFOLIOS;
@@ -387,6 +402,7 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
   if ((m = p.match(/^\/portfolios\/(\d+)\/holdings\/(\d+)$/)) && method === "PATCH") {
     const s = SEEDS.find((x) => x.id === Number(m![2]));
     if (s && "horizon" in b) s.horizon = (b.horizon as Horizon | null) ?? null;
+    if (s?.fund && typeof b.manual_value_ils === "number") { s.fund.manual = b.manual_value_ils; s.price = b.manual_value_ils; s.fund.asOf = typeof b.manual_value_as_of === "string" ? b.manual_value_as_of : s.fund.asOf; }
     return holdingsFor(Number(m[1])).find((h) => h.id === Number(m![2]));
   }
   if ((m = p.match(/^\/portfolios\/(\d+)\/holdings$/)) && method === "POST") {
@@ -396,6 +412,21 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
     if (!/^[A-Z0-9.^=-]{1,20}$/.test(symbol)) throw new ApiError(422, "Validation error", undefined, { detail: [{ type: "string_pattern_mismatch", loc: ["body", "symbol"], msg: "String should match pattern" }] });
     if (!(qty > 0) || qty > 1e12) throw new ApiError(422, "Validation error", undefined, { detail: [{ type: "greater_than", loc: ["body", "quantity"], msg: "Input should be greater than 0" }] });
     if (SEEDS.some((x) => x.pid === pid && x.symbol === symbol)) throw new ApiError(409, `${symbol} is already in this portfolio`);
+    if (symbol.startsWith("GEMEL-")) {
+      const fundId = symbol.slice(6);
+      const manual = typeof b.manual_value_ils === "number" ? b.manual_value_ils : null;
+      const asOf = typeof b.manual_value_as_of === "string" ? b.manual_value_as_of : null;
+      if (asOf !== null && asOf > AS_OF.slice(0, 10)) throw new ApiError(422, "Validation error", undefined, { detail: [{ type: "value_error", loc: ["body", "manual_value_as_of"], msg: "manual_value_as_of cannot be in the future" }] });
+      const name = typeof b.fund_name === "string" ? b.fund_name : `Fund ${fundId}`;
+      const fseed: Seed = {
+        id: Math.max(...SEEDS.map((x) => x.id)) + 1, pid, symbol, en: name, he: name, type: "fund", market: "TASE", qty, price: manual ?? 0, cur: "ILS", chg: 0,
+        cost: typeof b.avg_cost === "number" ? b.avg_cost : null, horizon: (b.horizon as Horizon | null | undefined) ?? null,
+        tech: 0, pat: 0, conf: 0, sector: "Funds", country: "Israel", noData: true,
+        fund: { fundId, track: typeof b.track === "string" ? b.track : null, manual, asOf, costOnly: typeof b.avg_cost === "number" },
+      };
+      SEEDS.push(fseed);
+      return holdingsFor(pid).find((h) => h.id === fseed.id);
+    }
     const cur = symbol.endsWith(".TA") ? "ILS" : "USD";
     const seed: Seed = {
       id: Math.max(...SEEDS.map((x) => x.id)) + 1, pid, symbol, en: symbol, he: symbol, type: symbol.endsWith("-USD") ? "crypto" : "stock",

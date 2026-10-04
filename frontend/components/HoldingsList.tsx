@@ -1,7 +1,7 @@
 "use client";
 import { useLocale, useTranslations } from "next-intl";
 import type { Holding } from "@/lib/api";
-import { DASH, formatMoney, formatWeight } from "@/lib/format";
+import { DASH, formatDate, formatMoney, formatWeight } from "@/lib/format";
 import { holdingHref } from "@/lib/routes";
 import { Link } from "@/i18n/navigation";
 import { ChevronIcon } from "./icons";
@@ -13,6 +13,18 @@ const finite = (n: number | null | undefined): n is number => typeof n === "numb
 export function StatusChips({ h }: { h: Holding }) {
   const t = useTranslations("holdings");
   const noData = h.score_card?.confidence === 0 || !finite(h.price) || h.price <= 0;
+  if (h.fund) {
+    const basis = h.fund.value_basis;
+    return (
+      <ul className="flex flex-wrap gap-1.5" aria-label={t("status")}>
+        <li className="chip-neutral">{t("fundChip")}</li>
+        {basis === "manual_value" && <li className="chip-brand">{t("manualChip")}</li>}
+        {basis === "cost_only" && <li className="chip-warn">{t("costOnlyChip")}</li>}
+        {basis === "no_value" && <li className="chip-warn">{t("noValueChip")}</li>}
+        {h.price_stale && <li className="chip-warn" title={t("fundStaleHint")}>{t("stale")}</li>}
+      </ul>
+    );
+  }
   const needsHorizon = h.stop_tp_status === "needs_horizon";
   const stopMissing = h.stop_tp_status === "missing";
   return (
@@ -23,6 +35,27 @@ export function StatusChips({ h }: { h: Holding }) {
       {h.price_stale && <li className="chip-warn" title={t("staleHint")}>{t("stale")}</li>}
       {noData && <li className="chip-neutral">{t("noData")}</li>}
     </ul>
+  );
+}
+
+/** A fund has no unit price: show the value the user entered and the date it refers to, never a made-up price. */
+function FundValue({ h }: { h: Holding }) {
+  const t = useTranslations("holdings");
+  const locale = useLocale();
+  const f = h.fund;
+  if (!f) return null;
+  return (
+    <div className="shrink-0 text-end" data-testid="fund-value">
+      {f.value_basis === "manual_value" && finite(f.manual_value_ils) ? (
+        <>
+          <p className="font-semibold tabular-nums" dir="ltr">{formatMoney(f.manual_value_ils, "ILS", locale)}</p>
+          <p className="text-caption text-muted">{t("manualAsOf", { date: formatDate(f.manual_value_as_of) })}</p>
+        </>
+      ) : (
+        <p className="text-sm text-muted">{DASH}<span className="block text-caption">{f.value_basis === "cost_only" ? t("fundCostOnly") : t("fundNoValue")}</span></p>
+      )}
+      {f.track && <p className="text-caption text-muted"><bdi dir="auto">{f.track}</bdi></p>}
+    </div>
   );
 }
 
@@ -43,10 +76,12 @@ export function HoldingCard({ h }: { h: Holding }) {
           <p className="break-words font-semibold">{name}</p>
           <p className="text-caption text-muted" dir="ltr">{h.symbol}</p>
         </div>
-        <div className="shrink-0 text-end">
-          <p className="font-semibold tabular-nums" dir="ltr">{hasPrice ? formatMoney(h.price, h.currency, locale) : DASH}</p>
-          <p className="text-sm"><PnlText pct={h.day_change_pct} locale={locale} /> <span className="text-caption text-muted">{t("today")}</span></p>
-        </div>
+        {h.fund ? <FundValue h={h} /> : (
+          <div className="shrink-0 text-end">
+            <p className="font-semibold tabular-nums" dir="ltr">{hasPrice ? formatMoney(h.price, h.currency, locale) : DASH}</p>
+            <p className="text-sm"><PnlText pct={h.day_change_pct} locale={locale} /> <span className="text-caption text-muted">{t("today")}</span></p>
+          </div>
+        )}
       </div>
       <div className="flex items-center justify-between gap-3 border-t border-line pt-2 text-sm">
         <span className="text-muted">{t("pnl")}</span>

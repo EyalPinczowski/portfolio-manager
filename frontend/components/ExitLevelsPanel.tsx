@@ -243,8 +243,8 @@ export function NoLevels({ r }: { r: ExitLevelsResult }) {
     <div className="space-y-2 rounded-xl bg-warn-bg p-3 text-warn-fg" role="status">
       <p className="font-semibold">{t("noLevelsTitle")}</p>
       <p>{t.has(`reason.${code}`) ? t(`reason.${code}`) : r.reason}</p>
-      {r.reason && <p className="text-sm" dir="auto"><bdi dir="auto">{r.reason}</bdi></p>}
-      <p className="text-sm">{t("noLevelsNumbers")}</p>
+      {r.reason && code !== "fund_no_levels" && <p className="text-sm" dir="auto"><bdi dir="auto">{r.reason}</bdi></p>}
+      <p className="text-sm">{code === "fund_no_levels" ? t("fundNoLevelsNote") : t("noLevelsNumbers")}</p>
     </div>
   );
 }
@@ -310,10 +310,12 @@ export function ExitLevelsPanel({ holdingId, portfolioId, onHorizonSaved }: {
           </p>
         )}
         {data.status === "no_levels" ? <NoLevels r={data} /> : <Levels r={data} uid={`h${holdingId}`} />}
-        <div className="space-y-2">
-          <p className="text-sm text-muted">{t("whatIf")}</p>
-          <HorizonPicker value={whatIf} onPick={setWhatIf} label={t("whatIf")} />
-        </div>
+        {data.reason_code !== "fund_no_levels" && (
+          <div className="space-y-2">
+            <p className="text-sm text-muted">{t("whatIf")}</p>
+            <HorizonPicker value={whatIf} onPick={setWhatIf} label={t("whatIf")} />
+          </div>
+        )}
         {data.disclaimer && <p className="text-xs text-muted">{data.disclaimer}</p>}
       </div>
     );

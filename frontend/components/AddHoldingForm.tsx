@@ -6,6 +6,7 @@ import { api, ApiError, type Horizon, type HoldingCreate, type Portfolio } from 
 import { parseLocaleNumber } from "@/lib/number";
 import { MAX_QTY } from "@/lib/import-rows";
 import { Modal } from "./Modal";
+import { FundAddFlow } from "./FundAddFlow";
 
 const HORIZONS: Horizon[] = ["1w", "1m", "3m", "6m", "1y"];
 const SYMBOL_RE = /^[A-Z0-9.^=-]{1,20}$/;
@@ -29,6 +30,7 @@ export function AddHoldingForm({ portfolios, portfolioId, onClose, onAdded }: {
   const [horizon, setHorizon] = useState<"" | Horizon>("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem>(null);
+  const [mode, setMode] = useState<"stock" | "fund">("stock");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,8 +62,17 @@ export function AddHoldingForm({ portfolios, portfolioId, onClose, onAdded }: {
     } finally { setBusy(false); }
   };
 
+  if (mode === "fund") {
+    return (
+      <Modal title={t("fundTitle")} onClose={onClose}>
+        <FundAddFlow portfolios={portfolios} pid={pid} onPid={setPid} onClose={onClose} onAdded={onAdded} />
+        <button type="button" className="btn-secondary" onClick={() => setMode("stock")}>{t("backToStock")}</button>
+      </Modal>
+    );
+  }
   return (
     <Modal title={t("title")} onClose={onClose}>
+      <button type="button" className="btn-secondary w-full" onClick={() => setMode("fund")}>{t("fundOpen")}</button>
       <form onSubmit={submit} className="space-y-3" noValidate>
         <p className="text-sm text-muted">{t("intro")}</p>
         {portfolios.length > 1 && (

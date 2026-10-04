@@ -71,3 +71,12 @@ export function loadPortfolioChoice(): PortfolioRef | null {
 export function savePortfolioChoice(v: PortfolioRef): void {
   try { window.localStorage.setItem(KEY, String(v)); } catch { /* ignore */ }
 }
+
+/** Dividend calendar of one portfolio. Slow data: on demand, not polled. */
+export const useDividends = (pid: number | null) =>
+  useSWR(pid === null ? null : ["dividends", pid], () => api.dividends(pid as number), { revalidateOnFocus: false, shouldRetryOnError: false });
+/** Fund search (needs at least 2 characters). Not polled. */
+export const useFundSearch = (q: string) =>
+  useSWR(q.trim().length >= 2 ? ["fund-search", q.trim()] : null, () => api.searchFunds(q.trim()), { revalidateOnFocus: false, shouldRetryOnError: false });
+export const useFund = (fundId: string | null) =>
+  useSWR(fundId ? ["fund", fundId] : null, () => api.fund(fundId as string), { revalidateOnFocus: false, shouldRetryOnError: false });

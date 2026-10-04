@@ -116,6 +116,24 @@ export type WatchlistItem = S["WatchlistOut"];
 /** Inputs of the analysis. No defaults anywhere: what is missing comes back in `needs_input`. */
 export interface AnalyzeQuery { portfolioId?: number | null; amount?: number | null; currency?: "ILS" | "USD" | null; horizon?: Horizon | null; risk?: RiskPresetName | null }
 
+export type FundSearchOut = S["FundSearchOut"];
+export type FundSearchItem = S["FundSearchItem"];
+export type FundDataStatus = FundSearchOut["data_status"];
+export type FundDetail = S["FundDetailOut"];
+export type FundReturn = S["FundReturn"];
+export type FundMonth = S["FundMonth"];
+export type FundHolding = S["FundHoldingOut"];
+export type FundValueBasis = FundHolding["value_basis"];
+export type Dividends = S["DividendsOut"];
+export type UpcomingDividend = S["UpcomingDividend"];
+export type SymbolDividendStatus = S["SymbolDividendStatus"];
+export type DividendStatus = SymbolDividendStatus["data_status"];
+export type IncomeEstimate = S["IncomeEstimate"];
+export type IncomeLine = S["IncomeLine"];
+/** Fund holdings use the symbol `GEMEL-<fund number>`. */
+export const FUND_SYMBOL_PREFIX = "GEMEL-";
+export const isFundHolding = (h: { symbol: string; fund?: unknown }): boolean => !!h.fund || h.symbol.startsWith(FUND_SYMBOL_PREFIX);
+
 export type Settings = Narrow<S["SettingsOut"], { language: "he" | "en" }>;
 export type SettingsPatch = S["SettingsPatch"];
 export type QuietHours = S["QuietHours"];
@@ -228,8 +246,14 @@ export const api = {
   holdings: (id: number) => get<Holding[]>(`/portfolios/${id}/holdings`),
   /** Manual entry (no screenshot). 409 = already in the portfolio, 422 = invalid symbol or number, 429 = rate limit. */
   addHolding: (pid: number, b: HoldingCreate) => post<Holding>(`/portfolios/${pid}/holdings`, b),
-  patchHolding: (pid: number, hid: number, b: { horizon?: Horizon | null; quantity?: number }) =>
+  patchHolding: (pid: number, hid: number, b: Pick<S["HoldingPatch"], "horizon" | "quantity" | "manual_value_ils" | "manual_value_as_of" | "fund_name" | "track">) =>
     patch<Holding>(`/portfolios/${pid}/holdings/${hid}`, b),
+  /** Upcoming ex/pay dates, per-symbol statuses and a 12-month income estimate (an estimate, never a promise). */
+  dividends: (pid: number) => get<Dividends>(`/portfolios/${pid}/dividends`),
+  /** Israeli funds (GemelNet). `data_status` says why a list is empty: no_data / unavailable / rate_limited. */
+  searchFunds: (q: string) => get<FundSearchOut>(`/funds/search?q=${encodeURIComponent(q)}`),
+  /** 404 = unknown fund number. */
+  fund: (fundId: string) => get<FundDetail>(`/funds/${encodeURIComponent(fundId)}`),
   xray: (id: number) => get<XrayRaw>(`/portfolios/${id}/xray`),
   /** Toggle and threshold settings of the informational X-ray rules. `null` clears an override; 422 `threshold_out_of_bounds` carries min_pct/max_pct. */
   xrayRules: (id: number) => get<{ rules: XrayRuleOut[] }>(`/portfolios/${id}/xray-rules`),

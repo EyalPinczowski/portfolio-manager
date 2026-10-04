@@ -91,7 +91,9 @@
     "postmortemNote": "What explains the gap between your return and your expectation.",
     "suggestNote": "Neutral candidates to research, checked against your limits.",
     "trackRecord": "Track record",
-    "trackRecordNote": "How the app's past calls compared with the indices, for members only."
+    "trackRecordNote": "How the app's past calls compared with the indices, for members only.",
+    "dividends": "Dividend calendar",
+    "dividendsNote": "Upcoming ex-dividend and payment dates, and a 12-month income estimate."
   },
   "holdings": {
     "title": "Your holdings",
@@ -115,7 +117,15 @@
     "today": "today",
     "pnlHint": "Cost price unknown, so profit and loss is not shown.",
     "stopSet": "Stop set",
-    "noData": "No data"
+    "noData": "No data",
+    "fundChip": "Fund",
+    "manualChip": "Manual value",
+    "costOnlyChip": "Cost only, no current value",
+    "noValueChip": "No value entered",
+    "fundStaleHint": "Funds have no live price. The value is the one you entered.",
+    "manualAsOf": "manual value as of {date}",
+    "fundCostOnly": "No value entered, only the cost",
+    "fundNoValue": "No value entered"
   },
   "holding": {
     "notFound": "Holding not found.",
@@ -565,7 +575,10 @@
       "duplicate": "This holding is already in the portfolio. Change its quantity there instead.",
       "rate": "Too many additions. Try again in a little while.",
       "generic": "Could not add the holding. Try again."
-    }
+    },
+    "fundOpen": "Add a fund",
+    "fundTitle": "Add a fund",
+    "backToStock": "Back to adding a stock"
   },
   "exit": {
     "intro": "Suggested stop and take-profit levels for your holding period. These are planning levels, not a recommendation to act.",
@@ -588,7 +601,8 @@
       "stale_price": "The price is stale: it is the last close or a cost price, not a live quote.",
       "no_history": "There is no price history for this security.",
       "insufficient_history": "There is too little price history to measure volatility.",
-      "history_price_mismatch": "The price history does not match the current price (possible split or currency issue)."
+      "history_price_mismatch": "The price history does not match the current price (possible split or currency issue).",
+      "fund_no_levels": "This is a fund. It has no live price, so stop and target levels are not computed."
     },
     "priceAsOf": "Price {price} as of {time}",
     "headline": "Levels for a {horizon} holding period",
@@ -641,7 +655,8 @@
     "chosen": "chosen",
     "skipped": "Sources skipped",
     "state": "Trailing stop memory: highest high {high}, stop {stop}",
-    "units": "{n} units"
+    "units": "{n} units",
+    "fundNoLevelsNote": "Funds have monthly returns only, so no numbers are shown here. The value on your holdings list is the one you entered."
   },
   "review": {
     "title": "Review my portfolio",
@@ -1223,5 +1238,96 @@
     "otherWeightsNote": "These calls were made with a different weights configuration than the one active now.",
     "methodologyTitle": "How this is measured",
     "none": "None"
+  },
+  "funds": {
+    "intro": "Search Israeli provident, study and pension funds by name or fund number. The public dataset has monthly returns, not a unit price.",
+    "searchLabel": "Fund name or number",
+    "searchPlaceholder": "For example a fund name or 1001",
+    "search": "Search",
+    "searchHint": "Type at least 2 characters.",
+    "results": "Funds found",
+    "openFund": "Show returns of {name}",
+    "status": {
+      "no_data": "No fund matched this search. Try another name or the fund number.",
+      "unavailable": "The fund data source is not reachable right now.",
+      "rate_limited": "The fund data source is busy. Try again in a little while.",
+      "generic": "Could not load fund data."
+    },
+    "manualStillWorks": "You can still add a fund by hand: use the fund number from your statement and enter its value yourself.",
+    "source": "Source: {source}",
+    "asOf": "data as of {date}",
+    "personalUse": "Personal, non-commercial use only.",
+    "period": "Period",
+    "return": "Return",
+    "categoryAvg": "Category average",
+    "annualised": "{value} a year",
+    "ptsUnit": "{value} pts",
+    "horizon": {
+      "1m": "1 month",
+      "3m": "3 months",
+      "1y": "1 year",
+      "3y": "3 years"
+    },
+    "missing": {
+      "not_enough_months": "Not enough months of data",
+      "gap_in_series": "A month is missing in the series",
+      "no_value": "No reported value"
+    },
+    "noCategory": "No category average is shown: it needs enough similar funds reporting, and only exists for 1 month. Funds reporting here: {count}.",
+    "stale": "Stale data: the latest report is for {period}",
+    "fee": "Management fee: {value}%",
+    "latestPeriod": "Latest reported month: {period}",
+    "noPrice": "This dataset has returns, not a unit price. The value of your holding is the number you enter from your fund statement.",
+    "addThis": "Add this fund to my portfolio",
+    "valueExplain": "Enter the current value from your fund statement and the date it refers to. Nothing is filled in for you.",
+    "value": "Value in shekels",
+    "valueAsOf": "Value as of (date)",
+    "track": "Track",
+    "add": "Add fund",
+    "error": {
+      "value": "Enter a value above zero.",
+      "date": "Enter the date of the value. It cannot be in the future.",
+      "duplicate": "This fund is already in the portfolio.",
+      "rate": "Too many additions. Try again in a little while.",
+      "generic": "Could not add the fund. Try again."
+    }
+  },
+  "dividends": {
+    "title": "Dividend calendar",
+    "intro": "Upcoming ex-dividend and payment dates for what you own, from public data. Dates and amounts can change.",
+    "loading": "Loading dividends…",
+    "error": "Could not load the dividend calendar.",
+    "noPortfolio": "Create a portfolio first.",
+    "upcomingTitle": "Coming up in the next {days} days",
+    "upcomingNone": "No upcoming dividends were found for your holdings in the next {days} days.",
+    "exDate": "Ex-dividend date",
+    "payDate": "Payment date",
+    "payUnknown": "Payment date not known",
+    "forHoldingIls": "about {amount}",
+    "estimate": "Estimate",
+    "estimateHint": "This amount is an estimate, not an announced dividend.",
+    "incomeTitle": "Income estimate, next 12 months",
+    "incomeNoData": "No data",
+    "incomeNoDataNote": "There is no dividend data for your holdings, so no income figure is shown.",
+    "incomeEstimateNote": "An estimate: the payments of the last 12 months repeated. Real dividends can differ, be cut or stop.",
+    "incomeLine": "{symbol}: {amount} ({count} payments)",
+    "withoutData": "Not included (no data): {symbols}",
+    "statusTitle": "Data by holding",
+    "lastPayment": "Last ex-date {date}, {amount} per share",
+    "status": {
+      "ok": "Data found",
+      "no_data": "No dividend data found",
+      "stopped": "Dividends appear to have stopped",
+      "not_applicable": "Not applicable to this type of holding",
+      "unavailable": "The data source is not reachable right now",
+      "rate_limited": "The data source is busy, not checked yet",
+      "not_checked": "Not checked yet"
+    },
+    "disclaimer": "Not financial advice.",
+    "sourceLine": "Source: {source}",
+    "asOf": "as of {date}",
+    "personalUse": "Personal, non-commercial use only.",
+    "perShareLabel": "Per share",
+    "forHoldingLabel": "For your holding"
   }
 }

@@ -12,7 +12,7 @@ export function Modal({ title, children, onClose }: { title: string; children: R
   }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
-      <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className="card w-full max-w-md space-y-3">
+      <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className="card max-h-[90vh] w-full max-w-md space-y-3 overflow-y-auto">
         <h2 className="text-lg font-bold">{title}</h2>
         {children}
       </div>

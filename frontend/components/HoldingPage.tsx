@@ -29,7 +29,7 @@ function Body({ hid }: { hid: number }) {
   const d = sc.data;
   if (!d) return <p role="status">{c("loading")}</p>;
   const name = locale === "he" ? d.name_he : d.name_en;
-  const cur = d.symbol.endsWith(".TA") ? "ILS" : "USD";
+  const cur = d.symbol.endsWith(".TA") || d.symbol.startsWith("GEMEL-") ? "ILS" : "USD";
   const mine = (alerts.data ?? []).filter((a) => a.symbol === d.symbol);
 
   const setHorizon = async (h: Horizon) => {

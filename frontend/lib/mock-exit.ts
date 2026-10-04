@@ -3,7 +3,7 @@ import type { ExitLevel, ExitLevelsResult, ExitReviewOut, Horizon, ReviewRow, Sc
 
 export interface ExitSeed {
   id: number; symbol: string; en?: string; he?: string; cur: string; qty: number; price: number; cost: number | null;
-  horizon: Horizon | null; stale?: boolean; noData?: boolean;
+  horizon: Horizon | null; stale?: boolean; noData?: boolean; fund?: boolean;
 }
 
 const FX = 3.7;
@@ -66,6 +66,12 @@ export function mockExitLevels(s: ExitSeed, q: ExitQuery = {}, portfolioValueIls
   const horizon = q.horizon ?? s.horizon;
   const base = { symbol: s.symbol, currency: s.cur, disclaimer: "Not financial advice." };
   const explain = (summary: string) => ({ version: 1, summary, as_of: AS_OF });
+  if (s.fund) {
+    return {
+      ...base, status: "no_levels", reason_code: "fund_no_levels", horizon: horizon ?? null, take_profits: [], scale_out: [], candidates: [], skipped: [],
+      reason: "Funds have no live price, only monthly returns, so no stop or target levels are computed.", explanation: explain("Funds have no price to measure levels from."),
+    };
+  }
   if (horizon === null || horizon === undefined) {
     return {
       ...base, status: "needs_horizon", reason_code: "needs_horizon", horizon: null, take_profits: [], scale_out: [], candidates: [], skipped: [],

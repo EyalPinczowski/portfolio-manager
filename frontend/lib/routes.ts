@@ -18,3 +18,6 @@ export type SettingsSection = "appearance" | "portfolio" | "notifications" | "id
 export const settingsHref = (section?: SettingsSection): string => (section ? `/settings?section=${section}` : "/settings");
 /** Path of the "Suggest new stocks" screen. */
 export const suggestHref = (): string => "/suggest";
+
+/** Path of the dividend calendar. */
+export const dividendsHref = (): string => "/dividends";

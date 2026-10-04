@@ -14,6 +14,7 @@ import Ajv2020 from "ajv/dist/2020";
 import addFormats from "ajv-formats";
 import { describe, expect, it } from "vitest";
 import { setMockTrackState, resetMockXrayRules } from "@/lib/mock-trackrecord";
+import { setMockDividendsState } from "@/lib/mock-funds";
 import { mockRequest, MOCK_TURNSTILE_TOKEN, WRONG_PASSWORD } from "@/lib/mock";
 import { ApiError } from "@/lib/errors";
 
@@ -123,6 +124,18 @@ const CASES: Case[] = [
   { method: "POST", path: "/admin/invites", api: "/admin/invites", body: { days: 7 } },
   { method: "POST", path: "/portfolios/1/buy-ideas", api: "/portfolios/{portfolio_id}/buy-ideas", body: { amount: 5000, currency: "USD", horizon: "3m", risk: "balanced", markets: ["US", "TASE", "CRYPTO"], asset_types: ["stock", "etf", "crypto"] } },
   { method: "POST", path: "/portfolios/1/buy-ideas", api: "/portfolios/{portfolio_id}/buy-ideas", body: { amount: 5000, currency: "ILS", horizon: "1m", risk: "aggressive", markets: ["US"], asset_types: ["stock"], exclude_symbols: ["XOM"] } },
+  { method: "GET", path: "/funds/search?q=gemel", api: "/funds/search" }, // ok
+  { method: "GET", path: "/funds/search?q=qqqq", api: "/funds/search" }, // no_data
+  { method: "GET", path: "/funds/search?q=unavailable", api: "/funds/search" },
+  { method: "GET", path: "/funds/search?q=ratelimit", api: "/funds/search" },
+  { method: "GET", path: "/funds/1001", api: "/funds/{fund_id}" }, // complete, category average
+  { method: "GET", path: "/funds/1002", api: "/funds/{fund_id}" }, // stale, gap, not enough months
+  { method: "GET", path: "/funds/1003", api: "/funds/{fund_id}" }, // young fund
+  { method: "GET", path: "/portfolios/1/dividends", api: "/portfolios/{portfolio_id}/dividends" }, // every symbol status, estimate
+  { method: "GET", path: "/portfolios/2/dividends", api: "/portfolios/{portfolio_id}/dividends" }, // no data, total null
+  { method: "POST", path: "/portfolios/2/holdings", api: "/portfolios/{portfolio_id}/holdings", body: { symbol: "GEMEL-1001", quantity: 1, manual_value_ils: 50000, manual_value_as_of: "2026-09-30", fund_name: "Kupat Gemel Equities Track", track: "Equities" } },
+  { method: "POST", path: "/portfolios/2/holdings", api: "/portfolios/{portfolio_id}/holdings", body: { symbol: "GEMEL-1003", quantity: 1, avg_cost: 1000, cost_currency: "ILS" } }, // cost only
+  { method: "POST", path: "/portfolios/2/holdings", api: "/portfolios/{portfolio_id}/holdings", body: { symbol: "GEMEL-1002", quantity: 1 } }, // no value
   { method: "GET", path: "/auth/sessions", api: "/auth/sessions" },
   { method: "GET", path: "/launch-gate", api: "/launch-gate" },
   { method: "GET", path: "/health", api: "/health" },
@@ -135,6 +148,28 @@ describe("mock fixtures match backend/openapi.json", () => {
     const real = responseSchema(method, api);
     expect(real, `no schema for ${method} ${api}`).toBeTruthy();
     validate(real!, data, `${method} ${p}`);
+  });
+
+  it.each(["full", "no_data", "unavailable"] as const)("GET /portfolios/1/dividends in state %s", (st) => {
+    setMockDividendsState(st);
+    try {
+      const data = JSON.parse(JSON.stringify(mockRequest("GET", "/portfolios/1/dividends")));
+      validate(responseSchema("GET", "/portfolios/{portfolio_id}/dividends")!, data, `dividends ${st}`);
+      if (st !== "full") expect(data.income_estimate.total_ils).toBeNull(); // never 0 when there is no data
+    } finally { setMockDividendsState("full"); }
+  });
+
+  it("a fund holding: GET holdings carries `fund`, exit levels say fund_no_levels with no numbers", () => {
+    const rows = JSON.parse(JSON.stringify(mockRequest("GET", "/portfolios/2/holdings"))) as { id: number; symbol: string; fund?: { value_basis: string } }[];
+    const funds = rows.filter((r) => r.symbol.startsWith("GEMEL-"));
+    expect(funds.map((f) => f.fund?.value_basis).sort()).toEqual(["cost_only", "manual_value", "no_value"]);
+    for (const f of funds) {
+      const lv = JSON.parse(JSON.stringify(mockRequest("GET", `/holdings/${f.id}/exit-levels`)));
+      validate(responseSchema("GET", "/holdings/{holding_id}/exit-levels")!, lv, `fund exit levels ${f.symbol}`);
+      expect(lv.reason_code).toBe("fund_no_levels");
+      expect(lv.stop ?? null).toBeNull();
+      expect(lv.take_profits).toEqual([]);
+    }
   });
 
   it.each(["not_started", "none_ended", "ready"] as const)("GET /track-record in state %s", (st) => {

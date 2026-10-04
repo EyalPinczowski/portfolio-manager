@@ -943,6 +943,70 @@ export interface paths {
         patch: operations["patch_xray_rules_api_portfolios__portfolio_id__xray_rules_patch"];
         trace?: never;
     };
+    "/api/funds/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Funds
+         * @description Funds by name or number. `data_status` says why a list is empty: `no_data` (no match),
+         *     `unavailable` (the dataset cannot be reached or is not configured) or `rate_limited`.
+         */
+        get: operations["search_funds_api_funds_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/funds/{fund_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fund Detail
+         * @description One fund with 1m/3m/1y/3y returns compounded from its monthly series, and the 1m return
+         *     against the category average when enough peers reported.
+         */
+        get: operations["fund_detail_api_funds__fund_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portfolios/{portfolio_id}/dividends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dividends
+         * @description Upcoming ex-dividend and pay dates with amounts for the held stocks and ETFs, plus an
+         *     estimate of the next 12 months' income. A symbol the source knows nothing about says so
+         *     (`no_data`); nothing is guessed.
+         */
+        get: operations["dividends_api_portfolios__portfolio_id__dividends_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1362,6 +1426,32 @@ export interface components {
             bars: number;
             explanation: components["schemas"]["Explanation"];
         };
+        /** DividendsOut */
+        DividendsOut: {
+            /** Portfolio Id */
+            portfolio_id: number;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Window Days */
+            window_days: number;
+            /** Upcoming */
+            upcoming: components["schemas"]["UpcomingDividend"][];
+            /** Symbols */
+            symbols: components["schemas"]["SymbolDividendStatus"][];
+            income_estimate: components["schemas"]["IncomeEstimate"];
+            /** Source */
+            source: string;
+            /** Credit */
+            credit: string;
+            /**
+             * Disclaimer
+             * @default Not financial advice.
+             */
+            disclaimer: string;
+        };
         /** EvidenceRow */
         EvidenceRow: {
             /** Label */
@@ -1424,7 +1514,7 @@ export interface components {
              */
             status: "levels" | "needs_horizon" | "no_levels";
             /** Reason Code */
-            reason_code?: ("needs_horizon" | "stale_price" | "no_history" | "insufficient_history" | "history_price_mismatch") | null;
+            reason_code?: ("needs_horizon" | "stale_price" | "no_history" | "insufficient_history" | "history_price_mismatch" | "fund_no_levels") | null;
             /** Reason */
             reason: string;
             /** Symbol */
@@ -1630,6 +1720,149 @@ export interface components {
             flags?: string[];
             explanation: components["schemas"]["Explanation"];
         };
+        /** FundDetailOut */
+        FundDetailOut: {
+            /** Fund Id */
+            fund_id: string;
+            /** Symbol */
+            symbol: string;
+            /** Name */
+            name: string;
+            /** Classification */
+            classification?: string | null;
+            /** Managing Corporation */
+            managing_corporation?: string | null;
+            /** Latest Period */
+            latest_period: string;
+            /**
+             * Data As Of
+             * Format: date-time
+             */
+            data_as_of: string;
+            /** Data Stale */
+            data_stale: boolean;
+            /** Total Assets */
+            total_assets?: number | null;
+            /** Management Fee Pct */
+            management_fee_pct?: number | null;
+            /** Returns */
+            returns: components["schemas"]["FundReturn"][];
+            /** Category Peer Count */
+            category_peer_count: number;
+            /** Monthly Series */
+            monthly_series: components["schemas"]["FundMonth"][];
+            /**
+             * Price Available
+             * @default false
+             */
+            price_available: boolean;
+            /**
+             * Value Note
+             * @default The dataset has monthly returns only. Enter the value from your fund statement as the holding's manual value.
+             */
+            value_note: string;
+            /** Source */
+            source: string;
+            /** Credit */
+            credit: string;
+            /**
+             * Disclaimer
+             * @default Not financial advice.
+             */
+            disclaimer: string;
+        };
+        /**
+         * FundHoldingOut
+         * @description What the app knows about a fund holding (symbol `GEMEL-<fund id>`). The value is the user's
+         *     own entry (`manual_value`): GemelNet has monthly returns, not a unit price.
+         */
+        FundHoldingOut: {
+            /** Fund Id */
+            fund_id: string;
+            /** Track */
+            track?: string | null;
+            /**
+             * Value Basis
+             * @enum {string}
+             */
+            value_basis: "manual_value" | "cost_only" | "no_value";
+            /** Manual Value Ils */
+            manual_value_ils?: number | null;
+            /** Manual Value As Of */
+            manual_value_as_of?: string | null;
+            /** Flags */
+            flags: string[];
+            /** Credit */
+            credit: string;
+        };
+        /**
+         * FundMonth
+         * @description One reporting month. A value the dataset left empty stays None (never a neutral 0).
+         */
+        FundMonth: {
+            /** Period */
+            period: string;
+            /** Monthly Return Pct */
+            monthly_return_pct?: number | null;
+            /** Total Assets */
+            total_assets?: number | null;
+            /** Management Fee Pct */
+            management_fee_pct?: number | null;
+        };
+        /** FundReturn */
+        FundReturn: {
+            /**
+             * Horizon
+             * @enum {string}
+             */
+            horizon: "1m" | "3m" | "1y" | "3y";
+            /** Months */
+            months: number;
+            /** Return Pct */
+            return_pct?: number | null;
+            /** Annualised Pct */
+            annualised_pct?: number | null;
+            /** Category Avg Pct */
+            category_avg_pct?: number | null;
+            /** Vs Category Pts */
+            vs_category_pts?: number | null;
+            /** Missing Reason */
+            missing_reason?: ("not_enough_months" | "gap_in_series" | "no_value") | null;
+        };
+        /** FundSearchItem */
+        FundSearchItem: {
+            /** Fund Id */
+            fund_id: string;
+            /** Symbol */
+            symbol: string;
+            /** Name */
+            name: string;
+            /** Classification */
+            classification?: string | null;
+            /** Managing Corporation */
+            managing_corporation?: string | null;
+        };
+        /** FundSearchOut */
+        FundSearchOut: {
+            /** Query */
+            query: string;
+            /**
+             * Data Status
+             * @enum {string}
+             */
+            data_status: "ok" | "no_data" | "unavailable" | "rate_limited";
+            /** Results */
+            results: components["schemas"]["FundSearchItem"][];
+            /** Source */
+            source: string;
+            /** Credit */
+            credit: string;
+            /**
+             * Disclaimer
+             * @default Not financial advice.
+             */
+            disclaimer: string;
+        };
         /** GapBreakdown */
         GapBreakdown: {
             /**
@@ -1770,6 +2003,14 @@ export interface components {
             cost_currency?: ("ILS" | "USD") | null;
             /** Horizon */
             horizon?: ("1w" | "1m" | "3m" | "6m" | "1y") | null;
+            /** Manual Value Ils */
+            manual_value_ils?: number | null;
+            /** Manual Value As Of */
+            manual_value_as_of?: string | null;
+            /** Fund Name */
+            fund_name?: string | null;
+            /** Track */
+            track?: string | null;
         };
         /** HoldingOut */
         HoldingOut: {
@@ -1810,7 +2051,7 @@ export interface components {
              * Stop Tp Status
              * @enum {string}
              */
-            stop_tp_status: "missing" | "needs_horizon";
+            stop_tp_status: "missing" | "needs_horizon" | "no_levels";
             score_card: components["schemas"]["ScoreCardMini"];
             /**
              * Price Stale
@@ -1834,6 +2075,7 @@ export interface components {
             price_is_fresh: boolean;
             /** Price Flag */
             price_flag?: string | null;
+            fund?: components["schemas"]["FundHoldingOut"] | null;
         };
         /** HoldingPatch */
         HoldingPatch: {
@@ -1846,6 +2088,14 @@ export interface components {
             /** Horizon */
             horizon?: ("1w" | "1m" | "3m" | "6m" | "1y") | null;
             risk_override?: components["schemas"]["RiskOverride"] | null;
+            /** Manual Value Ils */
+            manual_value_ils?: number | null;
+            /** Manual Value As Of */
+            manual_value_as_of?: string | null;
+            /** Fund Name */
+            fund_name?: string | null;
+            /** Track */
+            track?: string | null;
         };
         /** HoldingResult */
         HoldingResult: {
@@ -2005,6 +2255,47 @@ export interface components {
              */
             scope: "partial" | "full";
         };
+        /** IncomeEstimate */
+        IncomeEstimate: {
+            /**
+             * Is Estimate
+             * @default true
+             */
+            is_estimate: boolean;
+            /**
+             * Basis
+             * @default trailing_payments_repeated
+             * @constant
+             */
+            basis: "trailing_payments_repeated";
+            /** Months */
+            months: number;
+            /** Total Ils */
+            total_ils?: number | null;
+            /** Lines */
+            lines: components["schemas"]["IncomeLine"][];
+            /** Symbols Without Data */
+            symbols_without_data: string[];
+            /** Note */
+            note: string;
+        };
+        /** IncomeLine */
+        IncomeLine: {
+            /** Symbol */
+            symbol: string;
+            /** Quantity */
+            quantity: number;
+            /** Per Share */
+            per_share: number;
+            /** Currency */
+            currency: string;
+            /** Amount */
+            amount: number;
+            /** Amount Ils */
+            amount_ils?: number | null;
+            /** Payments Counted */
+            payments_counted: number;
+        };
         /** InviteCreate */
         InviteCreate: {
             /** Days */
@@ -2159,7 +2450,7 @@ export interface components {
             /** Symbol */
             symbol: string;
             /** Reason Code */
-            reason_code?: ("needs_horizon" | "stale_price" | "no_history" | "insufficient_history" | "history_price_mismatch") | null;
+            reason_code?: ("needs_horizon" | "stale_price" | "no_history" | "insufficient_history" | "history_price_mismatch" | "fund_no_levels") | null;
             /** Reason */
             reason: string;
         };
@@ -2457,7 +2748,7 @@ export interface components {
              */
             status: "levels" | "needs_horizon" | "no_levels";
             /** Reason Code */
-            reason_code?: ("needs_horizon" | "stale_price" | "no_history" | "insufficient_history" | "history_price_mismatch") | null;
+            reason_code?: ("needs_horizon" | "stale_price" | "no_history" | "insufficient_history" | "history_price_mismatch" | "fund_no_levels") | null;
             /** Price */
             price?: number | null;
             /** Stop Price */
@@ -3124,6 +3415,29 @@ export interface components {
             as_of: string;
             markets: components["schemas"]["Markets"];
         };
+        /** SymbolDividendStatus */
+        SymbolDividendStatus: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Data Status
+             * @enum {string}
+             */
+            data_status: "ok" | "no_data" | "stopped" | "not_applicable" | "unavailable" | "rate_limited" | "not_checked";
+            /** Last Ex Date */
+            last_ex_date?: string | null;
+            /** Last Amount Per Share */
+            last_amount_per_share?: number | null;
+            /** Currency */
+            currency?: string | null;
+            /**
+             * Payments In Period
+             * @default 0
+             */
+            payments_in_period: number;
+            /** Per Share In Period */
+            per_share_in_period?: number | null;
+        };
         /** TelegramStatusOut */
         TelegramStatusOut: {
             /** Configured */
@@ -3199,6 +3513,34 @@ export interface components {
             rows: components["schemas"]["TrackCallRow"][];
             /** Truncated */
             truncated: boolean;
+        };
+        /** UpcomingDividend */
+        UpcomingDividend: {
+            /** Symbol */
+            symbol: string;
+            /** Name En */
+            name_en: string;
+            /**
+             * Ex Date
+             * Format: date
+             */
+            ex_date: string;
+            /** Pay Date */
+            pay_date?: string | null;
+            /** Amount Per Share */
+            amount_per_share: number;
+            /** Currency */
+            currency: string;
+            /** Quantity */
+            quantity: number;
+            /** Expected Amount */
+            expected_amount: number;
+            /** Expected Amount Ils */
+            expected_amount_ils?: number | null;
+            /** Amount Is Estimate */
+            amount_is_estimate: boolean;
+            /** Source */
+            source: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -5189,6 +5531,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["XrayRulesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_funds_api_funds_search_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundSearchOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fund_detail_api_funds__fund_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fund_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FundDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dividends_api_portfolios__portfolio_id__dividends_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DividendsOut"];
                 };
             };
             /** @description Validation Error */
