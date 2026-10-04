@@ -431,7 +431,9 @@ class Settings(BaseSettings):
     score_cache_ttl_minutes: int = 360
     # --- analyze a stock (analyze/): one cached row per symbol, nothing is fetched while it is fresh ---
     analyze_cache_ttl_minutes: int = Field(default=15, gt=0)
-    analyze_levels_per_side: int = Field(default=3, ge=1, le=10)  # support / resistance levels shown
+    analyze_levels_per_side: int = Field(
+        default=3, ge=1, le=10
+    )  # support / resistance levels shown
     # --- screener / universe (scoring/screener.py, scheduler job run_universe_score_refresh) ---
     universe_file: str | None = None  # symbols, one per line; default: app/data/universe_seed.txt
     universe_refresh_interval_minutes: int = Field(default=15, gt=0)
