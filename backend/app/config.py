@@ -165,7 +165,7 @@ def _default_tase_hours() -> dict[str, tuple[str, str]]:
 
 
 class BacktestTarget(BaseModel):
-    """Success bar for one risk preset over one backtest window (PROPOSAL, awaiting user approval)."""
+    """Success bar for one risk preset over one backtest window (approved by the user 2026-10-04)."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -174,7 +174,7 @@ class BacktestTarget(BaseModel):
 
 
 def default_backtest_targets() -> dict[str, BacktestTarget]:
-    # PROPOSALS per 6-month window. Not approved by the user yet: do not treat as decided.
+    # Per 6-month window. Approved by the user 2026-10-04.
     return {
         "conservative": BacktestTarget(min_return_pct=3.0, max_drawdown_pct=4.0),
         "balanced": BacktestTarget(min_return_pct=5.0, max_drawdown_pct=7.0),
@@ -615,7 +615,7 @@ class Settings(BaseSettings):
     # The targets below are proposals. `--record` refuses to write a passing backtest to the launch
     # gate until the user has approved them and set this to true.
     backtest_targets_approved: bool = False
-    # PROPOSED targets and drawdown caps per preset and window. FLAGGED FOR USER APPROVAL.
+    # Targets and drawdown caps per preset and window (approved by the user 2026-10-04).
     backtest_targets: dict[str, BacktestTarget] = Field(default_factory=default_backtest_targets)
 
     # --- launch gate (no live buy/sell verdicts until both gates pass) ---
