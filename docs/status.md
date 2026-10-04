@@ -35,3 +35,6 @@ Last updated: 2026-10-03 21:05 UTC. Branch: `claude/stock-portfolio-assistant-jg
 - Needs the user's decision (risk logic is theirs): the per-preset volatility caps (`screener_max_volatility_pct`), the score/confidence floors and the diversification bonus are proposed defaults; the preset has no blacklist field, so the blacklist is the per-request `exclude_symbols`.
 - Limit: universe quotes are refreshed only while a market is open (plus the post-close fetch), so outside those windows a candidate's price age decides (`price_fresh_window_minutes`); stale ones are skipped with `stale_price`.
 - Next: frontend `npm run gen:api` and the "Suggest new stocks" screen; Buy-alerts filter and push; Telegram "Why?" for ideas.
+
+## 2026-10-04 (token saving, user request)
+- Added `docs/index.md` (doc and code map; Claude reads only what it needs via grep and line ranges, wide reads go to agents) and `docs/rag-spec.md` (app RAG: free local retrieval, FTS first, chunks cited with source/as_of, token budget per role, indexing in the Actions cron, public data only for free LLMs). Queue: RAG block comes with Analyze a stock / committee.
