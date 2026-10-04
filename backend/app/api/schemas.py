@@ -12,6 +12,7 @@ from pydantic import (
     EmailStr,
     Field,
     field_validator,
+    model_validator,
 )
 
 from app.importer.diff import ProposedChange
@@ -31,6 +32,8 @@ Symbol = Annotated[str, BeforeValidator(norm_symbol), Field(pattern=SYMBOL_PATTE
 Pct = Annotated[float, Field(gt=0, le=100, allow_inf_nan=False, strict=True)]
 Positive = Annotated[float, Field(gt=0, le=BIG, allow_inf_nan=False, strict=True)]
 NonNegative = Annotated[float, Field(ge=0, le=BIG, allow_inf_nan=False, strict=True)]
+ExpectedReturnPct = Annotated[float, Field(ge=-100, le=500, allow_inf_nan=False, strict=True)]
+ExpectedHorizonMonths = Annotated[int, Field(ge=1, le=120, strict=True)]
 
 
 class Body(BaseModel):
@@ -114,6 +117,22 @@ class PortfolioPatch(Body):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     base_currency: Literal["ILS", "USD"] | None = None
     risk_filter: RiskFilterIn | None = None
+    # Both together, or both null to clear. Never defaulted by the server.
+    expected_return_pct: ExpectedReturnPct | None = None
+    expected_return_horizon_months: ExpectedHorizonMonths | None = None
+
+    @model_validator(mode="after")
+    def _expectation_is_a_pair(self) -> PortfolioPatch:
+        fields = self.model_fields_set & {"expected_return_pct", "expected_return_horizon_months"}
+        if fields and (
+            len(fields) != 2
+            or (self.expected_return_pct is None) != (self.expected_return_horizon_months is None)
+        ):
+            raise ValueError(
+                "send expected_return_pct and expected_return_horizon_months together "
+                "(both numbers, or both null to clear)"
+            )
+        return self
 
 
 class RiskFilterOut(BaseModel):
@@ -135,6 +154,8 @@ class PortfolioOut(BaseModel):
     base_currency: Literal["ILS", "USD"]
     risk_filter: RiskFilterOut
     tracking_started_at: str | None = None
+    expected_return_pct: float | None = None
+    expected_return_horizon_months: int | None = None
     # Last confirmed screenshot import (null: never), and whether it is older than the nudge
     # setting (`screenshot_update_nudge_days`, default 7).
     last_screenshot_update_at: datetime | None = None

@@ -654,6 +654,83 @@
         }
       }
     },
+    "/api/portfolios/{portfolio_id}/post-mortem": {
+      "get": {
+        "tags": [
+          "portfolios"
+        ],
+        "summary": "Post Mortem",
+        "description": "Why the return differs from the expectation: deterministic, template text, no LLM.",
+        "operationId": "post_mortem_api_portfolios__portfolio_id__post_mortem_get",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostmortemOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/portfolios/{portfolio_id}/xray": {
       "get": {
         "tags": [
@@ -2302,6 +2379,53 @@
         ],
         "title": "AskOut"
       },
+      "BenchmarkOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "weight_pct": {
+            "type": "number",
+            "title": "Weight Pct"
+          },
+          "local_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Pct"
+          },
+          "ils_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ils Pct"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Flags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "weight_pct"
+        ],
+        "title": "BenchmarkOut"
+      },
       "Breach": {
         "properties": {
           "rule": {
@@ -2922,6 +3046,73 @@
         ],
         "title": "ChartReport"
       },
+      "EvidenceRow": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "title": "EvidenceRow"
+      },
+      "Excluded": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "reason"
+        ],
+        "title": "Excluded"
+      },
       "ExitLevel": {
         "properties": {
           "kind": {
@@ -3377,6 +3568,67 @@
         ],
         "title": "ExitReviewOut"
       },
+      "ExpectationOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "needs_expectation"
+            ],
+            "title": "Status"
+          },
+          "expected_return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Return Pct"
+          },
+          "horizon_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon Months"
+          },
+          "expected_for_period_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected For Period Pct"
+          },
+          "gap_pp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap Pp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ExpectationOut"
+      },
       "Explanation": {
         "properties": {
           "version": {
@@ -3621,6 +3873,254 @@
         ],
         "title": "ExposureItem"
       },
+      "Finding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "performance",
+              "contribution",
+              "timing",
+              "concentration",
+              "fx",
+              "cash",
+              "costs",
+              "stops",
+              "flows"
+            ],
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "not_recorded",
+              "not_enough_data",
+              "needs_expectation",
+              "no_activity",
+              "no_foreign_assets"
+            ],
+            "title": "Status"
+          },
+          "headline": {
+            "type": "string",
+            "title": "Headline"
+          },
+          "amount_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Ils"
+          },
+          "amount_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Pct"
+          },
+          "gap_contribution_pp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap Contribution Pp"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceRow"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Flags"
+          },
+          "explanation": {
+            "$ref": "#/components/schemas/Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "status",
+          "headline",
+          "explanation"
+        ],
+        "title": "Finding"
+      },
+      "GapBreakdown": {
+        "properties": {
+          "reference": {
+            "type": "string",
+            "enum": [
+              "expectation",
+              "benchmark"
+            ],
+            "title": "Reference"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "needs_expectation",
+              "not_enough_data"
+            ],
+            "title": "Status"
+          },
+          "reference_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Pct"
+          },
+          "portfolio_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Pct"
+          },
+          "gap_pp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap Pp"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GapItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "attributed_pp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attributed Pp"
+          },
+          "residual_pp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Residual Pp"
+          },
+          "residual_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Residual Ils"
+          },
+          "reconciles": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reconciles"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "reference",
+          "status"
+        ],
+        "title": "GapBreakdown"
+      },
+      "GapItem": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          },
+          "pp": {
+            "type": "number",
+            "title": "Pp"
+          },
+          "amount_ils": {
+            "type": "number",
+            "title": "Amount Ils"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "pp",
+          "amount_ils"
+        ],
+        "title": "GapItem"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3767,6 +4267,29 @@
           "weight_pct"
         ],
         "title": "HeldPosition"
+      },
+      "HistoryOut": {
+        "properties": {
+          "days_available": {
+            "type": "integer",
+            "title": "Days Available"
+          },
+          "days_required": {
+            "type": "integer",
+            "title": "Days Required"
+          },
+          "days_remaining": {
+            "type": "integer",
+            "title": "Days Remaining"
+          }
+        },
+        "type": "object",
+        "required": [
+          "days_available",
+          "days_required",
+          "days_remaining"
+        ],
+        "title": "HistoryOut"
       },
       "HoldingCreate": {
         "properties": {
@@ -4085,6 +4608,64 @@
         "additionalProperties": false,
         "type": "object",
         "title": "HoldingPatch"
+      },
+      "HoldingResult": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "realized_ils": {
+            "type": "number",
+            "title": "Realized Ils"
+          },
+          "unrealized_ils": {
+            "type": "number",
+            "title": "Unrealized Ils"
+          },
+          "local_ils": {
+            "type": "number",
+            "title": "Local Ils"
+          },
+          "fx_ils": {
+            "type": "number",
+            "title": "Fx Ils"
+          },
+          "total_ils": {
+            "type": "number",
+            "title": "Total Ils"
+          },
+          "pct_of_capital": {
+            "type": "number",
+            "title": "Pct Of Capital"
+          },
+          "still_held": {
+            "type": "boolean",
+            "title": "Still Held"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "currency",
+          "realized_ils",
+          "unrealized_ils",
+          "local_ils",
+          "fx_ils",
+          "total_ils",
+          "pct_of_capital",
+          "still_held"
+        ],
+        "title": "HoldingResult"
       },
       "Horizon": {
         "type": "string",
@@ -5148,6 +5729,28 @@
             ],
             "title": "Tracking Started At"
           },
+          "expected_return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Return Pct"
+          },
+          "expected_return_horizon_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Return Horizon Months"
+          },
           "last_screenshot_update_at": {
             "anyOf": [
               {
@@ -5220,11 +5823,214 @@
                 "type": "null"
               }
             ]
+          },
+          "expected_return_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 500.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Return Pct"
+          },
+          "expected_return_horizon_months": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 120.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Return Horizon Months"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "PortfolioPatch"
+      },
+      "PostmortemOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "not_enough_history",
+              "not_enough_data"
+            ],
+            "title": "Status"
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "title": "End"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "history": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "twr_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Twr Pct"
+          },
+          "pnl_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pnl Ils"
+          },
+          "annualised_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annualised Pct"
+          },
+          "annualised_is_extrapolated": {
+            "type": "boolean",
+            "title": "Annualised Is Extrapolated",
+            "default": false
+          },
+          "capital_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capital Ils"
+          },
+          "expectation": {
+            "$ref": "#/components/schemas/ExpectationOut"
+          },
+          "benchmarks": {
+            "items": {
+              "$ref": "#/components/schemas/BenchmarkOut"
+            },
+            "type": "array",
+            "title": "Benchmarks"
+          },
+          "gap_vs_expectation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GapBreakdown"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gap_vs_benchmark": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GapBreakdown"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "holdings": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingResult"
+            },
+            "type": "array",
+            "title": "Holdings"
+          },
+          "top_contributors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top Contributors"
+          },
+          "top_detractors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Top Detractors"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "excluded": {
+            "items": {
+              "$ref": "#/components/schemas/Excluded"
+            },
+            "type": "array",
+            "title": "Excluded"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Flags"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "default": ""
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "start",
+          "end",
+          "days",
+          "expectation"
+        ],
+        "title": "PostmortemOut"
       },
       "PriceInfo": {
         "properties": {

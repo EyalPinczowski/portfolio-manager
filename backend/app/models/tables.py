@@ -81,6 +81,10 @@ class Portfolio(SQLModel, table=True):
     base_currency: str = "ILS"
     risk_filter: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     tracking_started_at: date | None = None
+    # The return the user expects, in percent over `expected_return_horizon_months`. Set by the user
+    # only (never defaulted); the post-mortem says `needs_expectation` while either is null.
+    expected_return_pct: float | None = None
+    expected_return_horizon_months: int | None = None
     # When a screenshot import was last confirmed (aware-UTC semantics, stored naive like the rest).
     # Drives "Last updated from a screenshot" and the nudge (`update_is_stale`).
     last_screenshot_update_at: NaiveDatetime | None = None

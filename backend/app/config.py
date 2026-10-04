@@ -469,6 +469,14 @@ class Settings(BaseSettings):
     week_start_day: Literal[
         "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"
     ] = "sunday"
+    # Portfolio post-mortem (`portfolio/postmortem.py`). Proposed defaults, awaiting user approval.
+    postmortem_min_days: int = Field(default=30, ge=1)  # less history: `not_enough_history`
+    postmortem_timing_window_days: int = Field(default=60, ge=5)  # "local high" look-back
+    postmortem_near_high_pct: float = Field(default=95.0, gt=0, le=100)  # price / window max
+    postmortem_forward_days: int = Field(default=30, ge=1)  # how far "what happened after" looks
+    postmortem_material_move_pct: float = Field(default=3.0, gt=0)  # a move that counts as such
+    postmortem_top_n: int = Field(default=3, ge=1, le=10)  # top contributors / detractors shown
+    postmortem_max_close_age_days: int = Field(default=7, ge=1)  # older last close = stale
     tase_timezone: str = "Asia/Jerusalem"
     us_timezone: str = "America/New_York"
     tase_hours: dict[str, tuple[str, str]] = Field(default_factory=_default_tase_hours)

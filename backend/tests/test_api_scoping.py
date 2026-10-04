@@ -61,6 +61,13 @@ def test_cross_user_access_returns_404(
         ("GET", f"/api/portfolios/{pid}/summary", None),
         ("GET", f"/api/portfolios/{pid}/holdings", None),
         ("GET", f"/api/portfolios/{pid}/xray", None),
+        ("GET", f"/api/portfolios/{pid}/post-mortem", None),
+        ("GET", f"/api/portfolios/{pid}/post-mortem?start=2026-01-01&end=2026-03-01", None),
+        (
+            "PATCH",
+            f"/api/portfolios/{pid}",
+            {"expected_return_pct": 9, "expected_return_horizon_months": 12},
+        ),
         ("GET", f"/api/portfolios/{pid}/heatmap", None),
         ("POST", f"/api/portfolios/{pid}/exit-review", {}),
         (

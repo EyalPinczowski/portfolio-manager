@@ -9,7 +9,7 @@ The migration here is a test-only revision in a copy of the migrations directory
 from __future__ import annotations
 
 import shutil
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -25,7 +25,7 @@ from app.db import (
     make_engine,
     run_migrations,
 )
-from app.models import AuthSession, Holding, Portfolio, User
+from app.models import AuthSession, Holding, User
 
 REBUILD_USER = '''"""test-only: rebuild `user` through a batch migration (DROP TABLE + rename)."""
 
@@ -83,11 +83,16 @@ def _seed(engine: Engine) -> None:
         db.add(user)
         db.flush()
         assert user.id is not None
-        p = Portfolio(owner_id=user.id, name="P", tracking_started_at=date(2026, 1, 1))
-        db.add(p)
-        db.flush()
-        assert p.id is not None
-        db.add(Holding(portfolio_id=p.id, symbol="AAPL", quantity=3))
+        # raw SQL: older schemas (before 0011) have no `expected_return_*` columns
+        db.exec(  # type: ignore[call-overload]
+            text(
+                "INSERT INTO portfolio (owner_id, name, base_currency, risk_filter, "
+                "tracking_started_at, created_at) VALUES (:o, 'P', 'ILS', '{}', '2026-01-01', :c)"
+            ).bindparams(o=user.id, c=now)
+        )
+        pid = db.exec(text("SELECT id FROM portfolio")).scalar()  # type: ignore[call-overload]
+        assert pid is not None
+        db.add(Holding(portfolio_id=pid, symbol="AAPL", quantity=3))
         db.add(
             AuthSession(
                 user_id=user.id,
@@ -194,4 +199,30 @@ def test_0010_adds_history_and_watchlist_without_touching_existing_data(tmp_path
     with engine.connect() as conn:
         for t in ("search_history", "watchlist_item"):
             assert conn.execute(text(f"SELECT count(*) FROM {t}")).scalar() == 0
+    engine.dispose()
+
+
+def test_0011_adds_nullable_expectation_columns_without_touching_existing_data(
+    tmp_path: Path,
+) -> None:
+    engine = make_engine(f"sqlite:///{tmp_path / 'm.db'}")
+    run_migrations(engine)
+    downgrade_migrations(engine, "0010_search_history_watchlist")
+    with engine.connect() as conn:
+        cols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(portfolio)")}
+        assert "expected_return_pct" not in cols
+    _seed(engine)
+    run_migrations(engine)  # expand-only: 0010 -> 0011 with data present
+    assert _counts(engine) == {"user": 1, "portfolio": 1, "session": 1, "holding": 1}
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT expected_return_pct, expected_return_horizon_months FROM portfolio")
+        ).one()
+        assert tuple(row) == (None, None)  # existing portfolios are never given an expectation
+        conn.execute(
+            text(
+                "UPDATE portfolio SET expected_return_pct = 8.5, expected_return_horizon_months = 12"
+            )
+        )
+        assert conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
     engine.dispose()

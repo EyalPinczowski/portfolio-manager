@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, status
@@ -34,6 +35,8 @@ from app.models import (
 )
 from app.portfolio.freshness import price_is_fresh
 from app.portfolio.heatmap import build_heatmap
+from app.portfolio.postmortem import PostmortemOut
+from app.portfolio.postmortem_data import post_mortem_for_portfolio
 from app.portfolio.quotes import refresh_symbols
 from app.portfolio.screenshot import update_is_stale
 from app.portfolio.summary import build_summary
@@ -52,7 +55,7 @@ from app.scoring.risk import resolve_risk_filter
 from app.scoring.scorecard import get_cached_scorecard, is_fresh, refresh_scorecard
 from app.securities import get_or_create_security
 from app.strictjson import StrictJsonRoute
-from app.timeutil import as_utc
+from app.timeutil import as_utc, local_today
 
 router = APIRouter(tags=["portfolios"], route_class=StrictJsonRoute)
 
@@ -66,6 +69,8 @@ def portfolio_out(p: Portfolio, settings: Settings) -> PortfolioOut:
         base_currency=p.base_currency,
         risk_filter=resolve_risk_filter(p.risk_filter, settings).model_dump(),  # type: ignore[arg-type]
         tracking_started_at=p.tracking_started_at.isoformat() if p.tracking_started_at else None,
+        expected_return_pct=p.expected_return_pct,
+        expected_return_horizon_months=p.expected_return_horizon_months,
         last_screenshot_update_at=(
             as_utc(p.last_screenshot_update_at) if p.last_screenshot_update_at else None
         ),
@@ -203,6 +208,9 @@ def patch_portfolio(
         p.base_currency = body.base_currency
     if "risk_filter" in body.model_fields_set and body.risk_filter is not None:
         p.risk_filter = _clean_risk_filter(body.risk_filter, settings)
+    if "expected_return_pct" in body.model_fields_set:  # validated as a pair by the schema
+        p.expected_return_pct = body.expected_return_pct
+        p.expected_return_horizon_months = body.expected_return_horizon_months
     db.add(p)
     db.commit()
     db.refresh(p)
@@ -243,6 +251,25 @@ def holdings(
     if missing:
         background.add_task(refresh_symbol_data, missing)
     return out
+
+
+@router.get("/portfolios/{portfolio_id}/post-mortem", response_model=PostmortemOut)
+def post_mortem(
+    portfolio_id: int,
+    user: UserDep,
+    db: DbDep,
+    settings: SettingsDep,
+    start: date | None = None,
+    end: date | None = None,
+) -> PostmortemOut:
+    """Why the return differs from the expectation: deterministic, template text, no LLM."""
+    assert user.id is not None
+    p = get_portfolio(db, user.id, portfolio_id)
+    if start is not None and end is not None and start >= end:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "start must be before end")
+    return post_mortem_for_portfolio(
+        db, p, get_providers().history, settings, start, end, local_today()
+    )
 
 
 @router.get("/portfolios/{portfolio_id}/xray", response_model=XrayOut)
