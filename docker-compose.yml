@@ -1,0 +1,61 @@
+# Local development stack:  docker compose up --build   ->  http://localhost:8080
+#
+#   api        FastAPI (single worker: the rate limiter is in memory). The in-process scheduler is OFF.
+#   scheduler  the same image running `python -m app.scheduler` (quotes, snapshots, scores, draft purge)
+#   web        the static frontend served by Caddy, proxying /api/* to the API (same origin, so the
+#              session cookie stays first-party). Caddy sets CF-Connecting-IP, which the API trusts.
+#
+# Development settings only (ENV=dev, plain-http cookies): production runs with ENV=production, Secure
+# cookies and a real SECRET_KEY, and the API refuses to start otherwise (see docs/deployment.md).
+# First user:  docker compose exec api python -m app.cli create-admin --email you@example.com
+
+x-backend-env: &backend-env
+  ENV: dev
+  COOKIE_SECURE: "false"
+  SECRET_KEY: ${SECRET_KEY:-dev-only-secret-change-me-0123456789abcdef}
+  DATABASE_URL: sqlite:////data/portfolio.db
+  FALLBACK_IP_HEADER: CF-Connecting-IP
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+
+services:
+  api:
+    build: ./backend
+    environment:
+      <<: *backend-env
+      SCHEDULER_IN_PROCESS: "false" # the scheduler service runs the jobs
+    volumes:
+      - pm-data:/data
+    ports:
+      - "8000:8000" # direct API access for curl / docs at /api/docs (dev only)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  scheduler:
+    build: ./backend
+    command: ["python", "-m", "app.scheduler"]
+    environment: *backend-env
+    volumes:
+      - pm-data:/data
+    depends_on:
+      api:
+        condition: service_healthy # the API creates the tables on first start
+    healthcheck:
+      disable: true # no HTTP port; the image's API healthcheck does not apply
+
+  web:
+    build: ./frontend
+    environment:
+      API_ORIGIN: http://api:8000
+    ports:
+      - "8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pm-data:

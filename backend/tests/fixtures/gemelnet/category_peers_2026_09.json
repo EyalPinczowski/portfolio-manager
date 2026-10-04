@@ -1,0 +1,108 @@
+{
+ "help": "https://data.gov.il/api/3/action/help_show?name=datastore_search",
+ "success": true,
+ "result": {
+  "include_total": true,
+  "resource_id": "00000000-0000-0000-0000-000000000001",
+  "fields": [
+   {
+    "id": "_id",
+    "type": "int"
+   },
+   {
+    "id": "FUND_ID",
+    "type": "int"
+   },
+   {
+    "id": "FUND_NAME",
+    "type": "text"
+   },
+   {
+    "id": "FUND_CLASSIFICATION",
+    "type": "text"
+   },
+   {
+    "id": "MANAGING_CORPORATION",
+    "type": "text"
+   },
+   {
+    "id": "REPORT_PERIOD",
+    "type": "int"
+   },
+   {
+    "id": "MONTHLY_YIELD",
+    "type": "float"
+   },
+   {
+    "id": "TOTAL_ASSETS",
+    "type": "float"
+   },
+   {
+    "id": "AVG_ANNUAL_MANAGEMENT_FEE",
+    "type": "float"
+   }
+  ],
+  "records": [
+   {
+    "_id": 200,
+    "FUND_ID": 3000,
+    "FUND_NAME": "קרן לדוגמה 0",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202609,
+    "MONTHLY_YIELD": 0.2,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 201,
+    "FUND_ID": 3001,
+    "FUND_NAME": "קרן לדוגמה 1",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202609,
+    "MONTHLY_YIELD": 0.4,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 202,
+    "FUND_ID": 3002,
+    "FUND_NAME": "קרן לדוגמה 2",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202609,
+    "MONTHLY_YIELD": 0.6,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 203,
+    "FUND_ID": 3003,
+    "FUND_NAME": "קרן לדוגמה 3",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202609,
+    "MONTHLY_YIELD": 0.8,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   },
+   {
+    "_id": 299,
+    "FUND_ID": 1001,
+    "FUND_NAME": "קרן השתלמות לדוגמה - כללי",
+    "FUND_CLASSIFICATION": "קרנות השתלמות",
+    "MANAGING_CORPORATION": "חברה לדוגמה בע\"מ",
+    "REPORT_PERIOD": 202609,
+    "MONTHLY_YIELD": 1.0,
+    "TOTAL_ASSETS": null,
+    "AVG_ANNUAL_MANAGEMENT_FEE": null
+   }
+  ],
+  "_links": {
+   "start": "/api/3/action/datastore_search",
+   "next": "/api/3/action/datastore_search"
+  },
+  "total": 5
+ }
+}

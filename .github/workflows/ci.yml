@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_FROZEN: "1" # never re-resolve in CI: backend/uv.lock is the source of truth
+
+jobs:
+  backend:
+    name: Backend (ruff, mypy, pytest on SQLite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      # TODO(pin-sha): pin this action to a full commit SHA, tag as trailing comment (not verified offline)
+      - uses: actions/checkout@v4
+      # TODO(pin-sha): pin this action to a full commit SHA, tag as trailing comment (not verified offline)
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv python install 3.12
+      - run: uv sync --extra dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy app
+      # Fixtures only; live-API tests are marked and skipped by default. Includes the check that
+      # backend/openapi.json is current (run `python scripts/dump_openapi.py` if it fails).
+      - run: uv run pytest -q
+
+  backend-postgres:
+    name: Backend (pytest on Postgres 16)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: portfolio_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # tests/conftest.py switches to this database (and empties it around every test)
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/portfolio_test
+    steps:
+      # TODO(pin-sha): pin this action to a full commit SHA, tag as trailing comment (not verified offline)
+      - uses: actions/checkout@v4
+      # TODO(pin-sha): pin this action to a full commit SHA, tag as trailing comment (not verified offline)
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv python install 3.12
+      - run: uv sync --extra dev --extra postgres
+      - run: uv run pytest -q
+
+  backend-audit:
+    name: Backend (pip-audit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      # TODO(pin-sha): pin this action to a full commit SHA, tag as trailing comment (not verified offline)
+      - uses: actions/checkout@v4
+      # TODO(pin-sha): pin this action to a full commit SHA, tag as trailing comment (not verified offline)
+      - uses: astral-sh/setup-uv@v6
+      - run: uv python install 3.12
+      # Audit exactly what the lockfile installs in production (no dev tools).
+      - run: uv export --frozen --no-dev --no-emit-project --extra postgres -o ../requirements-audit.txt
+      - run: uvx pip-audit -r ../requirements-audit.txt --no-deps --disable-pip --strict
+
+  frontend:
+    name: Frontend (eslint, tsc, vitest, build, npm audit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      # TODO(pin-sha): pin this action to a full commit SHA, tag as trailing comment (not verified offline)
+      - uses: actions/checkout@v4
+      # TODO(pin-sha): pin this action to a full commit SHA, tag as trailing comment (not verified offline)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      # The generated API types must match backend/openapi.json.
+      - run: npm run gen:api && git diff --exit-code -- lib/api-schema.d.ts
+      - run: npm test
+      - run: npm run build
+      # Production dependencies only: dev-tool advisories do not ship to users.
+      - run: npm audit --omit=dev --audit-level=high

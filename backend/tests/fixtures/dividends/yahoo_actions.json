@@ -1,0 +1,20 @@
+{
+  "_note": "Hand-built in the shape yfinance returns (Ticker.dividends, Ticker.calendar, fast_info currency); offsets are days from the test's 'today' so the file never goes stale. TASE amounts are agorot (ILA) exactly as Yahoo reports them.",
+  "AAPL": {
+    "currency": "USD",
+    "paid": [[-300, 0.25], [-210, 0.25], [-120, 0.26], [-30, 0.26]],
+    "calendar": {"ex_days": 55, "pay_days": 62}
+  },
+  "TEVA.TA": {
+    "currency": "ILA",
+    "paid": [[-200, 55.0], [-20, 60.0]],
+    "calendar": null
+  },
+  "OLDCO": {
+    "currency": "USD",
+    "paid": [[-900, 1.0], [-700, 1.0]],
+    "calendar": null
+  },
+  "NODIV": {"currency": "USD", "paid": [], "calendar": null},
+  "NOCUR": {"currency": null, "paid": [[-30, 0.5]], "calendar": null}
+}

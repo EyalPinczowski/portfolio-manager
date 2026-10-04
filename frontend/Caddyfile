@@ -1,0 +1,62 @@
+# Static-serve variant of the web image: serves the Next.js static export (out/) and reverse-proxies /api/*
+# to the API (env API_ORIGIN, e.g. http://api:8000 or https://my-api.onrender.com). Same-origin, so the
+# session cookie stays first-party. Keep the CSP in step with lib/security-headers.ts (tests check it).
+{
+	admin off
+	auto_https off
+	servers {
+		# Who may tell Caddy the visitor's real address (the header names below). Default: nobody (a
+		# TEST-NET address that never connects), so `{client_ip}` is the TCP peer. That is right when
+		# visitors reach Caddy directly (Option B on a LAN / port forward), and a spoofed
+		# CF-Connecting-IP or X-Forwarded-For from them is ignored.
+		# Behind a tunnel the peer is the tunnel daemon and every visitor would share one address (and
+		# one login rate-limit key). Then set TRUSTED_PROXIES to that daemon's address, as Caddy sees it:
+		#   Cloudflare Tunnel (cloudflared): its container/host address; it sets CF-Connecting-IP.
+		#   Tailscale Serve (tailscaled on the host): 127.0.0.1/32 or the Docker gateway; it sets X-Forwarded-For.
+		# Several ranges are space separated. Never put a range there that a visitor can connect from.
+		trusted_proxies static {$TRUSTED_PROXIES:192.0.2.1/32}
+		client_ip_headers {$CLIENT_IP_HEADERS:CF-Connecting-IP X-Forwarded-For}
+	}
+}
+
+:{$PORT:8080} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy {$API_ORIGIN} {
+			header_up Host {upstream_hostport}
+			# The API trusts only this header from the configured proxy. Overwrite whatever the client sent.
+			# `{client_ip}` is the TCP peer, or the address from CF-Connecting-IP / X-Forwarded-For when (and only
+			# when) the peer is in TRUSTED_PROXIES (see the global options). `{remote_host}` would be the tunnel.
+			header_up CF-Connecting-IP {client_ip}
+			header_up -X-Forwarded-For
+			header_up -X-Real-IP
+			header_up -True-Client-IP
+			header_down Cache-Control "no-store"
+		}
+	}
+
+	handle {
+		root * /srv
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+			X-Content-Type-Options "nosniff"
+			Referrer-Policy "strict-origin-when-cross-origin"
+			X-Frame-Options "DENY"
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+			Cross-Origin-Opener-Policy "same-origin"
+			Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		}
+		@immutable path /_next/static/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+		@sw path /sw.js
+		header @sw Cache-Control "no-cache"
+		try_files {path} {path}/index.html
+		file_server
+	}
+
+	handle_errors {
+		rewrite * /404.html
+		file_server { root /srv }
+	}
+}

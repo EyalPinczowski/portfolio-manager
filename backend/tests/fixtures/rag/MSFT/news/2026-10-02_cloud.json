@@ -1,0 +1,16 @@
+[
+  {
+    "symbol": "MSFT",
+    "doc_type": "transcript",
+    "source_url": "https://example.test/msft/q4-call",
+    "as_of": "2026-09-20T00:00:00",
+    "text": "Management said Azure cloud growth accelerated as demand for artificial intelligence workloads increased. The chief financial officer guided capital expenditure higher for the next fiscal year to build more datacenter capacity."
+  },
+  {
+    "symbol": "MSFT",
+    "doc_type": "news",
+    "source_url": "https://example.test/msft/ceo",
+    "as_of": "2026-10-02T09:00:00+00:00",
+    "text": "Microsoft named a new head of its gaming division after the previous executive announced retirement."
+  }
+]
