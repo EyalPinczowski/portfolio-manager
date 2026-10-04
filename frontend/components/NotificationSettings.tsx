@@ -4,40 +4,36 @@ import { useLocale, useTranslations } from "next-intl";
 import { api, ApiError, type LinkCode, type QuietHours, type Settings, type Weekday } from "@/lib/api";
 import { formatTime } from "@/lib/format";
 import { useTelegramStatus } from "@/lib/hooks";
-import { SaveStatus, SettingsCard, useSettingsSave, HHMM } from "./SettingsControls";
+import { SaveStatus, useSettingsSave, HHMM } from "./SettingsControls";
+import { CalendarGlyph, SendGlyph } from "./SettingsIcons";
+import { ConfirmSheet, FIELD, FieldRow, GroupItem, SettingsGroup, SettingsRow, ToggleRow } from "./SettingsUI";
 
 const DAYS: Weekday[] = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
-function WeeklyReview({ s }: { s: Settings }) {
+export function WeeklyReviewScreen({ s }: { s: Settings }) {
   const t = useTranslations("prefs.notifications");
   const { save, state, status } = useSettingsSave();
   const w = s.weekly_review;
   const [time, setTime] = useState(w.time);
   return (
-    <SettingsCard title={t("weeklyTitle")} intro={t("weeklyHelp")}>
-      <label className="flex min-h-11 items-center gap-3">
-        <input type="checkbox" className="h-5 w-5" checked={w.enabled} onChange={(e) => void save({ weekly_review: { enabled: e.target.checked } })} />
-        <span>{t("weeklyOn")}</span>
-      </label>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label htmlFor="wr-day" className="label">{t("weeklyDay")}</label>
-          <select id="wr-day" className="input" value={w.day} onChange={(e) => void save({ weekly_review: { day: e.target.value as Weekday } })}>
+    <>
+      <SettingsGroup label={t("weeklyTitle")} footer={t("weeklyHelp")}>
+        <ToggleRow label={t("weeklyOn")} checked={w.enabled} onChange={(enabled) => void save({ weekly_review: { enabled } })} icon={<CalendarGlyph />} tone="orange" />
+        <FieldRow label={t("weeklyDay")} htmlFor="wr-day">
+          <select id="wr-day" className={FIELD} value={w.day} onChange={(e) => void save({ weekly_review: { day: e.target.value as Weekday } })}>
             {DAYS.map((d) => <option key={d} value={d}>{t(`weekdays.${d}`)}</option>)}
           </select>
-        </div>
-        <div>
-          <label htmlFor="wr-time" className="label">{t("weeklyTime")}</label>
-          <input id="wr-time" type="time" dir="ltr" className="input" value={time} onChange={(e) => { setTime(e.target.value); if (HHMM.test(e.target.value)) void save({ weekly_review: { time: e.target.value } }); }} />
-        </div>
-      </div>
-      <p className="text-caption text-muted">{t("weeklyZone", { zone: w.timezone })}</p>
+        </FieldRow>
+        <FieldRow label={t("weeklyTime")} htmlFor="wr-time" help={t("weeklyZone", { zone: w.timezone })}>
+          <input id="wr-time" type="time" dir="ltr" className={FIELD} value={time} onChange={(e) => { setTime(e.target.value); if (HHMM.test(e.target.value)) void save({ weekly_review: { time: e.target.value } }); }} />
+        </FieldRow>
+      </SettingsGroup>
       <SaveStatus state={state} status={status} />
-    </SettingsCard>
+    </>
   );
 }
 
-function QuietHoursForm({ s }: { s: Settings }) {
+export function QuietHoursScreen({ s }: { s: Settings }) {
   const t = useTranslations("prefs.notifications");
   const { save, state, status } = useSettingsSave();
   const q = s.quiet_hours;
@@ -47,19 +43,19 @@ function QuietHoursForm({ s }: { s: Settings }) {
   const same = HHMM.test(start) && start === end;
   const patch = (v: QuietHours | null) => save({ quiet_hours: v });
   return (
-    <SettingsCard title={t("quietTitle")} intro={t("quietHelp")}>
-      <p className="text-sm" role="status" data-testid="quiet-state">{q ? t("quietNow", { start: q.start, end: q.end }) : t("quietNone")}</p>
-      <div className="grid grid-cols-2 gap-3">
-        <div><label htmlFor="qh-start" className="label">{t("quietFrom")}</label><input id="qh-start" type="time" dir="ltr" className="input" value={start} onChange={(e) => setStart(e.target.value)} /></div>
-        <div><label htmlFor="qh-end" className="label">{t("quietTo")}</label><input id="qh-end" type="time" dir="ltr" className="input" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
-      </div>
-      {same && <p className="text-sm text-warn-fg" role="status">{t("quietSame")}</p>}
-      <div className="flex flex-wrap items-center gap-2">
+    <>
+      <SettingsGroup label={t("quietTitle")} footer={t("quietHelp")}>
+        <GroupItem><p className="text-sm" role="status" data-testid="quiet-state">{q ? t("quietNow", { start: q.start, end: q.end }) : t("quietNone")}</p></GroupItem>
+        <FieldRow label={t("quietFrom")} htmlFor="qh-start"><input id="qh-start" type="time" dir="ltr" className={FIELD} value={start} onChange={(e) => setStart(e.target.value)} /></FieldRow>
+        <FieldRow label={t("quietTo")} htmlFor="qh-end"><input id="qh-end" type="time" dir="ltr" className={FIELD} value={end} onChange={(e) => setEnd(e.target.value)} /></FieldRow>
+      </SettingsGroup>
+      {same && <p className="px-4 text-sm text-warn-fg" role="status">{t("quietSame")}</p>}
+      <div className="flex flex-wrap items-center gap-2 px-1">
         <button type="button" className="btn-primary" disabled={!valid || state === "saving"} onClick={() => void patch({ start, end })}>{t("quietSave")}</button>
         <button type="button" className="btn-secondary" disabled={!q || state === "saving"} onClick={async () => { if (await patch(null)) { setStart(""); setEnd(""); } }}>{t("quietClear")}</button>
         <SaveStatus state={state} status={status} />
       </div>
-    </SettingsCard>
+    </>
   );
 }
 
@@ -70,7 +66,7 @@ function CodeBox({ code, onNew }: { code: LinkCode; onNew: () => void }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => { try { await navigator.clipboard.writeText(code.command); setCopied(true); } catch { /* clipboard blocked: the text is selectable */ } };
   return (
-    <div className="space-y-3 rounded-xl border border-line p-3" data-testid="link-code">
+    <div className="space-y-3" data-testid="link-code">
       <div>
         <h3 className="font-semibold">{t("codeTitle")}</h3>
         <p className="text-caption text-muted">{t("codeHelp", { minutes: code.ttl_minutes })} {t("codeUntil", { time: formatTime(code.expires_at, locale) })}</p>
@@ -94,7 +90,7 @@ function CodeBox({ code, onNew }: { code: LinkCode; onNew: () => void }) {
   );
 }
 
-export function TelegramCard() {
+export function TelegramScreen() {
   const t = useTranslations("prefs.telegram");
   const c = useTranslations("common");
   const { data: st, error, mutate } = useTelegramStatus();
@@ -121,51 +117,26 @@ export function TelegramCard() {
   };
   const unlink = async () => {
     setBusy(true); setErr(null);
-    try { await api.telegramUnlink(); setConfirm(false); await mutate(); } catch { setErr(t("errGeneric")); } finally { setBusy(false); }
+    try { await api.telegramUnlink(); setConfirm(false); await mutate(); } catch { setErr(t("errGeneric")); setConfirm(false); } finally { setBusy(false); }
   };
 
-  return (
-    <SettingsCard title={t("title")} intro={t("help")}>
-      {error ? <p role="alert" className="text-loss">{c("errorLoad")}</p> : !st ? <p role="status" className="text-muted">{c("loading")}</p> : (
-        <>
-          <p className={st.linked ? "chip-brand w-fit" : "chip-neutral w-fit"} role="status" data-testid="telegram-state">{st.linked ? t("connected") : t("notConnected")}</p>
-          {!st.configured && !st.linked && <p className="text-sm text-muted">{t("unavailable")}</p>}
-          {st.linked ? (
-            confirm ? (
-              <div className="space-y-2" role="group" aria-label={t("disconnect")}>
-                <p className="text-sm">{t("disconnectConfirm")}</p>
-                <div className="flex gap-2">
-                  <button type="button" className="btn-danger" disabled={busy} onClick={() => void unlink()}>{t("disconnectYes")}</button>
-                  <button type="button" className="btn-secondary" onClick={() => setConfirm(false)}>{c("cancel")}</button>
-                </div>
-              </div>
-            ) : <button type="button" className="btn-secondary w-fit" onClick={() => setConfirm(true)}>{t("disconnect")}</button>
-          ) : st.configured && !shownCode ? (
-            <button type="button" className="btn-primary w-fit" disabled={busy} onClick={() => void getCode()}>{t("connect")}</button>
-          ) : null}
-          {shownCode && <CodeBox code={shownCode} onNew={() => void getCode()} />}
-          {err && <p role="alert" className="text-sm text-loss">{err}</p>}
-        </>
-      )}
-    </SettingsCard>
-  );
-}
-
-export function NotificationsScreen({ s }: { s: Settings }) {
-  const t = useTranslations("prefs.notifications");
-  const { save, state, status } = useSettingsSave();
+  if (error) return <p role="alert" className="card text-loss">{c("errorLoad")}</p>;
+  if (!st) return <p role="status" className="text-muted">{c("loading")}</p>;
   return (
     <>
-      <SettingsCard title={t("priceAlerts")} intro={t("priceAlertsHelp")}>
-        <label className="flex min-h-11 items-center gap-3">
-          <input type="checkbox" className="h-5 w-5" checked={s.price_alerts_enabled} onChange={(e) => void save({ price_alerts_enabled: e.target.checked })} />
-          <span>{t("priceAlerts")}</span>
-        </label>
-        <SaveStatus state={state} status={status} />
-      </SettingsCard>
-      <WeeklyReview s={s} />
-      <QuietHoursForm s={s} />
-      <TelegramCard />
+      <SettingsGroup label={t("title")} footer={t("help")}>
+        <GroupItem>
+          <p className={st.linked ? "chip-brand w-fit" : "chip-neutral w-fit"} role="status" data-testid="telegram-state">{st.linked ? t("connected") : t("notConnected")}</p>
+          {!st.configured && !st.linked && <p className="mt-2 text-sm text-muted">{t("unavailable")}</p>}
+        </GroupItem>
+        {!st.linked && st.configured && !shownCode && <SettingsRow label={t("connect")} icon={<SendGlyph />} tone="blue" disabled={busy} onClick={() => void getCode()} />}
+        {shownCode && <GroupItem><CodeBox code={shownCode} onNew={() => void getCode()} /></GroupItem>}
+        {st.linked && <SettingsRow label={t("disconnect")} destructive onClick={() => setConfirm(true)} />}
+      </SettingsGroup>
+      {err && <p role="alert" className="px-4 text-sm text-loss">{err}</p>}
+      {confirm && (
+        <ConfirmSheet title={t("disconnect")} body={t("disconnectConfirm")} confirmLabel={t("disconnectYes")} cancelLabel={c("cancel")} busy={busy} onConfirm={() => void unlink()} onCancel={() => setConfirm(false)} />
+      )}
     </>
   );
 }

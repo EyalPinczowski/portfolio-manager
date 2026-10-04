@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import useSWR from "swr";
 import { api, toPresets, type IdeaAlertsFilter, type Horizon, type MarketKey, type Settings } from "@/lib/api";
-import { HHMM, SaveStatus, SettingsCard, useSettingsSave } from "./SettingsControls";
+import { HHMM, SaveStatus, useSettingsSave } from "./SettingsControls";
+import { CheckList, FIELD, FieldRow, GroupItem, MultiCheckList, SettingsGroup } from "./SettingsUI";
 
 const HORIZONS: Horizon[] = ["1w", "1m", "3m", "6m", "1y"];
 const MARKETS: MarketKey[] = ["US", "TASE", "CRYPTO"];
@@ -63,67 +64,55 @@ export function IdeaAlertsForm({ s }: { s: Settings }) {
 
   return (
     <>
-      <SettingsCard title={t("title")} intro={t("intro")}>
-        <p className={saved ? "chip-brand w-fit" : "chip-warn w-fit"} role="status" data-testid="idea-state">{saved ? t("stateSet") : t("stateNotSet")}</p>
-        {saved && <p className="text-sm text-muted">{t("summary", { conf: `${Math.round(saved.min_confidence * 100)}%`, horizon: h(`horizons.${saved.horizon}`), risk: presetLabel(saved.risk_preset), max: saved.max_per_day })}</p>}
-        {gate && !gate.open && <p className="rounded-xl bg-warn-bg p-3 text-sm text-warn-fg" role="note">{t("gateClosed")}</p>}
-      </SettingsCard>
-      <form onSubmit={submit} className="card space-y-4" aria-label={t("title")}>
-        <div>
-          <label htmlFor="ia-conf" className="label">{t("minConfidence")}</label>
-          <input id="ia-conf" className="input" inputMode="numeric" dir="ltr" value={conf} onChange={(e) => setConf(e.target.value)} aria-describedby="ia-conf-h" />
-          <p id="ia-conf-h" className="text-caption text-muted">{t("minConfidenceHelp")}</p>
-        </div>
-        <div>
-          <p className="label" id="ia-h">{t("horizon")}</p>
-          <div role="radiogroup" aria-labelledby="ia-h" className="flex flex-wrap gap-2">
-            {HORIZONS.map((x) => <button key={x} type="button" role="radio" aria-checked={horizon === x} className={horizon === x ? "btn-primary" : "btn-secondary"} onClick={() => setHorizon(x)}>{h(`horizons.${x}`)}</button>)}
-          </div>
-        </div>
-        <div>
-          <label htmlFor="ia-risk" className="label">{t("risk")}</label>
-          <select id="ia-risk" className="input" value={risk} onChange={(e) => setRisk(e.target.value)}>
-            <option value="">{t("riskPlaceholder")}</option>
-            {presets.map((p) => <option key={p.name} value={p.name}>{presetLabel(p.name)}</option>)}
-          </select>
-        </div>
-        <fieldset className="space-y-1">
-          <legend className="label">{t("markets")}</legend>
-          <div className="flex flex-wrap gap-4">
-            {MARKETS.map((m) => <label key={m} className="flex min-h-11 items-center gap-2"><input type="checkbox" className="h-5 w-5" checked={markets.includes(m)} onChange={() => setMarkets(toggle(markets, m))} />{t(`marketNames.${m}`)}</label>)}
-          </div>
-        </fieldset>
-        <fieldset className="space-y-1">
-          <legend className="label">{t("assetTypes")}</legend>
-          <div className="flex flex-wrap gap-4">
-            {TYPES.map((m) => <label key={m} className="flex min-h-11 items-center gap-2"><input type="checkbox" className="h-5 w-5" checked={types.includes(m)} onChange={() => setTypes(toggle(types, m))} />{t(`types.${m}`)}</label>)}
-          </div>
-        </fieldset>
-        <div>
-          <label htmlFor="ia-max" className="label">{t("maxPerDay")}</label>
-          <input id="ia-max" className="input" inputMode="numeric" dir="ltr" value={perDay} onChange={(e) => setPerDay(e.target.value)} aria-describedby="ia-max-h" />
-          <p id="ia-max-h" className="text-caption text-muted">{t("maxPerDayHelp")}</p>
-        </div>
-        <fieldset className="space-y-2">
-          <legend className="label">{t("quiet")}</legend>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("quiet")}>
-            <button type="button" role="radio" aria-checked={quiet === "none"} className={quiet === "none" ? "btn-primary" : "btn-secondary"} onClick={() => setQuiet("none")}>{t("quietNone")}</button>
-            <button type="button" role="radio" aria-checked={quiet === "use"} className={quiet === "use" ? "btn-primary" : "btn-secondary"} onClick={() => setQuiet("use")}>{t("quietUse")}</button>
-          </div>
-          {quiet === "use" && (
-            <div className="grid grid-cols-2 gap-3">
-              <div><label htmlFor="ia-qs" className="label">{tn("quietFrom")}</label><input id="ia-qs" type="time" dir="ltr" className="input" value={qs} onChange={(e) => setQs(e.target.value)} /></div>
-              <div><label htmlFor="ia-qe" className="label">{tn("quietTo")}</label><input id="ia-qe" type="time" dir="ltr" className="input" value={qe} onChange={(e) => setQe(e.target.value)} /></div>
-            </div>
-          )}
-        </fieldset>
-        {!valid && <p className="text-sm text-muted" role="status">{t("pickAll")}</p>}
-        <div className="flex flex-wrap items-center gap-2">
+      <SettingsGroup label={t("title")} footer={t("intro")}>
+        <GroupItem>
+          <p className={saved ? "chip-brand w-fit" : "chip-warn w-fit"} role="status" data-testid="idea-state">{saved ? t("stateSet") : t("stateNotSet")}</p>
+          {saved && <p className="mt-2 text-sm text-muted">{t("summary", { conf: `${Math.round(saved.min_confidence * 100)}%`, horizon: h(`horizons.${saved.horizon}`), risk: presetLabel(saved.risk_preset), max: saved.max_per_day })}</p>}
+          {gate && !gate.open && <p className="mt-2 rounded-xl bg-warn-bg p-3 text-sm text-warn-fg" role="note">{t("gateClosed")}</p>}
+        </GroupItem>
+      </SettingsGroup>
+      <form onSubmit={submit} className="space-y-5" aria-label={t("title")}>
+        <SettingsGroup footer={t("minConfidenceHelp")}>
+          <FieldRow label={t("minConfidence")} htmlFor="ia-conf">
+            <input id="ia-conf" className={`${FIELD} w-24`} inputMode="numeric" dir="ltr" placeholder="%" value={conf} onChange={(e) => setConf(e.target.value)} />
+          </FieldRow>
+        </SettingsGroup>
+        <CheckList
+          title={t("horizon")} label={t("horizon")} value={horizon} onPick={setHorizon}
+          options={HORIZONS.map((x) => ({ value: x, label: h(`horizons.${x}`) }))}
+        />
+        <SettingsGroup>
+          <FieldRow label={t("risk")} htmlFor="ia-risk">
+            <select id="ia-risk" className={FIELD} value={risk} onChange={(e) => setRisk(e.target.value)}>
+              <option value="">{t("riskPlaceholder")}</option>
+              {presets.map((p) => <option key={p.name} value={p.name}>{presetLabel(p.name)}</option>)}
+            </select>
+          </FieldRow>
+        </SettingsGroup>
+        <MultiCheckList title={t("markets")} label={t("markets")} values={markets} onToggle={(m) => setMarkets(toggle(markets, m))} options={MARKETS.map((m) => ({ value: m, label: t(`marketNames.${m}`) }))} />
+        <MultiCheckList title={t("assetTypes")} label={t("assetTypes")} values={types} onToggle={(m) => setTypes(toggle(types, m))} options={TYPES.map((m) => ({ value: m, label: t(`types.${m}`) }))} />
+        <SettingsGroup footer={t("maxPerDayHelp")}>
+          <FieldRow label={t("maxPerDay")} htmlFor="ia-max">
+            <input id="ia-max" className={`${FIELD} w-24`} inputMode="numeric" dir="ltr" value={perDay} onChange={(e) => setPerDay(e.target.value)} />
+          </FieldRow>
+        </SettingsGroup>
+        <CheckList
+          title={t("quiet")} label={t("quiet")} value={quiet} onPick={setQuiet}
+          options={[{ value: "none", label: t("quietNone") }, { value: "use", label: t("quietUse") }]}
+        />
+        {quiet === "use" && (
+          <SettingsGroup label={t("quiet")}>
+            <FieldRow label={tn("quietFrom")} htmlFor="ia-qs"><input id="ia-qs" type="time" dir="ltr" className={FIELD} value={qs} onChange={(e) => setQs(e.target.value)} /></FieldRow>
+            <FieldRow label={tn("quietTo")} htmlFor="ia-qe"><input id="ia-qe" type="time" dir="ltr" className={FIELD} value={qe} onChange={(e) => setQe(e.target.value)} /></FieldRow>
+          </SettingsGroup>
+        )}
+        {!valid && <p className="px-4 text-sm text-muted" role="status">{t("pickAll")}</p>}
+        <div className="flex flex-wrap items-center gap-2 px-1">
           <button type="submit" className="btn-primary" disabled={!valid || state === "saving"}>{t("save")}</button>
           <button type="button" className="btn-secondary" disabled={!saved || state === "saving"} onClick={() => void clear()}>{t("clear")}</button>
           <SaveStatus state={state} status={status} />
         </div>
-        {cleared && state === "saved" && <p className="text-sm text-muted" role="status">{t("cleared")}</p>}
+        {cleared && state === "saved" && <p className="px-4 text-sm text-muted" role="status">{t("cleared")}</p>}
       </form>
     </>
   );

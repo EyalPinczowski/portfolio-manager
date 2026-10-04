@@ -3,8 +3,9 @@
 Informational only: a rule result is `breach`, `ok` or `off` and never blocks or changes anything
 (the risk engine and the `breaches` list are separate). Defaults: every rule ON, threshold taken
 from the portfolio's `RiskFilter` (concentration -> max_position_pct, sector -> max_sector_pct,
-country -> max_country_pct). The currency rule has no RiskFilter field, so its default is a config
-value. A user may override a rule's threshold within `Settings.xray_rule_override_bounds`.
+country -> max_country_pct). The currency rule has NO default threshold (user decision): without an
+override it is informational (state `ok`, `threshold_pct` None, source `none`) and lists the currency
+split. A user may override a rule's threshold within `Settings.xray_rule_override_bounds`.
 Each result carries a typed `Explanation` that feeds "Why?".
 """
 
@@ -31,7 +32,7 @@ from app.signals.base import Explanation, ExplanationSource
 RuleName = Literal["concentration", "currency", "country_home", "sector"]
 RULE_NAMES: tuple[RuleName, ...] = ("concentration", "currency", "country_home", "sector")
 RuleState = Literal["breach", "ok", "off"]
-ThresholdSource = Literal["risk_filter", "config_default", "override"]
+ThresholdSource = Literal["risk_filter", "config_default", "override", "none"]
 
 _LABEL: dict[str, str] = {
     "concentration": "Single-position concentration",
@@ -51,10 +52,10 @@ class XrayRuleResult(BaseModel):
     label: str
     state: RuleState
     enabled: bool
-    threshold_pct: float
+    threshold_pct: float | None  # None: no limit set (currency by default)
     threshold_source: ThresholdSource
     value_pct: float | None  # the largest exposure the rule looks at (None when off or empty)
-    items: list[RuleItem]  # what is above the threshold (empty when ok or off)
+    items: list[RuleItem]  # above the threshold; the currency split when no limit is set
     explanation: Explanation
 
 
@@ -62,9 +63,9 @@ class XrayRuleResult(BaseModel):
 class ResolvedRule:
     rule: RuleName
     enabled: bool
-    threshold_pct: float
+    threshold_pct: float | None
     threshold_source: ThresholdSource
-    default_threshold_pct: float
+    default_threshold_pct: float | None
     default_source: ThresholdSource
     override_pct: float | None
     min_pct: float
@@ -73,14 +74,14 @@ class ResolvedRule:
 
 def default_threshold(
     rule: RuleName, limits: RiskFilter, s: Settings
-) -> tuple[float, ThresholdSource]:
+) -> tuple[float | None, ThresholdSource]:
     if rule == "concentration":
         return limits.max_position_pct, "risk_filter"
     if rule == "sector":
         return limits.max_sector_pct, "risk_filter"
     if rule == "country_home":
         return limits.max_country_pct, "risk_filter"
-    return s.xray_currency_default_max_pct, "config_default"
+    return None, "none"  # currency: no default limit
 
 
 def resolve_rules(
@@ -132,11 +133,18 @@ def _explain(
         "risk_filter": "your risk filter",
         "config_default": "the app default (your risk filter has no limit for this)",
         "override": "your own setting for this rule",
+        "none": "no limit",
     }[r.threshold_source]
     if state == "off":
         summary = f"{label} is switched off for this portfolio, so it is not checked."
     elif top is None:
         summary = f"{label}: nothing to measure yet (no valued holdings)."
+    elif r.threshold_pct is None:
+        split = ", ".join(f"{i.name} {i.value_pct:.1f}%" for i in items[:5])
+        summary = (
+            f"{label}: no limit is set, so nothing is flagged. Your exposure is {split}. "
+            "You may set your own limit for this rule."
+        )
     elif state == "breach":
         names = ", ".join(f"{i.name} {i.value_pct:.1f}%" for i in items[:5])
         summary = f"{label}: {names} is above the {r.threshold_pct:g}% threshold from {src}."
@@ -145,7 +153,9 @@ def _explain(
             f"{label}: the largest is {top.name} at {top.value_pct:.1f}%, within the "
             f"{r.threshold_pct:g}% threshold from {src}."
         )
-    inputs: dict[str, float | str] = {"threshold_pct": r.threshold_pct, **extra_inputs}
+    inputs: dict[str, float | str] = dict(extra_inputs)
+    if r.threshold_pct is not None:
+        inputs["threshold_pct"] = r.threshold_pct
     if top is not None and state != "off":
         inputs["largest_pct"] = top.value_pct
     return Explanation(
@@ -153,7 +163,9 @@ def _explain(
         inputs=inputs,
         rules_applied=[f"xray_rule:{r.rule}:{state}"],
         as_of=as_of,
-        risk_rules_applied=[f"threshold from {src}"],
+        risk_rules_applied=[
+            f"threshold from {src}" if r.threshold_pct is not None else "no limit set"
+        ],
         invalidation_risks=[
             "Based on the last known prices and the sector and country labels of each holding; "
             "a stale price or a wrong label changes the result.",
@@ -191,7 +203,7 @@ def evaluate_rules(
                 for p, pct in weights:
                     # a per-holding limit wins over the portfolio-wide one (CLAUDE.md)
                     cap = p.max_position_pct if p.max_position_pct is not None else r.threshold_pct
-                    if pct > cap + 1e-9:
+                    if cap is not None and pct > cap + 1e-9:
                         items.append(RuleItem(name=p.symbol, value_pct=round(pct, 2)))
             else:
                 groups, skip = {
@@ -202,10 +214,14 @@ def evaluate_rules(
                 counted = [g for g in groups if g.name.lower() not in skip]
                 if counted:
                     top = RuleItem(name=counted[0].name, value_pct=counted[0].weight_pct)
-                items = _above(groups, r.threshold_pct, skip)
+                if r.threshold_pct is None:  # informational: show the split, never breach
+                    items = [RuleItem(name=g.name, value_pct=g.weight_pct) for g in counted]
+                else:
+                    items = _above(groups, r.threshold_pct, skip)
                 if r.rule == "country_home":
                     extra["home_country_pct"] = exposures.home_bias_pct
-        state: RuleState = "off" if not r.enabled else ("breach" if items else "ok")
+        breach = bool(items) and r.threshold_pct is not None
+        state: RuleState = "off" if not r.enabled else ("breach" if breach else "ok")
         out.append(
             XrayRuleResult(
                 rule=r.rule,

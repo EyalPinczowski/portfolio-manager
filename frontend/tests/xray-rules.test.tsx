@@ -45,6 +45,21 @@ describe("X-ray rules", () => {
     expect(screen.getByTestId("xray-rules").textContent).not.toMatch(NO_BLOCK_EN);
   });
 
+  it("the currency rule has no default limit: shows the split and stays ok", async () => {
+    wrap("en", <XrayPage />);
+    const c = await screen.findByTestId("rule-currency");
+    expect(c).toHaveAttribute("data-state", "ok");
+    expect(c).toHaveTextContent(en.xray.noLimit);
+    expect(c).not.toHaveTextContent(en.xray.thresholdNow.replace("{value}", ""));
+    expect(within(c).getByRole("list", { name: en.xray.currencySplit })).toBeInTheDocument();
+    expect(within(c).getByLabelText(en.xray.setLimitLabel)).toHaveValue("");
+  });
+
+  it("Hebrew currency card says no limit set", async () => {
+    wrap("he", <XrayPage />);
+    expect(await screen.findByTestId("rule-currency")).toHaveTextContent(he.xray.noLimit);
+  });
+
   it("toggling a rule off PATCHes enabled=false and shows the off state", async () => {
     const spy = vi.spyOn(api, "patchXrayRules");
     wrap("en", <XrayPage />);
@@ -61,7 +76,8 @@ describe("X-ray rules", () => {
     const spy = vi.spyOn(api, "patchXrayRules");
     wrap("en", <XrayPage />);
     const card = await screen.findByTestId("rule-currency");
-    const input = await within(card).findByLabelText(en.xray.overrideLabel);
+    expect(card).toHaveTextContent(en.xray.noLimit);
+    const input = await within(card).findByLabelText(en.xray.setLimitLabel);
     expect(within(card).queryByRole("button", { name: en.xray.clear })).toBeNull();
     fireEvent.change(input, { target: { value: "95" } });
     fireEvent.click(within(card).getByRole("button", { name: en.xray.save }));

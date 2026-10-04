@@ -50,7 +50,7 @@ function Controls({ pid, cfg, onChanged }: { pid: number; cfg: XrayRuleOut; onCh
         {t("enable")}
       </label>
       <div>
-        <label htmlFor={id} className="label">{t("overrideLabel")}</label>
+        <label htmlFor={id} className="label">{cfg.default_threshold_pct === null ? t("setLimitLabel") : t("overrideLabel")}</label>
         <div className="flex flex-wrap items-center gap-2">
           <input id={id} className="input w-28" inputMode="decimal" dir="ltr" value={text} aria-describedby={`${id}-hint`}
             aria-invalid={outOfRange} onChange={(e) => { setText(e.target.value); setMsg(null); }} />
@@ -60,7 +60,7 @@ function Controls({ pid, cfg, onChanged }: { pid: number; cfg: XrayRuleOut; onCh
             <button type="button" className="btn-secondary" disabled={busy} onClick={() => void send({ threshold_pct: null }, () => setText(""))}>{t("clear")}</button>
           )}
         </div>
-        <p id={`${id}-hint`} className="mt-1 text-caption text-muted">{t("overrideHint", { min: bounds.min, max: bounds.max, def: cfg.default_threshold_pct })}</p>
+        <p id={`${id}-hint`} className="mt-1 text-caption text-muted">{cfg.default_threshold_pct === null ? t("setLimitHint", { min: bounds.min, max: bounds.max }) : t("overrideHint", { min: bounds.min, max: bounds.max, def: cfg.default_threshold_pct })}</p>
         {outOfRange && <p className="text-caption text-warn-fg" role="status">{t("outOfBounds", bounds)}</p>}
         {msg && <p className={`text-caption ${msg.kind === "err" ? "text-warn-fg" : "text-muted"}`} role={msg.kind === "err" ? "alert" : "status"}>{msg.text}</p>}
       </div>
@@ -90,7 +90,7 @@ export function XrayRules({ pid, rules, onChanged }: { pid: number; rules: XrayR
                 <span className={STATE_CHIP[r.state]}><span aria-hidden="true">{STATE_MARK[r.state]} </span>{t(`state.${r.state}`)}</span>
               </div>
               <p className="text-sm text-muted">
-                {t("thresholdNow", { value: formatWeight(r.threshold_pct, locale) })} · {t(`source.${r.threshold_source}`)}
+                {r.threshold_pct === null ? t("noLimit") : <>{t("thresholdNow", { value: formatWeight(r.threshold_pct, locale) })} · {t(`source.${r.threshold_source}`)}</>}
                 {r.state !== "off" && typeof r.value_pct === "number" && <> · {t("largest", { value: formatWeight(r.value_pct, locale) })}</>}
               </p>
               {r.state === "breach" && r.items.length > 0 && (
@@ -98,7 +98,15 @@ export function XrayRules({ pid, rules, onChanged }: { pid: number; rules: XrayR
                   {r.items.map((i) => <li key={i.name} className="chip-warn"><bdi dir="auto">{i.name}</bdi> <span dir="ltr" className="tabular-nums">{formatWeight(i.value_pct, locale)}</span></li>)}
                 </ul>
               )}
-              {r.state === "ok" && <p className="text-sm text-muted">{t("none")}</p>}
+              {r.threshold_pct === null && r.state !== "off" && r.items.length > 0 && (
+                <div>
+                  <p className="text-caption text-muted">{t("currencySplit")}</p>
+                  <ul className="flex flex-wrap gap-1.5" aria-label={t("currencySplit")}>
+                    {r.items.map((i) => <li key={i.name} className="chip-neutral"><bdi dir="auto">{i.name}</bdi> <span dir="ltr" className="tabular-nums">{formatWeight(i.value_pct, locale)}</span></li>)}
+                  </ul>
+                </div>
+              )}
+              {r.state === "ok" && r.threshold_pct !== null && <p className="text-sm text-muted">{t("none")}</p>}
               <details className="border-t border-line pt-2">
                 <summary className="cursor-pointer text-sm font-medium text-brand-text">{t("why")}</summary>
                 <div className="mt-2"><ExplanationView e={r.explanation} /></div>

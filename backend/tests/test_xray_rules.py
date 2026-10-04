@@ -9,7 +9,6 @@ from typing import Any
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.config import Settings
 from app.db import new_session
 from tests.conftest import FakeQuotes
 from tests.test_api_portfolio import make_portfolio, set_fx
@@ -49,12 +48,12 @@ def test_defaults_all_on_with_thresholds_from_the_risk_filter(
         "risk_filter",
     )
     assert by["sector"]["threshold_pct"] == 25 and by["country_home"]["threshold_pct"] == 65
-    s = Settings(_env_file=None)
-    assert by["currency"]["threshold_pct"] == s.xray_currency_default_max_pct
-    assert by["currency"]["threshold_source"] == "config_default"
+    assert by["currency"]["threshold_pct"] is None
+    assert by["currency"]["threshold_source"] == "none"
+    assert by["currency"]["default_threshold_pct"] is None
     res = _rules(c, pid)
     assert {k: v["state"] for k, v in res.items()} == {
-        "concentration": "breach", "currency": "breach", "country_home": "breach",
+        "concentration": "breach", "currency": "ok", "country_home": "breach",
         "sector": "breach",
     }  # fmt: skip
     ex = res["concentration"]["explanation"]
@@ -147,3 +146,28 @@ def test_scoping_export_and_cascade(signup: SignupFn, quotes: FakeQuotes) -> Non
     assert a.delete(f"/api/portfolios/{pid}").status_code == 204
     with new_session() as db:  # raw count: the database cascaded
         assert db.connection().execute(text("SELECT count(*) FROM xray_rule_setting")).scalar() == 0
+
+
+def test_currency_has_no_default_limit_override_breaches_and_clears(
+    signup: SignupFn, quotes: FakeQuotes
+) -> None:
+    set_fx(3.5)
+    quotes.set("TEVA.TA", 65.0, "ILS", -1.0)
+    c = signup("carol@mail.com")
+    pid = make_portfolio(c)
+    c.post(f"/api/portfolios/{pid}/holdings", json={"symbol": "TEVA.TA", "quantity": 10})
+    url = f"/api/portfolios/{pid}/xray-rules"
+    cur = _rules(c, pid)["currency"]  # all ILS: still no breach by default
+    assert cur["state"] == "ok" and cur["threshold_pct"] is None
+    assert [i["name"] for i in cur["items"]] == ["ILS"] and cur["items"][0]["value_pct"] > 99
+    assert "no limit" in cur["explanation"]["summary"]
+    r = c.patch(url, json={"rules": [{"rule": "currency", "threshold_pct": 50}]})
+    assert r.status_code == 200
+    cur = _rules(c, pid)["currency"]
+    assert cur["state"] == "breach" and cur["threshold_source"] == "override"
+    got = {x["rule"]: x for x in c.get(url).json()["rules"]}["currency"]
+    assert got["threshold_pct"] == 50 and got["override_pct"] == 50
+    c.patch(url, json={"rules": [{"rule": "currency", "threshold_pct": None}]})
+    cur = _rules(c, pid)["currency"]
+    assert cur["state"] == "ok" and cur["threshold_pct"] is None
+    assert cur["threshold_source"] == "none"

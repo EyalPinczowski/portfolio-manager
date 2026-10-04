@@ -13,7 +13,11 @@ export const analyzeHref = (symbol: string): string => `/analyze?symbol=${encode
 /** Path of the portfolio post-mortem. Query-based so it works in a static export. */
 export const postmortemHref = (portfolioId?: number | null): string => (portfolioId ? `/postmortem?id=${portfolioId}` : "/postmortem");
 
-export type SettingsSection = "appearance" | "portfolio" | "notifications" | "ideas" | "admin";
+export const SETTINGS_SECTIONS = [
+  "account", "sessions", "language", "appearance", "currency", "numberFormat", "weekStart",
+  "weeklyReview", "quietHours", "telegram", "ideas", "risk", "status", "admin",
+] as const;
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 /** Path of the settings hub, or of one section. Query-based so it works in a static export. */
 export const settingsHref = (section?: SettingsSection): string => (section ? `/settings?section=${section}` : "/settings");
 /** Path of the "Suggest new stocks" screen. */

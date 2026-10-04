@@ -3653,14 +3653,14 @@ export interface components {
             /** Enabled */
             enabled: boolean;
             /** Threshold Pct */
-            threshold_pct: number;
+            threshold_pct: number | null;
             /**
              * Threshold Source
              * @enum {string}
              */
-            threshold_source: "risk_filter" | "config_default" | "override";
+            threshold_source: "risk_filter" | "config_default" | "override" | "none";
             /** Default Threshold Pct */
-            default_threshold_pct: number;
+            default_threshold_pct: number | null;
             /** Override Pct */
             override_pct: number | null;
             /** Min Pct */
@@ -3685,12 +3685,12 @@ export interface components {
             /** Enabled */
             enabled: boolean;
             /** Threshold Pct */
-            threshold_pct: number;
+            threshold_pct: number | null;
             /**
              * Threshold Source
              * @enum {string}
              */
-            threshold_source: "risk_filter" | "config_default" | "override";
+            threshold_source: "risk_filter" | "config_default" | "override" | "none";
             /** Value Pct */
             value_pct: number | null;
             /** Items */

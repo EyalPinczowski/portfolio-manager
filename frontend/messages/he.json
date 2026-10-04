@@ -388,8 +388,13 @@
     "source": {
       "risk_filter": "ממסנן הסיכון שלכם",
       "config_default": "ערך ברירת מחדל",
+      "none": "לא הוגדר סף",
       "override": "הסף שקבעתם"
     },
+    "noLimit": "לא הוגדר סף",
+    "currencySplit": "החלוקה שלכם",
+    "setLimitLabel": "הגדרת סף (%)",
+    "setLimitHint": "אופציונלי. טווח מותר: {min}% עד {max}%.",
     "above": "מעל הסף",
     "none": "אין דבר מעל הסף.",
     "why": "למה?",
@@ -941,15 +946,23 @@
     "hubIntro": "כל אזור נפתח במסך משלו. שינויים נשמרים מיד.",
     "sections": {
       "appearance": "מראה",
-      "appearanceNote": "שפה, ערכת נושא, מטבע ראשי, תצוגת מספרים",
       "portfolio": "תיק",
-      "portfolioNote": "היום שבו מתחיל השבוע",
       "notifications": "התראות",
-      "notificationsNote": "סיכום שבועי, שעות שקט, טלגרם",
       "ideaAlerts": "התראות על רעיונות חדשים",
-      "ideaAlertsNote": "מסנן שאתה קובע לפני ששולחים התראה",
       "admin": "ניהול",
-      "adminNote": "הזמנות ומשתמשים"
+      "language": "שפה",
+      "currency": "מטבע ראשי",
+      "numberFormat": "תצוגת מספרים",
+      "weekStart": "השבוע מתחיל ביום",
+      "weeklyReview": "סיכום שבועי",
+      "quietHours": "שעות שקט",
+      "telegram": "טלגרם",
+      "risk": "מגבלות סיכון",
+      "sessions": "חיבורים פעילים",
+      "account": "חשבון",
+      "status": "מצב המערכת",
+      "guide": "מדריך התחלה",
+      "priceAlerts": "התראות מחיר"
     },
     "back": "חזרה להגדרות",
     "saving": "שומר…",
@@ -1107,6 +1120,34 @@
       "disableYes": "כן, השבת",
       "error": "זה לא עבד. נסה שוב.",
       "loadError": "לא הצלחנו לטעון את האזור הזה."
+    },
+    "hub": {
+      "searchLabel": "חיפוש בהגדרות",
+      "searchPlaceholder": "חיפוש",
+      "noResults": "אין הגדרות שמתאימות ל\"{q}\".",
+      "groupGeneral": "כללי",
+      "groupNotifications": "התראות",
+      "groupInvesting": "השקעות",
+      "groupHelp": "עזרה ומצב",
+      "footerNotifications": "התראות מודיעות רק על שינויים. לא נשלח דבר על רעיונות חדשים עד שתגדיר את המסנן.",
+      "footerInvesting": "המגבלות שכל הצעה נבדקת מולן. לכל תיק יש מגבלות משלו.",
+      "footerHelp": "מצב המערכת לקריאה בלבד.",
+      "on": "פעיל",
+      "off": "כבוי",
+      "notSet": "לא הוגדר",
+      "set": "הוגדר",
+      "accountNote": "חיבורים, הנתונים שלך, יציאה"
+    },
+    "account": {
+      "signedIn": "מחובר",
+      "sessionsRow": "חיבורים פעילים",
+      "exportRow": "ייצוא הנתונים שלי",
+      "footerSecurity": "ייצוא או מחיקה של הנתונים דורשים את הסיסמה שלך.",
+      "logoutTitle": "לצאת מהחשבון?",
+      "logoutBody": "תצטרך להתחבר שוב בטלפון הזה.",
+      "logoutYes": "יציאה",
+      "dataGroup": "הנתונים שלך",
+      "dangerGroup": "יציאה ומחיקה"
     }
   },
   "suggest": {

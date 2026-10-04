@@ -33,9 +33,9 @@ router = APIRouter(tags=["xray-rules"], route_class=StrictJsonRoute)
 class XrayRuleOut(BaseModel):
     rule: RuleName
     enabled: bool
-    threshold_pct: float  # the one in force
+    threshold_pct: float | None  # the one in force (None: no limit set)
     threshold_source: ThresholdSource
-    default_threshold_pct: float
+    default_threshold_pct: float | None
     override_pct: float | None
     min_pct: float
     max_pct: float

@@ -35,37 +35,6 @@ export function SaveStatus({ state, status }: { state: SaveState; status?: numbe
   return null;
 }
 
-/** One labelled choice among a few (radio group). `value` null = nothing chosen yet (no defaults). */
-export function Choice<T extends string>({ label, help, value, options, onPick, disabled }: {
-  label: string; help?: string; value: T | null; options: { value: T; label: string }[]; onPick: (v: T) => void; disabled?: boolean;
-}) {
-  return (
-    <div className="space-y-1">
-      <p className="label" id={`lbl-${label}`}>{label}</p>
-      {help && <p className="text-caption text-muted">{help}</p>}
-      <div role="radiogroup" aria-labelledby={`lbl-${label}`} className="flex flex-wrap gap-2">
-        {options.map((o) => (
-          <button key={o.value} type="button" role="radio" aria-checked={value === o.value} disabled={disabled} onClick={() => onPick(o.value)} className={value === o.value ? "btn-primary" : "btn-secondary"}>
-            {o.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function SettingsCard({ title, intro, children }: { title: string; intro?: string; children: ReactNode }) {
-  return (
-    <section className="card space-y-4" aria-label={title}>
-      <div>
-        <h2 className="text-heading">{title}</h2>
-        {intro && <p className="text-sm text-muted">{intro}</p>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
 /** Loads settings once for a screen and shows the loading / error states. */
 export function WithSettings({ children }: { children: (s: Settings) => ReactNode }) {
   const t = useTranslations("prefs");

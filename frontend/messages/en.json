@@ -388,8 +388,13 @@
     "source": {
       "risk_filter": "from your risk filter",
       "config_default": "default value",
+      "none": "no limit set",
       "override": "your override"
     },
+    "noLimit": "No limit set",
+    "currencySplit": "Your split",
+    "setLimitLabel": "Set a limit (%)",
+    "setLimitHint": "Optional. Allowed range: {min}% to {max}%.",
     "above": "Above the threshold",
     "none": "Nothing above the threshold.",
     "why": "Why?",
@@ -941,15 +946,23 @@
     "hubIntro": "Each section opens its own screen. Changes save as soon as you make them.",
     "sections": {
       "appearance": "Appearance",
-      "appearanceNote": "Language, theme, main currency, number format",
       "portfolio": "Portfolio",
-      "portfolioNote": "The day the week starts on",
       "notifications": "Notifications",
-      "notificationsNote": "Weekly review, quiet hours, Telegram",
       "ideaAlerts": "New-idea alerts",
-      "ideaAlertsNote": "A filter you set before any alert is sent",
       "admin": "Admin",
-      "adminNote": "Invites and users"
+      "language": "Language",
+      "currency": "Main currency",
+      "numberFormat": "Number format",
+      "weekStart": "Week starts on",
+      "weeklyReview": "Weekly review",
+      "quietHours": "Quiet hours",
+      "telegram": "Telegram",
+      "risk": "Risk limits",
+      "sessions": "Active sessions",
+      "account": "Account",
+      "status": "System status",
+      "guide": "Setup guide",
+      "priceAlerts": "Price alerts"
     },
     "back": "Back to settings",
     "saving": "Saving…",
@@ -1107,6 +1120,34 @@
       "disableYes": "Yes, disable",
       "error": "That did not work. Try again.",
       "loadError": "Could not load this section."
+    },
+    "hub": {
+      "searchLabel": "Search settings",
+      "searchPlaceholder": "Search",
+      "noResults": "No settings match \"{q}\".",
+      "groupGeneral": "General",
+      "groupNotifications": "Notifications",
+      "groupInvesting": "Investing",
+      "groupHelp": "Help and status",
+      "footerNotifications": "Alerts only tell you about changes. Nothing is sent for new ideas until you set that filter.",
+      "footerInvesting": "The limits every suggestion is checked against. Each portfolio has its own.",
+      "footerHelp": "System status is read-only.",
+      "on": "On",
+      "off": "Off",
+      "notSet": "Not set",
+      "set": "Set",
+      "accountNote": "Sessions, your data, sign out"
+    },
+    "account": {
+      "signedIn": "Signed in",
+      "sessionsRow": "Active sessions",
+      "exportRow": "Export my data",
+      "footerSecurity": "Exporting or deleting your data asks for your password.",
+      "logoutTitle": "Sign out?",
+      "logoutBody": "You will need to sign in again on this phone.",
+      "logoutYes": "Sign out",
+      "dataGroup": "Your data",
+      "dangerGroup": "Sign out and delete"
     }
   },
   "suggest": {

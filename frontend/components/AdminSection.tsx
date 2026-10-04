@@ -5,7 +5,7 @@ import { api, type AdminUser, type Invite } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { useAdminInvites, useAdminUsers } from "@/lib/hooks";
 import { parseLocaleNumber } from "@/lib/number";
-import { SettingsCard } from "./SettingsControls";
+import { GroupItem, SettingsGroup } from "./SettingsUI";
 
 function Invites() {
   const t = useTranslations("prefs.admin");
@@ -18,7 +18,9 @@ function Invites() {
   const run = async (fn: () => Promise<unknown>) => { setErr(false); try { await fn(); await mutate(); } catch { setErr(true); } };
   const copy = async (code: string) => { try { await navigator.clipboard.writeText(code); setCopied(code); } catch { /* clipboard blocked */ } };
   return (
-    <SettingsCard title={t("invites")} intro={t("invitesHelp")}>
+    <>
+      <SettingsGroup title={t("invites")} footer={t("invitesHelp")}>
+      <GroupItem>
       <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); if (daysOk) void run(async () => { await api.adminCreateInvite(n); setDays(""); }); }}>
         <div>
           <label htmlFor="inv-days" className="label">{t("days")}</label>
@@ -27,10 +29,12 @@ function Invites() {
         </div>
         <button type="submit" className="btn-primary" disabled={!daysOk}>{t("create")}</button>
       </form>
-      {error ? <p role="alert" className="text-loss">{t("loadError")}</p> : !data ? null : data.length === 0 ? <p className="text-sm text-muted">{t("inviteNone")}</p> : (
-        <ul className="space-y-2" aria-label={t("invites")}>
+      </GroupItem>
+      </SettingsGroup>
+      {error ? <p role="alert" className="px-4 text-loss">{t("loadError")}</p> : !data ? null : data.length === 0 ? <p className="px-4 text-sm text-muted">{t("inviteNone")}</p> : (
+        <SettingsGroup label={t("invites")} role="list">
           {data.map((i: Invite) => (
-            <li key={i.code} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line p-3 text-sm">
+            <li key={i.code} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
               <div>
                 <p><code dir="ltr" className="font-mono font-semibold">{i.code}</code>{" "}<span className={i.status === "unused" ? "chip-brand" : "chip-neutral"}>{t(`status.${i.status}`)}</span></p>
                 <p className="text-caption text-muted">{t("created", { date: formatDate(i.created_at) })} · {t("expires", { date: formatDate(i.expires_at) })}</p>
@@ -41,10 +45,10 @@ function Invites() {
               </div>
             </li>
           ))}
-        </ul>
+        </SettingsGroup>
       )}
-      {err && <p role="alert" className="text-sm text-loss">{t("error")}</p>}
-    </SettingsCard>
+      {err && <p role="alert" className="px-4 text-sm text-loss">{t("error")}</p>}
+    </>
   );
 }
 
@@ -56,11 +60,11 @@ function Users() {
   const [err, setErr] = useState(false);
   const run = async (fn: () => Promise<unknown>) => { setErr(false); try { await fn(); setConfirm(null); await mutate(); } catch { setErr(true); } };
   return (
-    <SettingsCard title={t("users")} intro={t("usersHelp")}>
-      {error ? <p role="alert" className="text-loss">{t("loadError")}</p> : !data ? null : (
-        <ul className="space-y-2" aria-label={t("users")}>
+    <>
+      {error ? <p role="alert" className="px-4 text-loss">{t("loadError")}</p> : !data ? null : (
+        <SettingsGroup title={t("users")} footer={t("usersHelp")} role="list">
           {data.map((u: AdminUser) => (
-            <li key={u.id} className="space-y-2 rounded-xl border border-line p-3 text-sm">
+            <li key={u.id} className="space-y-2 px-4 py-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="break-all font-semibold" dir="ltr">{u.email}</p>
@@ -86,10 +90,10 @@ function Users() {
               )}
             </li>
           ))}
-        </ul>
+        </SettingsGroup>
       )}
-      {err && <p role="alert" className="text-sm text-loss">{t("error")}</p>}
-    </SettingsCard>
+      {err && <p role="alert" className="px-4 text-sm text-loss">{t("error")}</p>}
+    </>
   );
 }
 

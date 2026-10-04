@@ -10842,7 +10842,14 @@
             "title": "Enabled"
           },
           "threshold_pct": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Threshold Pct"
           },
           "threshold_source": {
@@ -10850,12 +10857,20 @@
             "enum": [
               "risk_filter",
               "config_default",
-              "override"
+              "override",
+              "none"
             ],
             "title": "Threshold Source"
           },
           "default_threshold_pct": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Default Threshold Pct"
           },
           "override_pct": {
@@ -10921,7 +10936,14 @@
             "title": "Enabled"
           },
           "threshold_pct": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Threshold Pct"
           },
           "threshold_source": {
@@ -10929,7 +10951,8 @@
             "enum": [
               "risk_filter",
               "config_default",
-              "override"
+              "override",
+              "none"
             ],
             "title": "Threshold Source"
           },

@@ -55,9 +55,9 @@ export function mockTrackRecord(): TrackRecord {
 
 // ---------- X-ray rules ----------
 const LABEL: Record<XrayRuleName, string> = { concentration: "Largest position", currency: "Currency exposure", country_home: "Home-country exposure", sector: "Sector exposure" };
-const DEFAULTS: Record<XrayRuleName, { thr: number; src: XrayRuleOut["threshold_source"]; min: number; max: number }> = {
+const DEFAULTS: Record<XrayRuleName, { thr: number | null; src: XrayRuleOut["threshold_source"]; min: number; max: number }> = {
   concentration: { thr: 12, src: "risk_filter", min: 1, max: 50 },
-  currency: { thr: 70, src: "config_default", min: 10, max: 100 },
+  currency: { thr: null, src: "none", min: 10, max: 100 },
   country_home: { thr: 60, src: "config_default", min: 10, max: 100 },
   sector: { thr: 30, src: "risk_filter", min: 5, max: 100 },
 };
@@ -96,16 +96,20 @@ export function mockXrayRuleResults(m: { positions: { name: string; pct: number 
   const out = mockXrayRulesOut().rules;
   return out.map((o) => {
     const pool = o.rule === "concentration" ? m.positions : o.rule === "currency" ? m.currency : o.rule === "sector" ? m.sectors : [{ name: "Israel", pct: m.israel }];
-    const items = o.enabled ? pool.filter((i) => i.pct > o.threshold_pct).map((i) => ({ name: i.name, value_pct: Math.round(i.pct * 100) / 100 })) : [];
+    const thr = o.threshold_pct;
+    const noLimit = thr === null || thr === undefined;
+    const rows = (a: { name: string; pct: number }[]) => a.map((i) => ({ name: i.name, value_pct: Math.round(i.pct * 100) / 100 }));
+    const items = !o.enabled ? [] : noLimit ? rows(pool) : rows(pool.filter((i) => i.pct > thr));
     const top = [...pool].sort((a, b) => b.pct - a.pct)[0];
-    const state: XrayRuleResult["state"] = !o.enabled ? "off" : items.length ? "breach" : "ok";
+    const state: XrayRuleResult["state"] = !o.enabled ? "off" : !noLimit && items.length ? "breach" : "ok";
     const src = o.threshold_source === "override" ? "your override" : o.threshold_source === "risk_filter" ? "your risk filter" : "the default";
     const summary = state === "off" ? `${LABEL[o.rule]} is switched off for this portfolio, so it is not checked.`
+      : noLimit ? `${LABEL[o.rule]}: no limit is set, so nothing is flagged. You may set your own limit for this rule.`
       : state === "breach" ? `${LABEL[o.rule]}: ${items.map((i) => i.name).join(", ")} is above the ${o.threshold_pct}% threshold from ${src}.`
         : `${LABEL[o.rule]}: the largest is ${top?.name ?? "n/a"} at ${(top?.pct ?? 0).toFixed(1)}%, within the ${o.threshold_pct}% threshold from ${src}.`;
     const explanation: Explanation = {
-      version: 1, summary, inputs: { threshold_pct: o.threshold_pct, largest_pct: Math.round((top?.pct ?? 0) * 10) / 10 },
-      rules_applied: [`Threshold ${o.threshold_pct}% from ${src}`], as_of: AS_OF,
+      version: 1, summary, inputs: { ...(noLimit ? {} : { threshold_pct: thr }), largest_pct: Math.round((top?.pct ?? 0) * 10) / 10 },
+      rules_applied: [noLimit ? "No limit set" : `Threshold ${thr}% from ${src}`], as_of: AS_OF,
       risk_rules_applied: [], invalidation_risks: ["Based on the last known prices and the sector and country labels of each holding; a stale price or a wrong label changes the result."],
       sources: [{ name: "Portfolio holdings", detail: "Latest imported holdings and quotes", as_of: AS_OF }],
     };

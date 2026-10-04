@@ -176,3 +176,13 @@
 @utility chip-brand {
   @apply chip bg-brand-soft text-brand-text;
 }
+
+/* Phone-style Settings: a subtle slide-in for sub-pages and sheets. Nothing moves when the user prefers reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .settings-slide { animation: settings-slide-in 0.22s ease-out; }
+  .settings-sheet { animation: settings-sheet-up 0.2s ease-out; }
+  :root[dir="rtl"] .settings-slide, [dir="rtl"] .settings-slide { --slide-from: -24px; }
+}
+.settings-slide { --slide-from: 24px; }
+@keyframes settings-slide-in { from { opacity: 0; transform: translateX(var(--slide-from)); } to { opacity: 1; transform: none; } }
+@keyframes settings-sheet-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }

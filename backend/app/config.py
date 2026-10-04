@@ -575,7 +575,7 @@ class Settings(BaseSettings):
     non_country_labels: list[str] = Field(default_factory=lambda: ["Global", "Unknown"])
     # Toggleable X-ray rules (informational only; nothing is ever blocked). A rule's threshold is
     # taken from the portfolio's RiskFilter unless the user overrides it within these bounds (%).
-    xray_currency_default_max_pct: float = Field(default=80.0, gt=0, le=100)  # no RiskFilter field
+    # (currency has no default threshold: informational unless the user sets one)
 
     # --- Israeli funds (GemelNet on data.gov.il, free CKAN datastore API, no key) ---
     # Personal, non-commercial use; data only behind login. Resource ids are NOT built in: they

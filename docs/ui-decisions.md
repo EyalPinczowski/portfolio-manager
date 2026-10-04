@@ -17,3 +17,11 @@ Notes for the implementer:
 - The "+" menu and the bottom tab bar must not overlap the last card (add bottom padding equal to the bar height plus the safe area).
 - Keep everything in he/en with identical keys and test both directions (RTL/LTR).
 - Do not use verdict wording on any new element.
+
+## Phone-style settings (2026-10-04)
+Settings looks and behaves like the phone's own Settings app (`components/SettingsUI.tsx` holds the primitives).
+- **Hub** (`/settings`): large "Settings" title, a search field that filters rows, an account row (email) on top, then grouped rows: General (language, appearance, main currency, number format, week start), Notifications (price alerts and weekly review as inline switches, weekly review time, quiet hours, Telegram, new-idea alerts), Investing (risk limits), Help and status (system status, setup guide), Admin (admins only). Each row has a coloured icon tile, the label, the current value as muted trailing text and a chevron (mirrored in RTL), at least 48px high.
+- **Drill-down** uses the existing `?section=` query (static-export safe): back link, large title, a subtle slide-in (only under `prefers-reduced-motion: no-preference`). `sessions` goes back to Account; everything else to the hub. The bottom tab bar stays and Settings stays the active tab.
+- **Simple choices** (language, appearance, currency, number format, week start) are check lists on their own page and save at once. Idea alerts keep "nothing chosen" (no defaults, "Not set"). Time fields are native time inputs in a row.
+- **Destructive actions** (sign out, delete account, disconnect Telegram) are red rows at the bottom of their group and always ask in a bottom sheet first; export and delete also ask for the password.
+- Every group has a small grey footer for explanations. All text is he/en with identical keys; no buy/sell/hold wording (a test checks both languages).
