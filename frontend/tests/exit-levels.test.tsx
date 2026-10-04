@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { SWRConfig } from "swr";
 import type { ReactNode } from "react";
@@ -122,5 +122,64 @@ describe("exit levels panel", () => {
       expect(within(stop).getByRole("button", { name: he.exit.why })).toBeInTheDocument();
       expect(screen.getByText(he.exit.scaleTitle)).toBeInTheDocument();
     }
+  });
+
+  describe("scale-out plan", () => {
+    const BAD_EN = /\b(buy|sell|hold|recommend\w*)\b/i;
+    const BAD_HE = /(קנ[הו]|מכור|למכור|תמכור|להחזיק|ממליצ)/;
+    const plan = async (locale: "en" | "he", q: string) => {
+      vi.spyOn(api, "exitLevels").mockResolvedValue(result(1, q));
+      wrap(locale, <ExitLevelsPanel holdingId={1} portfolioId={1} />);
+      return screen.findByTestId("scale-plan");
+    };
+
+    it.each([["conservative", "45%", "25%"], ["aggressive", "25%", "50%"]])("%s profile: shares, rules, note, Why?", async (risk, first, trail) => {
+      const el = await plan("en", `?risk=${risk}`);
+      expect(el.textContent).toContain(en.settings.presets[risk as "conservative"]);
+      expect(within(el).getByTestId("plan-planFirst").textContent).toContain(first);
+      expect(within(el).getByTestId("plan-planFirst").textContent).toContain("₪");
+      expect(within(el).getByTestId("plan-planTrail").textContent).toContain(trail);
+      expect(within(el).getByTestId("plan-planTrail").textContent).not.toContain("₪"); // no level price for the trailing part
+      expect(el.textContent).toMatch(/trailing part uses a stop distance of/);
+      expect(el.textContent).toMatch(/Break-even trigger/);
+      expect(el.textContent).toMatch(/suggestion to review and change, not an instruction/);
+      expect(within(el).queryByText(/No profile set/)).toBeNull();
+      fireEvent.click(within(el).getByRole("button", { name: "Why?" }));
+      expect(within(el).getByTestId("explanation").textContent).toMatch(/profile keeps/);
+      expect(el.textContent).not.toMatch(BAD_EN);
+    });
+
+    it("fallback profile: says so plainly", async () => {
+      const el = await plan("en", "");
+      expect(el.textContent).toContain("No profile set: showing the Balanced plan");
+      expect(el.textContent).not.toMatch(BAD_EN);
+    });
+
+    it("no plan in the response: the block is absent", async () => {
+      const r = result(1);
+      delete r.scale_out_plan;
+      vi.spyOn(api, "exitLevels").mockResolvedValue(r);
+      wrap("en", <ExitLevelsPanel holdingId={1} portfolioId={1} />);
+      await screen.findByTestId("level-stop");
+      expect(screen.queryByTestId("scale-plan")).toBeNull();
+    });
+
+    it("Hebrew RTL: same keys, no trade wording, fallback line", async () => {
+      const el = await plan("he", "");
+      expect(el.closest("[dir=rtl]")).not.toBeNull();
+      expect(el.textContent).toContain("לא הוגדר פרופיל: מוצגת התכנית של הפרופיל מאוזן");
+      expect(el.textContent).toContain(he.exit.planNote);
+      expect(el.textContent).not.toMatch(BAD_HE);
+      expect(el.textContent).not.toMatch(BAD_EN);
+      const el2 = (cleanup(), await plan("he", "?risk=aggressive"));
+      expect(el2.textContent).toContain(he.settings.presets.aggressive);
+      expect(el2.textContent).not.toMatch(BAD_HE);
+    });
+
+    it("en and he define identical plan keys", () => {
+      const keys = (o: object) => Object.keys(o).filter((k) => k.startsWith("plan")).sort();
+      expect(keys(he.exit)).toEqual(keys(en.exit));
+      expect(keys(en.exit).length).toBeGreaterThan(8);
+    });
   });
 });

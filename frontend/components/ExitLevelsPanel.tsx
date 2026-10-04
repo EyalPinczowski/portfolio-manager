@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { api, type ExitLevel, type ExitLevelsResult, type Horizon } from "@/lib/api";
+import { api, type ExitLevel, type ScaleOutPlan, type ExitLevelsResult, type Horizon } from "@/lib/api";
 import { DASH, formatMoney, formatNumber, formatPct, formatTime, formatWeight } from "@/lib/format";
 import { useExitLevels } from "@/lib/hooks";
 import { ExplanationView } from "./ExplanationView";
@@ -99,6 +99,45 @@ export function LevelCard({ lv, currency, uid }: { lv: ExitLevel; currency: stri
   );
 }
 
+/** The profile's scale-out plan: shares as a bar and list, rules in plain words, the server note and a Why?. */
+export function ScalePlan({ plan, r, uid }: { plan: ScaleOutPlan; r: ExitLevelsResult; uid: string }) {
+  const t = useTranslations("exit");
+  const st = useTranslations("settings");
+  const locale = useLocale();
+  const cur = r.currency ?? "ILS";
+  const profile = st.has(`presets.${plan.profile}`) ? st(`presets.${plan.profile}`) : plan.profile;
+  const qty = r.size_guidance?.current_quantity;
+  const parts = [
+    { key: "planFirst", fraction: plan.first_fraction, price: r.take_profits?.[0]?.price, bar: "bg-brand" },
+    { key: "planSecond", fraction: plan.second_fraction, price: r.take_profits?.[1]?.price, bar: "bg-gain" },
+    { key: "planTrail", fraction: plan.trail_fraction, price: null, bar: "bg-muted" },
+  ];
+  return (
+    <section aria-label={t("planTitle", { profile })} className="space-y-2 rounded-xl border border-line p-3" data-testid="scale-plan">
+      <h3 className="text-heading">{t("planTitle", { profile })}</h3>
+      {plan.used_fallback && <p className="chip-warn" role="status">{t("planFallback", { profile })}</p>}
+      <div className="flex h-2 overflow-hidden rounded-full bg-surface-2" role="img" aria-label={parts.map((p) => `${t(p.key)} ${formatWeight(p.fraction * 100, locale, 0)}`).join(", ")} dir="ltr">
+        {parts.map((p) => <span key={p.key} className={p.bar} style={{ width: `${Math.max(0, p.fraction * 100)}%` }} />)}
+      </div>
+      <ul className="space-y-1 text-sm">
+        {parts.map((p) => (
+          <li key={p.key} data-testid={`plan-${p.key}`}>
+            <span className="font-medium">{t(p.key)}</span>: {t("planShare", { pct: formatWeight(p.fraction * 100, locale, 0) })}
+            {finite(p.price) && finite(qty) && (
+              <> {t("planAt", { price: formatMoney(p.price, cur, locale), amount: formatMoney(p.price * qty * p.fraction, cur, locale) })}</>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="text-sm">{t("planTrailRule", { scale: formatNumber(plan.trail_atr_scale, locale, 2) })}</p>
+      <p className="text-sm">{t("planBreakeven", { atr: formatNumber(plan.breakeven_atr_multiple, locale, 2) })}</p>
+      <p className="text-sm text-muted" dir="auto"><bdi dir="auto">{plan.note}</bdi></p>
+      <p className="text-caption text-muted">{t("planNote")}</p>
+      <WhyToggle id={`why-${uid}-plan`}><ExplanationView e={plan.explanation} currency={cur} /></WhyToggle>
+    </section>
+  );
+}
+
 export function Levels({ r, uid }: { r: ExitLevelsResult; uid: string }) {
   const t = useTranslations("exit");
   const locale = useLocale();
@@ -142,6 +181,7 @@ export function Levels({ r, uid }: { r: ExitLevelsResult; uid: string }) {
           </ol>
         </section>
       )}
+      {r.scale_out_plan && <ScalePlan plan={r.scale_out_plan} r={r} uid={uid} />}
       {sg && (
         <section aria-label={t("sizeTitle")} className="space-y-1 rounded-xl border border-line p-3">
           <h3 className="text-heading">{t("sizeTitle")}</h3>

@@ -1,5 +1,5 @@
 /* Mock exit-levels / exit-review responses (NEXT_PUBLIC_API_MOCK=1). Shapes follow backend/openapi.json. */
-import type { ExitLevel, ExitLevelsResult, ExitReviewOut, Horizon, ReviewRow, StopCandidate } from "./api";
+import type { ExitLevel, ExitLevelsResult, ExitReviewOut, Horizon, ReviewRow, ScaleOutPlan, StopCandidate } from "./api";
 
 export interface ExitSeed {
   id: number; symbol: string; en?: string; he?: string; cur: string; qty: number; price: number; cost: number | null;
@@ -12,6 +12,31 @@ const ATR_MULT: Record<Horizon, number> = { "1w": 1.5, "1m": 2, "3m": 2.5, "6m":
 const LABEL: Record<Horizon, string> = { "1w": "1 week", "1m": "1 month", "3m": "3 months", "6m": "6 months", "1y": "1 year+" };
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const toIls = (n: number, cur: string) => (cur === "USD" ? n * FX : n);
+
+/** preset: [first, second, trail ATR scale, breakeven ATR] (mirrors the backend config table). */
+const PLANS: Record<string, [number, number, number, number]> = {
+  very_conservative: [0.5, 0.3, 0.9, 0.5], conservative: [0.45, 0.3, 0.95, 0.75], balanced: [0.4, 0.3, 1, 1],
+  balanced_aggressive: [0.35, 0.3, 1.05, 1.25], aggressive: [0.25, 0.25, 1.15, 1.5], very_aggressive: [0.2, 0.2, 1.3, 2],
+};
+const PLAN_NOTE = "This is a suggestion to review and change, not an instruction.";
+
+function scaleOutPlan(risk: string | null | undefined, horizonLabel: string): ScaleOutPlan {
+  const usedFallback = !risk || !(risk in PLANS);
+  const profile = usedFallback ? "balanced" : (risk as string);
+  const [first, second, trail, be] = PLANS[profile];
+  return {
+    profile, used_fallback: usedFallback, first_fraction: first, second_fraction: second, trail_fraction: r2(1 - first - second),
+    trail_atr_scale: trail, breakeven_atr_multiple: be, note: PLAN_NOTE,
+    explanation: {
+      version: 1, as_of: AS_OF,
+      summary: `The ${profile.replace(/_/g, " ")} profile keeps ${Math.round((1 - first - second) * 100)}% of the position on a trailing stop for a ${horizonLabel} holding period.`,
+      inputs: { profile, "first part": first, "second part": second, "trail ATR scale": trail, "break-even ATR": be },
+      rules_applied: ["Shares per level come from the profile table in config", "A trailing stop only moves up"],
+      risk_rules_applied: [], invalidation_risks: ["A gap through a level can fill worse than the level itself."],
+      sources: [{ name: "Scale-out plan table (app config)", as_of: AS_OF, detail: profile }],
+    },
+  };
+}
 
 export interface ExitQuery { horizon?: Horizon | null; risk?: string | null }
 
@@ -55,6 +80,8 @@ export function mockExitLevels(s: ExitSeed, q: ExitQuery = {}, portfolioValueIls
     };
   }
   const risk = q.risk ?? "balanced_aggressive";
+  const plan = scaleOutPlan(q.risk, LABEL[horizon]);
+  const planName = plan.profile.replace(/_/g, " ");
   const atr = r2(s.price * 0.025);
   const stopP = s.price - ATR_MULT[horizon] * atr;
   const risk1 = s.price - stopP;
@@ -77,9 +104,11 @@ export function mockExitLevels(s: ExitSeed, q: ExitQuery = {}, portfolioValueIls
     stop, trailing_stop: trail, breakeven: s.cost !== null && s.cost > s.price ? level(s, "breakeven", "Break-even", s.cost, null, "cost", "Your average cost.", stopP) : null,
     take_profits: [tp1, tp2],
     scale_out: [
-      { step: "take_profit", label: "Sell the first part at take-profit 1", price: tp1.price, fraction: 0.5, quantity: r2(s.qty * 0.5) },
-      { step: "trail_rest", label: "Trail the rest", price: null, fraction: 0.5, quantity: r2(s.qty * 0.5) },
+      { step: "take_profit", label: "Take the first part off at take-profit 1", price: tp1.price, fraction: plan.first_fraction, quantity: r2(s.qty * plan.first_fraction), reason: `${planName} profile: first part at take-profit 1.` },
+      { step: "take_profit", label: "Take the second part off at take-profit 2", price: tp2.price, fraction: plan.second_fraction, quantity: r2(s.qty * plan.second_fraction), reason: `${planName} profile: second part at take-profit 2.` },
+      { step: "trail_rest", label: "Trail the rest", price: null, fraction: plan.trail_fraction, quantity: r2(s.qty * plan.trail_fraction), reason: `${planName} profile: the rest on a trailing stop.` },
     ],
+    scale_out_plan: plan,
     size_guidance: {
       needed, keep_fraction: r2(keep), current_quantity: s.qty, suggested_quantity: r2(s.qty * keep),
       rules: needed ? [`Max risk per trade is 0.75% of the portfolio; this position risks ${r2(pctPortfolio)}%.`] : [],

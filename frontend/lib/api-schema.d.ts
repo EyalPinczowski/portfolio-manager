@@ -1451,6 +1451,7 @@ export interface components {
             take_profits?: components["schemas"]["ExitLevel"][];
             /** Scale Out */
             scale_out?: components["schemas"]["ScaleOutStep"][];
+            scale_out_plan?: components["schemas"]["ScaleOutPlan"] | null;
             size_guidance?: components["schemas"]["SizeGuidance"] | null;
             risk_to_stop?: components["schemas"]["RiskToStop"] | null;
             /** Stop Fit */
@@ -2675,6 +2676,32 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /**
+         * ScaleOutPlan
+         * @description The profile's scale-out numbers and the wording that labels them an adjustable plan.
+         */
+        ScaleOutPlan: {
+            /** Profile */
+            profile: string;
+            /**
+             * Used Fallback
+             * @default false
+             */
+            used_fallback: boolean;
+            /** First Fraction */
+            first_fraction: number;
+            /** Second Fraction */
+            second_fraction: number;
+            /** Trail Fraction */
+            trail_fraction: number;
+            /** Trail Atr Scale */
+            trail_atr_scale: number;
+            /** Breakeven Atr Multiple */
+            breakeven_atr_multiple: number;
+            /** Note */
+            note: string;
+            explanation: components["schemas"]["Explanation"];
+        };
         /** ScaleOutStep */
         ScaleOutStep: {
             /**
@@ -2690,6 +2717,11 @@ export interface components {
             fraction: number;
             /** Quantity */
             quantity: number;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
         };
         /** ScoreCardDetail */
         ScoreCardDetail: {

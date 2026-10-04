@@ -44,6 +44,7 @@ export type ExitLevelsResult = S["ExitLevelsResult"];
 export type ExitStatus = ExitLevelsResult["status"];
 export type ExitReasonCode = NonNullable<ExitLevelsResult["reason_code"]>;
 export type ScaleOutStep = S["ScaleOutStep"];
+export type ScaleOutPlan = S["ScaleOutPlan"];
 export type SizeGuidance = S["SizeGuidance"];
 export type StopCandidate = S["StopCandidate"];
 export type ReviewRow = S["ReviewRow"];

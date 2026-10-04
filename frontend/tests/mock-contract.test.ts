@@ -77,6 +77,8 @@ const CASES: Case[] = [
   { method: "GET", path: "/holdings/1/exit-levels", api: "/holdings/{holding_id}/exit-levels" }, // levels
   { method: "GET", path: "/holdings/2/exit-levels", api: "/holdings/{holding_id}/exit-levels" }, // needs_horizon
   { method: "GET", path: "/holdings/2/exit-levels?horizon=1m&risk=balanced", api: "/holdings/{holding_id}/exit-levels" }, // what-if
+  { method: "GET", path: "/holdings/1/exit-levels?risk=conservative", api: "/holdings/{holding_id}/exit-levels" }, // plan: conservative
+  { method: "GET", path: "/holdings/1/exit-levels?risk=aggressive", api: "/holdings/{holding_id}/exit-levels" }, // plan: aggressive
   { method: "GET", path: "/holdings/10/exit-levels", api: "/holdings/{holding_id}/exit-levels" }, // levels, USD
   { method: "GET", path: "/holdings/11/exit-levels?horizon=3m", api: "/holdings/{holding_id}/exit-levels" }, // no_levels (stale)
   { method: "POST", path: "/portfolios/1/exit-review", api: "/portfolios/{portfolio_id}/exit-review", body: {} },
