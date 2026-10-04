@@ -218,6 +218,21 @@ def test_a_full_sector_is_excluded_and_a_light_one_ranks_higher(world: World) ->
         assert c["size"]["sector_pct_after"] <= 50 + 1e-6  # very_aggressive sector cap
 
 
+def test_a_switched_off_xray_rule_still_blocks_a_new_purchase(world: World) -> None:
+    """The X-ray toggles are display only: the RiskFilter caps still apply to a new purchase."""
+    world.refresh()
+    _add_holding(world, "NVDA", 100)
+    for rule in ("sector", "country_home", "concentration"):
+        r = world.client.patch(
+            f"/api/portfolios/{world.pid}/xray-rules",
+            json={"rules": [{"rule": rule, "enabled": False}]},
+        )
+        assert r.status_code == 200, r.text
+    codes = world.skipped(world.post(risk="very_aggressive"))
+    assert codes["AAPL"] == "sector_cap" and codes["MSFT"] == "sector_cap"
+    assert world.skipped(world.post())["XOM"] == "country_cap"
+
+
 def test_a_country_over_its_cap_excludes_more_of_it(world: World) -> None:
     world.refresh()
     _add_holding(world, "NVDA", 100)  # 100% United States, cap 80% for balanced_aggressive

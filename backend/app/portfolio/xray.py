@@ -18,6 +18,12 @@ from app.scoring.risk import (
     resolve_risk_filter,
 )
 
+_LEGACY_RULE = {
+    "max_position_pct": "concentration",
+    "max_sector_pct": "sector",
+    "max_country_pct": "country_home",
+}
+
 
 def _position_override(raw: object) -> float | None:
     """The per-holding max position %, or None if absent or not a usable number (bad stored JSON)."""
@@ -55,7 +61,13 @@ def build_xray(
     positions = to_positions(valuation)
     exposures, _ = compute_exposures(positions, s)
     limits = resolve_risk_filter(portfolio.risk_filter, s)
-    breaches = check_limits(positions, limits, s)
+    resolved = resolve_rules(db, portfolio, limits, s)
+    # A switched-off X-ray rule is also hidden from the legacy breaches list (display only; the
+    # RiskFilter checks for new purchases do not use this path).
+    off = {r.rule for r in resolved if not r.enabled}
+    breaches = [
+        b for b in check_limits(positions, limits, s) if _LEGACY_RULE.get(b.rule) not in off
+    ]
     return {
         "concentration": exposures.concentration,
         "currency_exposure": [i.model_dump() for i in exposures.currency],
@@ -70,8 +82,6 @@ def build_xray(
         # Toggleable rules (informational only): breach / ok / off, each with an Explanation.
         "rules": [
             r.model_dump(mode="json")
-            for r in evaluate_rules(
-                positions, exposures, resolve_rules(db, portfolio, limits, s), s, valuation.as_of
-            )
+            for r in evaluate_rules(positions, exposures, resolved, s, valuation.as_of)
         ],
     }

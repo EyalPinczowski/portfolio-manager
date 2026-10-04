@@ -214,3 +214,40 @@ def test_the_per_holding_risk_override_wins_over_the_portfolio_filter(
     assert r.status_code == 200, r.text
     assert c.get(url).json()["risk_preset"] == "conservative"
     assert c.get(url, params={"risk": "aggressive"}).json()["risk_preset"] == "aggressive"
+
+
+def test_override_and_request_preset_reach_the_scale_out_plan(
+    setup: tuple[TestClient, int, dict[str, int]],
+) -> None:
+    """Per-holding preset beats the portfolio's; a request preset applies for that call only."""
+    c, pid, ids = setup
+    url = f"/api/holdings/{ids['AAPL']}/exit-levels"
+    review = f"/api/portfolios/{pid}/exit-review"
+
+    def plan_get(**params: str) -> dict[str, object]:
+        return c.get(url, params=params).json()["scale_out_plan"]
+
+    def plan_review(**body: str) -> dict[str, object]:
+        rows = {x["symbol"]: x for x in c.post(review, json=body).json()["rows"]}
+        return rows["AAPL"]["levels"]["scale_out_plan"]
+
+    # portfolio preset only (default balanced_aggressive: 0.35 / 0.30)
+    assert plan_get()["profile"] == "balanced_aggressive"
+    assert plan_get()["first_fraction"] == 0.35
+    assert plan_review()["profile"] == "balanced_aggressive"
+    # per-holding override wins over the portfolio preset
+    r = c.patch(
+        f"/api/portfolios/{pid}/holdings/{ids['AAPL']}",
+        json={"risk_override": {"preset": "very_conservative"}},
+    )
+    assert r.status_code == 200, r.text
+    for plan in (plan_get(), plan_review()):
+        assert plan["profile"] == "very_conservative" and plan["first_fraction"] == 0.5
+    # a request preset applies for that call only
+    for plan in (plan_get(risk="very_aggressive"), plan_review(risk="very_aggressive")):
+        assert plan["profile"] == "very_aggressive" and plan["first_fraction"] == 0.2
+    assert plan_get()["profile"] == "very_conservative"
+    assert plan_review()["profile"] == "very_conservative"
+    # a holding without an override follows the portfolio preset
+    msft = c.get(f"/api/holdings/{ids['MSFT']}/exit-levels", params={"horizon": "1m"}).json()
+    assert msft["scale_out_plan"]["profile"] == "balanced_aggressive"

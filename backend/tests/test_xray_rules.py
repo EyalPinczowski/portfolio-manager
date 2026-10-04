@@ -171,3 +171,32 @@ def test_currency_has_no_default_limit_override_breaches_and_clears(
     cur = _rules(c, pid)["currency"]
     assert cur["state"] == "ok" and cur["threshold_pct"] is None
     assert cur["threshold_source"] == "none"
+
+
+def _breach_rules(c: TestClient, pid: int) -> set[str]:
+    return {b["rule"] for b in c.get(f"/api/portfolios/{pid}/xray").json()["breaches"]}
+
+
+def test_a_switched_off_rule_is_hidden_from_the_legacy_breaches(
+    signup: SignupFn, quotes: FakeQuotes
+) -> None:
+    c, pid = _setup(signup, quotes)
+    c.patch(f"/api/portfolios/{pid}", json={"risk_filter": {"preset": "conservative"}})
+    url = f"/api/portfolios/{pid}/xray-rules"
+    assert _breach_rules(c, pid) == {"max_position_pct", "max_sector_pct", "max_country_pct"}
+    for rule, legacy in (
+        ("concentration", "max_position_pct"),
+        ("sector", "max_sector_pct"),
+        ("country_home", "max_country_pct"),
+    ):
+        before = _breach_rules(c, pid)
+        c.patch(url, json={"rules": [{"rule": rule, "enabled": False}]})
+        assert _breach_rules(c, pid) == before - {legacy}
+        c.patch(url, json={"rules": [{"rule": rule, "enabled": True}]})
+        assert _breach_rules(c, pid) == before  # back on: the breach returns
+    # currency has no legacy breach: switching it off changes nothing
+    c.patch(url, json={"rules": [{"rule": "currency", "enabled": False}]})
+    assert _breach_rules(c, pid) == {"max_position_pct", "max_sector_pct", "max_country_pct"}
+    # a threshold override does not hide or add legacy breaches (only on/off does)
+    c.patch(url, json={"rules": [{"rule": "sector", "threshold_pct": 99}]})
+    assert "max_sector_pct" in _breach_rules(c, pid)

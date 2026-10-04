@@ -326,6 +326,10 @@ class Settings(BaseSettings):
     # --- market data ---
     benchmark_sp500: str = "^GSPC"
     benchmark_ta125: str = "^TA125.TA"
+    # Paper-call resolution: benchmark closes may lie at most this many days before the date asked
+    # (weekends, holidays); history is fetched this many days further back than the call's age.
+    paper_benchmark_max_gap_days: int = Field(default=5, ge=0)
+    paper_benchmark_history_padding_days: int = Field(default=10, ge=0)
     fx_symbol: str = "ILS=X"
     fx_fallback_usd_ils: float = 3.6  # last resort only; always reported as stale
     fx_stale_after_hours: float = 72.0

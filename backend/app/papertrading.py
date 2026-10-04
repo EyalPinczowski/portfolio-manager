@@ -12,12 +12,15 @@ import math
 from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
+import pandas as pd
+from pydantic import BaseModel, Field
 from sqlmodel import Session, col, select
 
 from app.config import HORIZONS, Settings, get_settings
 from app.launchgate import BacktestRecord, PaperMetrics
 from app.models import BacktestRun, PaperCall
 from app.models.guards import AppendOnlyError
+from app.providers.base import HistoryProvider
 from app.signals.base import Explanation
 from app.timeutil import utcnow
 
@@ -116,6 +119,97 @@ def resolve_call(
     db.commit()
     db.refresh(call)
     return call
+
+
+class BenchmarkOutcome(BaseModel):
+    """Benchmark returns over a call's span, and why any benchmark is missing (never a 0)."""
+
+    returns: dict[str, float] = Field(default_factory=dict)
+    missing: dict[str, str] = Field(default_factory=dict)  # symbol -> plain-words reason
+
+
+def _closes_by_date(df: pd.DataFrame | None) -> pd.Series | None:
+    if df is None or df.empty or "Close" not in df.columns:
+        return None
+    idx = pd.DatetimeIndex(df.index)
+    if idx.tz is not None:
+        idx = idx.tz_localize(None)
+    closes = pd.Series(df["Close"].to_numpy(dtype=float), index=idx.normalize()).dropna()
+    closes = closes[~closes.index.duplicated(keep="last")].sort_index()
+    return closes if len(closes) else None
+
+
+def _close_on_or_before(closes: pd.Series, day: date, max_gap_days: int) -> float | None:
+    """The last close on or before `day`, only if it is within `max_gap_days` of it."""
+    upto = closes[closes.index <= pd.Timestamp(day)]
+    if upto.empty:
+        return None
+    if (day - upto.index[-1].date()).days > max_gap_days:
+        return None
+    value = float(upto.iloc[-1])
+    return value if math.isfinite(value) and value > 0 else None
+
+
+def benchmark_returns_for(
+    history: HistoryProvider, made_on: date, resolved_on: date, settings: Settings | None = None
+) -> BenchmarkOutcome:
+    """% change of each configured benchmark from `made_on` to `resolved_on`, from stored daily
+    history (the provider's cache). A benchmark with no usable data is left out with a reason."""
+    s = settings or get_settings()
+    out = BenchmarkOutcome()
+    days = (utcnow().date() - made_on).days + s.paper_benchmark_history_padding_days
+    for symbol in (s.benchmark_sp500, s.benchmark_ta125):
+        try:
+            closes = _closes_by_date(history.get_history(symbol, max(days, 1)))
+        except Exception as exc:  # a provider failure must not stop the resolution
+            out.missing[symbol] = f"history lookup failed ({type(exc).__name__})"
+            continue
+        if closes is None:
+            out.missing[symbol] = "no price history available"
+            continue
+        gap = s.paper_benchmark_max_gap_days
+        start = _close_on_or_before(closes, made_on, gap)
+        end = _close_on_or_before(closes, resolved_on, gap)
+        if start is None:
+            out.missing[symbol] = f"no close within {gap} days before {made_on}"
+        elif end is None:
+            out.missing[symbol] = f"no close within {gap} days before {resolved_on}"
+        else:
+            out.returns[symbol] = round((end / start - 1.0) * 100.0, 4)
+    return out
+
+
+def resolve_call_with_benchmarks(
+    db: Session,
+    call_id: int,
+    history: HistoryProvider,
+    *,
+    outcome: Outcome,
+    outcome_price: float | None,
+    resolved_at: datetime | None = None,
+    settings: Settings | None = None,
+) -> tuple[PaperCall, BenchmarkOutcome]:
+    """Resolve a call and fill `benchmark_returns` in the same (single, allowed) resolution write.
+
+    A benchmark without data is left out (so `benchmark_returns` is null when none is available)
+    and the reason is logged and returned; it is never stored as 0.
+    """
+    call = db.get(PaperCall, call_id)
+    if call is None:
+        raise LookupError(f"paper call {call_id} does not exist")
+    when = resolved_at or utcnow()
+    bench = benchmark_returns_for(history, call.created_at.date(), when.date(), settings)
+    for symbol, why in bench.missing.items():
+        log.warning("paper call %s: benchmark %s left empty: %s", call_id, symbol, why)
+    resolved = resolve_call(
+        db,
+        call_id,
+        outcome=outcome,
+        outcome_price=outcome_price,
+        benchmark_returns=bench.returns or None,
+        resolved_at=when,
+    )
+    return resolved, bench
 
 
 def record_backtest(
