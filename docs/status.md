@@ -38,3 +38,6 @@ Last updated: 2026-10-03 21:05 UTC. Branch: `claude/stock-portfolio-assistant-jg
 
 ## 2026-10-04 (token saving, user request)
 - Added `docs/index.md` (doc and code map; Claude reads only what it needs via grep and line ranges, wide reads go to agents) and `docs/rag-spec.md` (app RAG: free local retrieval, FTS first, chunks cited with source/as_of, token budget per role, indexing in the Actions cron, public data only for free LLMs). Queue: RAG block comes with Analyze a stock / committee.
+
+## 2026-10-04 (user approval)
+- User approved ("Aprove") the proposed 6-month backtest targets/drawdown caps: conservative 3%/6%, balanced 5%/10%, balanced_aggressive 8%/15%, aggressive 12%/22%. Not yet approved (still proposals): screener volatility caps, score/confidence floors, diversification bonus, exit-level take-profit/scale-out defaults, and whether a technical+patterns-only backtest may open the launch gate. `BACKTEST_TARGETS_APPROVED` stays an env setting for the deployer to set; recording is still refused on synthetic data.
