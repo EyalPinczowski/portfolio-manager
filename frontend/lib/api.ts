@@ -71,6 +71,15 @@ export type XrayRaw = Narrow<
   { concentration: { symbol: string; weight_pct: number }[]; home_bias: { israel_pct?: number } }
 >;
 export type HeatmapItem = S["HeatmapItem"];
+export type XrayRuleResult = S["XrayRuleResult"];
+export type XrayRuleName = XrayRuleResult["rule"];
+export type XrayRuleOut = S["XrayRuleOut"];
+export type XrayRulesPatch = S["XrayRulesPatch"];
+export type TrackRecord = S["TrackRecordOut"];
+export type TrackRow = S["TrackCallRow"];
+export type TrackOutcome = TrackRow["outcome"];
+export type BenchmarkAggregate = S["BenchmarkAggregate"];
+export type GateProgress = S["GateProgress"];
 
 /** What the user can pick for a row whose quantity changed. */
 export type ChangeType = "buy" | "sell" | "deposit" | "withdrawal";
@@ -221,6 +230,11 @@ export const api = {
   patchHolding: (pid: number, hid: number, b: { horizon?: Horizon | null; quantity?: number }) =>
     patch<Holding>(`/portfolios/${pid}/holdings/${hid}`, b),
   xray: (id: number) => get<XrayRaw>(`/portfolios/${id}/xray`),
+  /** Toggle and threshold settings of the informational X-ray rules. `null` clears an override; 422 `threshold_out_of_bounds` carries min_pct/max_pct. */
+  xrayRules: (id: number) => get<{ rules: XrayRuleOut[] }>(`/portfolios/${id}/xray-rules`),
+  patchXrayRules: (id: number, b: XrayRulesPatch) => patch<{ rules: XrayRuleOut[] }>(`/portfolios/${id}/xray-rules`, b),
+  /** Members-only record of the app's own ended calls (never a member's portfolio). */
+  trackRecord: () => get<TrackRecord>("/track-record"),
   heatmap: (id: number) => get<HeatmapItem[]>(`/portfolios/${id}/heatmap`),
   riskPresets: () => get<RiskPreset[] | Record<string, RiskFilter>>("/risk/presets"),
 

@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { useHeatmap, useHoldings, usePortfolios, useXray } from "@/lib/hooks";
 import { AppShell } from "./AppShell";
 import { Heatmap } from "./Heatmap";
+import { XrayRules } from "./XrayRules";
 import { PortfolioSwitcher } from "./PortfolioSwitcher";
 
 function Bars({ title, items }: { title: string; items: ExposureItem[] }) {
@@ -69,6 +70,7 @@ function Body() {
               </ul>
             )}
           </section>
+          {id !== null && <XrayRules pid={id} rules={x.rules} onChanged={() => void xray.mutate()} />}
           <div className="grid gap-3 md:grid-cols-2">
             <Bars title={t("concentration")} items={x.concentration.map((r) => ({ name: r.symbol, weight_pct: r.weight_pct }))} />
             <Bars title={t("currency")} items={toExposure(x.currency_exposure)} />

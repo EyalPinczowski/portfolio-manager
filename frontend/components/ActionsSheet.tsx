@@ -83,6 +83,15 @@ export function ActionsSheet({ onClose }: { onClose: () => void }) {
           </Link>
         </li>
         <li>
+          <Link href="/track-record" onClick={onClose} className={`${row} bg-brand-soft hover:bg-surface-2`}>
+            <span className="text-brand-text"><ReviewIcon /></span>
+            <span className="flex-1">
+              <span className="block font-semibold text-brand-text">{t("trackRecord")}</span>
+              <span className="block text-caption text-muted">{t("trackRecordNote")}</span>
+            </span>
+          </Link>
+        </li>
+        <li>
           <Link href="/analyze" onClick={onClose} className={`${row} bg-brand-soft hover:bg-surface-2`}>
             <span className="text-brand-text"><AnalyzeIcon /></span>
             <span className="flex-1">

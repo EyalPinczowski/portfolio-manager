@@ -7,6 +7,7 @@ import type { LaunchGate, SessionInfo } from "./api";
 import { ApiError } from "./errors";
 import type { Health } from "./api";
 import { mockPostmortem } from "./mock-postmortem";
+import { mockPatchXrayRules, mockTrackRecord, mockXrayRuleResults, mockXrayRulesOut } from "./mock-trackrecord";
 import { mockExitLevels, mockExitReview, type ExitSeed } from "./mock-exit";
 import { mockSettingsRequest, NOT_HANDLED } from "./mock-settings";
 import { mockBuyIdeas } from "./mock-ideas";
@@ -223,6 +224,12 @@ function xray(): XrayRaw {
     country_exposure: items((s) => s.country),
     sector_exposure: items((s) => s.sector),
     home_bias: { israel_pct: sum((s) => s.country).Israel ?? 0 },
+    rules: mockXrayRuleResults({
+      positions: hs.map((h) => ({ name: h.symbol, pct: h.weight_pct })),
+      currency: items((s) => s.cur).map((i) => ({ name: i.name, pct: i.weight_pct })),
+      israel: sum((s) => s.country).Israel ?? 0,
+      sectors: items((s) => s.sector).map((i) => ({ name: i.name, pct: i.weight_pct })),
+    }),
     breaches: [
       { rule: "max_position_pct", value: Math.max(...hs.map((h) => h.weight_pct)), limit: 12, why: "Your largest position is above your 12% limit.", symbol: [...hs].sort((a, b) => b.weight_pct - a.weight_pct)[0].symbol },
       { rule: "max_sector_pct", value: sum((s) => s.sector).Technology, limit: 30, why: "Technology exposure is above your 30% sector limit.", symbol: null },
@@ -406,6 +413,8 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
     const qs = new URLSearchParams(path.split("?")[1] ?? "");
     return mockPostmortem(pf, qs.get("start"), qs.get("end"));
   }
+  if (p === "/track-record") return mockTrackRecord();
+  if (/^\/portfolios\/\d+\/xray-rules$/.test(p)) return method === "PATCH" ? mockPatchXrayRules(b as never) : mockXrayRulesOut();
   if ((m = p.match(/^\/portfolios\/(\d+)\/xray$/))) return xray();
   if ((m = p.match(/^\/portfolios\/(\d+)\/heatmap$/))) return heatmap();
   if ((m = p.match(/^\/portfolios\/(\d+)\/imports\/rows$/))) return (validateRows((b.rows as ImportRow[]) ?? []), draftFromRows(Number(m[1]), (b.rows as ImportRow[]) ?? [], b.scope === "full" ? "full" : "partial"));

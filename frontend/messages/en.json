@@ -89,7 +89,9 @@
     "analyzeNote": "Look up any ticker and check how it fits your portfolio.",
     "postmortem": "Portfolio post-mortem",
     "postmortemNote": "What explains the gap between your return and your expectation.",
-    "suggestNote": "Neutral candidates to research, checked against your limits."
+    "suggestNote": "Neutral candidates to research, checked against your limits.",
+    "trackRecord": "Track record",
+    "trackRecordNote": "How the app's past calls compared with the indices, for members only."
   },
   "holdings": {
     "title": "Your holdings",
@@ -356,7 +358,40 @@
       "max_position_pct": "Position size",
       "max_sector_pct": "Sector exposure",
       "max_country_pct": "Country exposure"
-    }
+    },
+    "rulesTitle": "Exposure checks",
+    "rulesIntro": "Informational checks of your exposure against a threshold. Nothing here stops or changes anything. You can switch each one off or set your own threshold.",
+    "rulesError": "Could not load the settings for these checks.",
+    "ruleName": {
+      "concentration": "Largest position",
+      "currency": "Currency exposure",
+      "country_home": "Home-country exposure",
+      "sector": "Sector exposure"
+    },
+    "state": {
+      "breach": "Above threshold",
+      "ok": "Within threshold",
+      "off": "Switched off"
+    },
+    "thresholdNow": "Threshold: {value}",
+    "largest": "Highest value: {value}",
+    "source": {
+      "risk_filter": "from your risk filter",
+      "config_default": "default value",
+      "override": "your override"
+    },
+    "above": "Above the threshold",
+    "none": "Nothing above the threshold.",
+    "why": "Why?",
+    "enable": "Check this rule",
+    "overrideLabel": "Your threshold (%)",
+    "overrideHint": "Allowed range: {min}% to {max}%. Default: {def}%.",
+    "save": "Save threshold",
+    "clear": "Clear override",
+    "saving": "Saving…",
+    "saved": "Saved.",
+    "saveError": "Could not save. Try again.",
+    "outOfBounds": "Enter a value between {min}% and {max}%."
   },
   "settings": {
     "title": "Settings",
@@ -1130,5 +1165,52 @@
       "ranked_lower": "It is a valid candidate but ranks below the ones shown."
     },
     "disclaimer": "Not financial advice."
+  },
+  "trackRecord": {
+    "title": "Track record",
+    "back": "Back",
+    "loading": "Loading the track record…",
+    "error": "Could not load the track record.",
+    "intro": "The app's own past calls whose horizon has ended, compared with market indices. For logged-in members only. It describes the past and is not advice.",
+    "notStarted": "Paper trading has not started yet. No calls have been recorded, so there is nothing to show.",
+    "noneEnded": "Calls have been recorded, but none has reached the end of its horizon yet. Nothing is shown until a horizon has ended.",
+    "asOf": "As of {time}",
+    "truncated": "Only the most recent rows are shown.",
+    "aggTitle": "Against each index",
+    "aggN": "Based on {count} calls",
+    "aggFew": "A small number of calls says little.",
+    "hitRate": "Calls with a positive difference",
+    "avgExcess": "Average difference",
+    "ppUnit": "{value} pp",
+    "noValue": "No value",
+    "gateTitle": "Launch-gate progress",
+    "gateWeeks": "Weeks of paper trading",
+    "gateResolved": "Calls resolved at 1 month",
+    "gateErrors": "Critical errors",
+    "gateRecorded": "Calls recorded",
+    "gateOutOf": "{have} of {need}",
+    "gateOpen": "The gate is open.",
+    "gateClosed": "The gate is not open yet.",
+    "gateReasons": "What is still missing",
+    "countsTitle": "Not in the table",
+    "awaiting": "Waiting for a result: {count}",
+    "excluded": "Left out because of a data error: {count}",
+    "countsHint": "They are counted here and never dropped silently.",
+    "tableTitle": "Calls whose horizon has ended",
+    "colSymbol": "Symbol",
+    "colMade": "Made on",
+    "colHorizon": "Horizon",
+    "colOutcome": "Outcome",
+    "colReturn": "Return",
+    "colVs": "Difference vs {name}",
+    "outcome": {
+      "reached_goal": "Reached its goal level",
+      "reached_limit": "Reached its limit level",
+      "horizon_ended": "Horizon ended"
+    },
+    "otherWeights": "Made with other weights",
+    "otherWeightsNote": "These calls were made with a different weights configuration than the one active now.",
+    "methodologyTitle": "How this is measured",
+    "none": "None"
   }
 }

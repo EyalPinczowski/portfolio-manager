@@ -905,6 +905,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/track-record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Track Record
+         * @description Global paper calls whose horizon has ended, against S&P 500 / TA-125 buy-and-hold.
+         */
+        get: operations["track_record_api_track_record_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portfolios/{portfolio_id}/xray-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Xray Rules */
+        get: operations["get_xray_rules_api_portfolios__portfolio_id__xray_rules_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Xray Rules */
+        patch: operations["patch_xray_rules_api_portfolios__portfolio_id__xray_rules_patch"];
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1054,6 +1092,17 @@ export interface components {
              */
             disclaimer: string;
         };
+        /** BenchmarkAggregate */
+        BenchmarkAggregate: {
+            /** Name */
+            name: string;
+            /** Count */
+            count: number;
+            /** Hit Rate Pct */
+            hit_rate_pct: number | null;
+            /** Avg Excess Pct */
+            avg_excess_pct: number | null;
+        };
         /** BenchmarkOut */
         BenchmarkOut: {
             /** Symbol */
@@ -1066,6 +1115,15 @@ export interface components {
             ils_pct?: number | null;
             /** Flags */
             flags?: string[];
+        };
+        /** BenchmarkResult */
+        BenchmarkResult: {
+            /** Name */
+            name: string;
+            /** Return Pct */
+            return_pct: number;
+            /** Excess Pct */
+            excess_pct: number | null;
         };
         /** Breach */
         Breach: {
@@ -1617,6 +1675,25 @@ export interface components {
             pp: number;
             /** Amount Ils */
             amount_ils: number;
+        };
+        /** GateProgress */
+        GateProgress: {
+            /** Open */
+            open: boolean;
+            /** Reasons */
+            reasons: string[];
+            /** Weeks Running */
+            weeks_running: number;
+            /** Weeks Required */
+            weeks_required: number;
+            /** Resolved At 1M */
+            resolved_at_1m: number;
+            /** Resolved Required */
+            resolved_required: number;
+            /** Critical Errors */
+            critical_errors: number;
+            /** Recorded */
+            recorded: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2575,6 +2652,13 @@ export interface components {
             /** Quantity */
             quantity?: number | null;
         };
+        /** RuleItem */
+        RuleItem: {
+            /** Name */
+            name: string;
+            /** Value Pct */
+            value_pct: number;
+        };
         /** RuleResult */
         RuleResult: {
             /** Rule */
@@ -3019,6 +3103,71 @@ export interface components {
             /** Bot Username */
             bot_username?: string | null;
         };
+        /** TrackCallRow */
+        TrackCallRow: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Made On
+             * Format: date
+             */
+            made_on: string;
+            /** Horizon */
+            horizon: string;
+            /**
+             * Horizon Ended On
+             * Format: date
+             */
+            horizon_ended_on: string;
+            /**
+             * Resolved On
+             * Format: date
+             */
+            resolved_on: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "reached_goal" | "reached_limit" | "horizon_ended";
+            /** Return Pct */
+            return_pct: number;
+            /** Active Weights */
+            active_weights: boolean;
+            /** Benchmarks */
+            benchmarks: components["schemas"]["BenchmarkResult"][];
+        };
+        /** TrackRecordOut */
+        TrackRecordOut: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "not_started" | "none_ended" | "ready";
+            /** Message */
+            message: string;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Count */
+            count: number;
+            /** Resolved At 1M */
+            resolved_at_1m: number;
+            /** Awaiting Resolution */
+            awaiting_resolution: number;
+            /** Excluded Errors */
+            excluded_errors: number;
+            /** Benchmarks */
+            benchmarks: components["schemas"]["BenchmarkAggregate"][];
+            gate: components["schemas"]["GateProgress"];
+            /** Methodology */
+            methodology: string[];
+            /** Rows */
+            rows: components["schemas"]["TrackCallRow"][];
+            /** Truncated */
+            truncated: boolean;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -3105,6 +3254,84 @@ export interface components {
             };
             /** Breaches */
             breaches: components["schemas"]["Breach"][];
+            /** Rules */
+            rules: components["schemas"]["XrayRuleResult"][];
+        };
+        /** XrayRuleChange */
+        XrayRuleChange: {
+            /**
+             * Rule
+             * @enum {string}
+             */
+            rule: "concentration" | "currency" | "country_home" | "sector";
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Threshold Pct */
+            threshold_pct?: number | null;
+        };
+        /** XrayRuleOut */
+        XrayRuleOut: {
+            /**
+             * Rule
+             * @enum {string}
+             */
+            rule: "concentration" | "currency" | "country_home" | "sector";
+            /** Enabled */
+            enabled: boolean;
+            /** Threshold Pct */
+            threshold_pct: number;
+            /**
+             * Threshold Source
+             * @enum {string}
+             */
+            threshold_source: "risk_filter" | "config_default" | "override";
+            /** Default Threshold Pct */
+            default_threshold_pct: number;
+            /** Override Pct */
+            override_pct: number | null;
+            /** Min Pct */
+            min_pct: number;
+            /** Max Pct */
+            max_pct: number;
+        };
+        /** XrayRuleResult */
+        XrayRuleResult: {
+            /**
+             * Rule
+             * @enum {string}
+             */
+            rule: "concentration" | "currency" | "country_home" | "sector";
+            /** Label */
+            label: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "breach" | "ok" | "off";
+            /** Enabled */
+            enabled: boolean;
+            /** Threshold Pct */
+            threshold_pct: number;
+            /**
+             * Threshold Source
+             * @enum {string}
+             */
+            threshold_source: "risk_filter" | "config_default" | "override";
+            /** Value Pct */
+            value_pct: number | null;
+            /** Items */
+            items: components["schemas"]["RuleItem"][];
+            explanation: components["schemas"]["Explanation"];
+        };
+        /** XrayRulesOut */
+        XrayRulesOut: {
+            /** Rules */
+            rules: components["schemas"]["XrayRuleOut"][];
+        };
+        /** XrayRulesPatch */
+        XrayRulesPatch: {
+            /** Rules */
+            rules: components["schemas"]["XrayRuleChange"][];
         };
     };
     responses: never;
@@ -4844,6 +5071,92 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    track_record_api_track_record_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackRecordOut"];
+                };
+            };
+        };
+    };
+    get_xray_rules_api_portfolios__portfolio_id__xray_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["XrayRulesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_xray_rules_api_portfolios__portfolio_id__xray_rules_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["XrayRulesPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["XrayRulesOut"];
                 };
             };
             /** @description Validation Error */

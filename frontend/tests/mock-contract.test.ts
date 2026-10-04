@@ -13,6 +13,7 @@ import path from "node:path";
 import Ajv2020 from "ajv/dist/2020";
 import addFormats from "ajv-formats";
 import { describe, expect, it } from "vitest";
+import { setMockTrackState, resetMockXrayRules } from "@/lib/mock-trackrecord";
 import { mockRequest, MOCK_TURNSTILE_TOKEN, WRONG_PASSWORD } from "@/lib/mock";
 import { ApiError } from "@/lib/errors";
 
@@ -63,6 +64,11 @@ const CASES: Case[] = [
   { method: "GET", path: "/portfolios/2/post-mortem", api: "/portfolios/{portfolio_id}/post-mortem" }, // not_enough_history
   { method: "PATCH", path: "/portfolios/1", api: "/portfolios/{portfolio_id}", body: { expected_return_pct: null, expected_return_horizon_months: null } },
   { method: "GET", path: "/portfolios/1/xray", api: "/portfolios/{portfolio_id}/xray" },
+  { method: "GET", path: "/portfolios/1/xray-rules", api: "/portfolios/{portfolio_id}/xray-rules" },
+  { method: "PATCH", path: "/portfolios/1/xray-rules", api: "/portfolios/{portfolio_id}/xray-rules", body: { rules: [{ rule: "sector", enabled: false }, { rule: "concentration", threshold_pct: 20 }] } },
+  { method: "GET", path: "/portfolios/1/xray", api: "/portfolios/{portfolio_id}/xray" }, // rule off, override
+  { method: "PATCH", path: "/portfolios/1/xray-rules", api: "/portfolios/{portfolio_id}/xray-rules", body: { rules: [{ rule: "sector", enabled: true, threshold_pct: null }, { rule: "concentration", threshold_pct: null }] } },
+  { method: "GET", path: "/track-record", api: "/track-record" },
   { method: "GET", path: "/portfolios/1/heatmap", api: "/portfolios/{portfolio_id}/heatmap" },
   { method: "GET", path: "/risk/presets", api: "/risk/presets" },
   { method: "GET", path: "/securities/search?q=teva", api: "/securities/search" },
@@ -127,6 +133,31 @@ describe("mock fixtures match backend/openapi.json", () => {
     const real = responseSchema(method, api);
     expect(real, `no schema for ${method} ${api}`).toBeTruthy();
     validate(real!, data, `${method} ${p}`);
+  });
+
+  it.each(["not_started", "none_ended", "ready"] as const)("GET /track-record in state %s", (st) => {
+    setMockTrackState(st);
+    try {
+      const data = JSON.parse(JSON.stringify(mockRequest("GET", "/track-record")));
+      validate(responseSchema("GET", "/track-record")!, data, st);
+      expect(data.state).toBe(st);
+    } finally { setMockTrackState("ready"); }
+  });
+
+  it("PATCH xray-rules out of bounds is a 422 with the bounds; both X-ray states validate", () => {
+    resetMockXrayRules();
+    try { mockRequest("PATCH", "/portfolios/1/xray-rules", { rules: [{ rule: "concentration", threshold_pct: 99 }] }); expect.fail("no 422"); } catch (e) {
+      expect(e).toBeInstanceOf(ApiError);
+      expect((e as ApiError).status).toBe(422);
+      expect((e as ApiError).code).toBe("threshold_out_of_bounds");
+    }
+    const x = mockRequest("GET", "/portfolios/1/xray") as { rules: { state: string }[] };
+    expect(new Set(x.rules.map((r) => r.state)).has("breach")).toBe(true);
+    expect(x.rules.some((r) => r.state === "ok")).toBe(true);
+    mockRequest("PATCH", "/portfolios/1/xray-rules", { rules: [{ rule: "sector", enabled: false }] });
+    const y = mockRequest("GET", "/portfolios/1/xray") as { rules: { rule: string; state: string }[] };
+    expect(y.rules.find((r) => r.rule === "sector")?.state).toBe("off");
+    resetMockXrayRules();
   });
 
   it("covers the nullable cases the UI must survive", () => {

@@ -54,6 +54,9 @@ export const useAlerts = () => useSWR("alerts", () => api.alerts(), cfg);
 export const usePostmortem = (pid: number | null, start: string | null, end: string | null) =>
   useSWR(pid === null ? null : ["post-mortem", pid, start, end], () => api.postmortem(pid as number, { start, end }), { revalidateOnFocus: false, shouldRetryOnError: false });
 export const useXray = (pid: number | null) => useSWR(pid === null ? null : ["xray", pid], () => api.xray(pid as number), cfg);
+export const useXrayRules = (pid: number | null) => useSWR(pid === null ? null : ["xray-rules", pid], () => api.xrayRules(pid as number), cfg);
+/** Members-only track record: on demand, not polled. */
+export const useTrackRecord = () => useSWR("track-record", () => api.trackRecord(), { revalidateOnFocus: false, shouldRetryOnError: false });
 export const useHeatmap = (pid: number | null) => useSWR(pid === null ? null : ["heatmap", pid], () => api.heatmap(pid as number), cfg);
 
 const KEY = PORTFOLIO_CHOICE_KEY;
