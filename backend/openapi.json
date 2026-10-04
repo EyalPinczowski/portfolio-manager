@@ -4019,6 +4019,16 @@
             "type": "array",
             "title": "Scale Out"
           },
+          "scale_out_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScaleOutPlan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "size_guidance": {
             "anyOf": [
               {
@@ -8026,6 +8036,66 @@
         ],
         "title": "RuleResult"
       },
+      "ScaleOutPlan": {
+        "properties": {
+          "profile": {
+            "type": "string",
+            "title": "Profile"
+          },
+          "used_fallback": {
+            "type": "boolean",
+            "title": "Used Fallback",
+            "default": false
+          },
+          "first_fraction": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "First Fraction"
+          },
+          "second_fraction": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Second Fraction"
+          },
+          "trail_fraction": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Trail Fraction"
+          },
+          "trail_atr_scale": {
+            "type": "number",
+            "title": "Trail Atr Scale"
+          },
+          "breakeven_atr_multiple": {
+            "type": "number",
+            "title": "Breakeven Atr Multiple"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Note"
+          },
+          "explanation": {
+            "$ref": "#/components/schemas/Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile",
+          "first_fraction",
+          "second_fraction",
+          "trail_fraction",
+          "trail_atr_scale",
+          "breakeven_atr_multiple",
+          "note",
+          "explanation"
+        ],
+        "title": "ScaleOutPlan",
+        "description": "The profile's scale-out numbers and the wording that labels them an adjustable plan."
+      },
       "ScaleOutStep": {
         "properties": {
           "step": {
@@ -8062,6 +8132,12 @@
             "type": "number",
             "minimum": 0.0,
             "title": "Quantity"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Reason",
+            "default": ""
           }
         },
         "type": "object",

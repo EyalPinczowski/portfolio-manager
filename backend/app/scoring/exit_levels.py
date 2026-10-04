@@ -27,7 +27,7 @@ from typing import Annotated, Literal
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.config import DISCLAIMER, HorizonSpec, Settings, get_settings
+from app.config import DISCLAIMER, HorizonSpec, ScaleOutPlanSpec, Settings, get_settings
 from app.portfolio.freshness import StalePriceError, exit_level_price
 from app.portfolio.valuation import ValuedHolding
 from app.providers.fx_provider import to_ils
@@ -147,6 +147,23 @@ class ScaleOutStep(BaseModel):
     price: float | None = None
     fraction: float = Field(ge=0, le=1)
     quantity: float = Field(ge=0)
+    reason: Reason = ""  # names the risk profile and why this share
+
+
+class ScaleOutPlan(BaseModel):
+    """The profile's scale-out numbers and the wording that labels them an adjustable plan."""
+
+    model_config = FINITE
+
+    profile: str  # the preset whose table row was used
+    used_fallback: bool = False  # the filter had no preset, so the fallback preset's row was used
+    first_fraction: float = Field(ge=0, le=1)
+    second_fraction: float = Field(ge=0, le=1)
+    trail_fraction: float = Field(ge=0, le=1)
+    trail_atr_scale: float
+    breakeven_atr_multiple: float
+    note: Reason  # "A plan to review and change, not an instruction."
+    explanation: Explanation
 
 
 class SizeGuidance(BaseModel):
@@ -192,6 +209,7 @@ class ExitLevelsResult(BaseModel):
     breakeven: ExitLevel | None = None
     take_profits: list[ExitLevel] = Field(default_factory=list)
     scale_out: list[ScaleOutStep] = Field(default_factory=list)
+    scale_out_plan: ScaleOutPlan | None = None
     size_guidance: SizeGuidance | None = None
     risk_to_stop: RiskToStop | None = None
     stop_fit: StopFit | None = None
@@ -713,13 +731,41 @@ def _take_profits(
     return out, skipped
 
 
-def _scale_out(ctx: _Ctx, tps: list[ExitLevel]) -> list[ScaleOutStep]:
+def _plan_for(risk: RiskFilter, s: Settings) -> tuple[str, bool, ScaleOutPlanSpec]:
+    """The table row for the filter's preset (the fallback preset's row for a custom filter)."""
+    name = risk.preset or ""
+    if name in s.exit_levels_scale_out_plans:
+        return name, False, s.exit_levels_scale_out_plans[name]
+    fb = s.exit_levels_scale_out_fallback_preset
+    return fb, True, s.exit_levels_scale_out_plans[fb]
+
+
+def _profile_name(preset: str) -> str:
+    return preset.replace("_", " ").capitalize()
+
+
+def _scale_out(
+    ctx: _Ctx, tps: list[ExitLevel], profile: str, spec: ScaleOutPlanSpec
+) -> list[ScaleOutStep]:
     qty = ctx.v.holding.quantity
-    fractions = ctx.settings.exit_levels_scale_out_fractions
+    fractions = [spec.first_fraction, spec.second_fraction]
+    who = f"{_profile_name(profile)} profile"
     steps: list[ScaleOutStep] = []
     used = 0.0
-    for tp, frac in zip(tps, fractions, strict=False):
+    for i, (tp, frac) in enumerate(zip(tps, fractions, strict=False)):
+        if frac <= 0:
+            continue
         used += frac
+        if i == 0:
+            why = (
+                f"{who}: secures {frac:.0%} of the position at the first level"
+                f" ({tp.label} at {tp.price:.4g}), so part of the gain is locked in early."
+            )
+        else:
+            why = (
+                f"{who}: takes a further {frac:.0%} at {tp.label} ({tp.price:.4g}),"
+                " leaving the remainder to trail."
+            )
         steps.append(
             ScaleOutStep(
                 step="take_profit",
@@ -727,6 +773,7 @@ def _scale_out(ctx: _Ctx, tps: list[ExitLevel]) -> list[ScaleOutStep]:
                 price=tp.price,
                 fraction=round(frac, 4),
                 quantity=round(qty * frac, 6),
+                reason=why,
             )
         )
     rest = max(0.0, 1.0 - used)
@@ -736,9 +783,55 @@ def _scale_out(ctx: _Ctx, tps: list[ExitLevel]) -> list[ScaleOutStep]:
             label="Keep the rest and follow the trailing stop",
             fraction=round(rest, 4),
             quantity=round(qty * rest, 6),
+            reason=(
+                f"{who}: the remaining {rest:.0%} stays in and follows the trailing stop"
+                f" ({spec.trail_atr_scale:g} x the base ATR trail, "
+                f"breakeven stop after {spec.breakeven_atr_multiple:g} ATR of gain)."
+            ),
         )
     )
     return steps
+
+
+def _scale_out_plan(
+    profile: str, fallback: bool, spec: ScaleOutPlanSpec, steps: list[ScaleOutStep], as_of: datetime
+) -> ScaleOutPlan:
+    who = f"{_profile_name(profile)} profile"
+    lean = (
+        "earlier and a larger share" if spec.first_fraction >= 0.4 else "later and a smaller share"
+    )
+    summary = (
+        f"{who}: take {spec.first_fraction:.0%} at the first level and {spec.second_fraction:.0%}"
+        f" at the second, trail the other {spec.trail_fraction:.0%}. Profit is secured {lean};"
+        f" the trail is {spec.trail_atr_scale:g} x the base ATR multiple."
+    )
+    if fallback:
+        summary += f" Your filter has no preset, so the {_profile_name(profile)} row is used."
+    return ScaleOutPlan(
+        profile=profile,
+        used_fallback=fallback,
+        first_fraction=round(spec.first_fraction, 4),
+        second_fraction=round(spec.second_fraction, 4),
+        trail_fraction=round(spec.trail_fraction, 4),
+        trail_atr_scale=spec.trail_atr_scale,
+        breakeven_atr_multiple=spec.breakeven_atr_multiple,
+        note="A plan to review and change, not an instruction; the numbers come from your risk profile.",
+        explanation=Explanation(
+            summary=summary[:2000],
+            inputs=as_float_inputs(
+                {
+                    "first_fraction": spec.first_fraction,
+                    "second_fraction": spec.second_fraction,
+                    "trail_fraction": spec.trail_fraction,
+                    "trail_atr_scale": spec.trail_atr_scale,
+                    "breakeven_atr_multiple": spec.breakeven_atr_multiple,
+                }
+            ),
+            rules_applied=[f"scale-out plan of the {profile} profile"] + [x.reason for x in steps],
+            invalidation_risks=["Take-profit levels come from past prices and can be missed."],
+            as_of=as_of,
+        ),
+    )
 
 
 def _empty_explanation(summary: str, as_of: datetime | None = None) -> Explanation:
@@ -837,6 +930,7 @@ def compute_exit_levels(
         portfolio_value_ils=portfolio_value_ils, atr=atr, atr_timeframe=atr_tf,
     )  # fmt: skip
 
+    plan_name, plan_fb, plan = _plan_for(risk, s)
     stop_price, src, why, cands, skipped, mult = _choose_stop(ctx)
     prior = state or StopState()
     rules = [f"horizon {hz.value}: {spec.label}", f"preset {risk.preset or 'custom'}"]
@@ -874,7 +968,7 @@ def compute_exit_levels(
     trailing: ExitLevel | None = None
     highest = float(daily["High"].tail(s.exit_levels_chandelier_lookback).max())
     if risk.stop_type != "fixed":
-        t_mult = (
+        t_mult = plan.trail_atr_scale * (
             mult
             if mult is not None
             else s.exit_levels_trailing_atr_default
@@ -890,8 +984,8 @@ def compute_exit_levels(
             moved = ratcheted > stop_price + 1e-12
             in_profit = ctx.cost() is not None and price > (ctx.cost() or 0.0)
             t_why = (
-                f"Trailing stop {ratcheted:.4g}: highest high {hh:.4g} minus {t_mult:.2f} x ATR; "
-                "it only moves up."
+                f"Trailing stop {ratcheted:.4g}: highest high {hh:.4g} minus {t_mult:.2f} x ATR "
+                f"({_profile_name(plan_name)} profile trail); it only moves up."
                 if moved
                 else f"Trailing stop starts at the stop {ratcheted:.4g} and rises as the price makes new highs."
             )
@@ -909,12 +1003,13 @@ def compute_exit_levels(
     if cost is not None and atr is not None:
         gain_atr = (price - cost) / atr
         current_stop = max(stop_price, trailing.price if trailing else 0.0)
-        if gain_atr >= s.exit_levels_breakeven_atr_multiple and cost > current_stop:
+        if gain_atr >= plan.breakeven_atr_multiple and cost > current_stop:
             breakeven = _make_level(
                 ctx, kind="breakeven", label="Breakeven stop", price=cost, source="cost",
                 reason=(
-                    f"The price is {gain_atr:.1f} ATR above your cost {cost:.4g}: "
-                    "moving the stop up to your cost means this position can no longer lose money."
+                    f"The price is {gain_atr:.1f} ATR above your cost {cost:.4g} "
+                    f"({_profile_name(plan_name)} profile suggests this from "
+                    f"{plan.breakeven_atr_multiple:g} ATR): moving the stop up to your cost means this position can no longer lose money."
                 ),
                 inputs={"gain_in_atr": gain_atr}, rules=rules, risk_rules=risk_rules,
                 annotation=ChartAnnotation(kind="support", label="Breakeven", price=_round(cost), as_of=as_of),
@@ -934,6 +1029,8 @@ def compute_exit_levels(
             else "ok"
         )
 
+    steps = _scale_out(ctx, tps, plan_name, plan)
+    scale_plan = _scale_out_plan(plan_name, plan_fb, plan, steps, as_of)
     new_state = prior.ratchet(trailing.price if trailing else stop_price, highest)
     summary = (
         f"{spec.label}: {stop_level.reason} "
@@ -951,7 +1048,11 @@ def compute_exit_levels(
                 "min_rr": risk.min_rr,
             }
         ),
-        rules_applied=[*rules, *(f"{c.source}: {c.note}" for c in cands)][:50],
+        rules_applied=[
+            *rules,
+            *(f"{c.source}: {c.note}" for c in cands),
+            scale_plan.explanation.summary,
+        ][:50],
         as_of=as_of,
         annotations=[
             a
@@ -982,7 +1083,8 @@ def compute_exit_levels(
         trailing_stop=trailing,
         breakeven=breakeven,
         take_profits=tps,
-        scale_out=_scale_out(ctx, tps),
+        scale_out=steps,
+        scale_out_plan=scale_plan,
         size_guidance=guidance,
         risk_to_stop=rts,
         stop_fit=fit,

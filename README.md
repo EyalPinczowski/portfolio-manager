@@ -238,7 +238,7 @@ The selected horizon and risk filter are applied together. If a stop that fits t
   - analyst price targets (for 3+ months)
   - R-multiples (multiples of the distance to the stop) that meet your minimum risk/reward
   - breakout and Fibonacci extensions
-- **Scale-out plan**: e.g. sell ⅓ at TP1, ⅓ at TP2, and trail the rest.
+- **Scale-out plan**: a suggestion per risk preset (table in config `exit_levels_scale_out_plans`): e.g. Conservative takes 45% at TP1 and 30% at TP2 and trails the rest; Aggressive takes 25% + 25% and trails 50%.
 - **For each level**: the price, its distance from the current price, your P&L at that level in ILS and USD, its risk/reward ratio, and a one-line reason.
 - **Market context**: stops tighten during Extreme Greed or sharp geopolitical risk, and the app warns you before earnings or ex-dividend dates that fall within the horizon.
 - **Accept or edit** the levels to save them together with the horizon and risk settings used. Saved levels drive Telegram alerts ("TEVA.TA hit your stop ₪41.0") and update automatically when trailing.

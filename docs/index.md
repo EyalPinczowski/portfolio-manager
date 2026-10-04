@@ -14,6 +14,7 @@ Token-saving rule for Claude sessions: do not read whole docs. Grep for a headin
 | Security | `docs/security.md` |
 | Deployment, migrations | `docs/deployment.md`, `docs/migrations.md` |
 | Importer formats | `docs/import-formats.md` |
+| Exit-level scale-out plans per risk preset | config `exit_levels_scale_out_plans`; code `backend/app/scoring/exit_levels.py` (`_plan_for`, `ScaleOutPlan`); status.md 2026-10-04 |
 | Backlog, reminders | `docs/ideas.md`, `docs/reminders.md` |
 | Reviews | `docs/reviews/` (one file per phase) |
 

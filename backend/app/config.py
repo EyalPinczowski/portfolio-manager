@@ -67,6 +67,47 @@ def default_quote_source_limits() -> dict[str, QuoteSourceLimits]:
     }
 
 
+class ScaleOutPlanSpec(BaseModel):
+    """One preset's scale-out plan: shares at TP1 and TP2, the rest trails (README, exit levels).
+
+    More conservative = secure profit earlier (bigger first share, tighter trail, earlier
+    breakeven); more aggressive = smaller first share, wider trail, more left to run.
+    """
+
+    first_fraction: float = Field(gt=0, lt=1)  # share of the position at TP1
+    second_fraction: float = Field(ge=0, lt=1)  # share at TP2
+    trail_atr_scale: float = Field(gt=0)  # multiplies the trailing ATR multiple
+    breakeven_atr_multiple: float = Field(gt=0)  # gain (in ATR) that suggests a breakeven stop
+
+    @model_validator(mode="after")
+    def _remainder_trails(self) -> ScaleOutPlanSpec:
+        if self.first_fraction + self.second_fraction >= 1.0:
+            raise ValueError("first + second fraction must leave a share to trail")
+        return self
+
+    @property
+    def trail_fraction(self) -> float:
+        return 1.0 - self.first_fraction - self.second_fraction
+
+
+def default_scale_out_plans() -> dict[str, ScaleOutPlanSpec]:
+    rows = {
+        # preset: (first, second, trail scale, breakeven ATR)
+        "very_conservative": (0.50, 0.30, 0.90, 0.5),
+        "conservative": (0.45, 0.30, 0.95, 0.75),
+        "balanced": (0.40, 0.30, 1.00, 1.0),
+        "balanced_aggressive": (0.35, 0.30, 1.05, 1.25),
+        "aggressive": (0.25, 0.25, 1.15, 1.5),
+        "very_aggressive": (0.20, 0.20, 1.30, 2.0),
+    }
+    return {
+        k: ScaleOutPlanSpec(
+            first_fraction=a, second_fraction=b, trail_atr_scale=c, breakeven_atr_multiple=d
+        )
+        for k, (a, b, c, d) in rows.items()
+    }
+
+
 class HorizonSpec(BaseModel):
     """How exit levels are computed for one holding period (the README horizon table)."""
 
@@ -374,9 +415,12 @@ class Settings(BaseSettings):
     exit_levels_trailing_atr_default: float = Field(
         default=3.0, gt=0
     )  # horizons without an ATR range
-    exit_levels_breakeven_atr_multiple: float = Field(default=1.0, gt=0)
-    # Scale-out plan: shares to take partial profit on at TP1, TP2 (the rest follows the trail).
-    exit_levels_scale_out_fractions: list[float] = Field(default_factory=lambda: [1 / 3, 1 / 3])
+    # Scale-out plan per risk preset (proposed defaults, for the user to review; a custom filter
+    # without a preset uses `exit_levels_scale_out_fallback_preset`).
+    exit_levels_scale_out_plans: dict[str, ScaleOutPlanSpec] = Field(
+        default_factory=default_scale_out_plans
+    )
+    exit_levels_scale_out_fallback_preset: str = "balanced"
     exit_levels_max_take_profits: int = Field(default=3, gt=0)
     exit_levels_pivot_cluster_pct: float = Field(default=1.5, gt=0)
     exit_levels_pivot_windows: dict[str, int] = Field(

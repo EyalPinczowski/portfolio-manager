@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from datetime import UTC, datetime, timedelta
+from itertools import pairwise
 
 import pandas as pd
 import pytest
@@ -369,13 +370,14 @@ def test_1y_has_no_fixed_take_profit_from_trailing_only_and_a_ma_based_stop() ->
     assert r.stop is not None and r.stop.source in ("structure", "moving_average", "max_loss")
 
 
-def test_scale_out_uses_thirds_and_trails_the_rest() -> None:
+def test_scale_out_uses_the_balanced_row_and_trails_the_rest() -> None:
     r = run(horizon="1m", risk=BALANCED.model_copy(update={"min_rr": 1.0}))
     assert len(r.take_profits) >= 2
     first, second, rest = r.scale_out[0], r.scale_out[1], r.scale_out[-1]
-    assert (
-        first.fraction == pytest.approx(1 / 3, abs=1e-3) and second.price == r.take_profits[1].price
-    )
+    row = S.exit_levels_scale_out_plans["balanced"]
+    assert first.fraction == pytest.approx(row.first_fraction, abs=1e-3)
+    assert second.fraction == pytest.approx(row.second_fraction, abs=1e-3)
+    assert second.price == r.take_profits[1].price
     assert rest.step == "trail_rest"
     assert sum(s.quantity for s in r.scale_out) == pytest.approx(100.0, abs=1e-3)
 
@@ -417,7 +419,84 @@ def test_risk_to_stop_is_in_shekels_and_dollars() -> None:
 
 
 def test_new_tunables_are_in_config_with_sane_defaults() -> None:
-    assert S.exit_levels_min_bars >= 20 and S.exit_levels_breakeven_atr_multiple == 1.0
+    assert S.exit_levels_min_bars >= 20
     assert S.exit_levels_crypto_atr_multiplier > 1.0
-    assert sum(S.exit_levels_scale_out_fractions) < 1.0
+    assert set(S.exit_levels_scale_out_plans) == set(PRESETS)
     assert set(S.exit_levels_preset_atr_scale) == set(PRESETS)
+
+
+# ---- per-preset scale-out plans (suggestions, numbers in config)
+ORDER = [
+    "very_conservative",
+    "conservative",
+    "balanced",
+    "balanced_aggressive",
+    "aggressive",
+    "very_aggressive",
+]
+
+
+def _preset_filter(name: str) -> RiskFilter:
+    f = RiskFilter.model_validate(PRESETS[name].model_dump(exclude={"name"}))
+    return f.model_copy(update={"min_rr": 1.0})
+
+
+@pytest.mark.parametrize("name", ORDER)
+def test_each_preset_yields_its_table_fractions(name: str) -> None:
+    r = run(horizon="1m", risk=_preset_filter(name))
+    row = S.exit_levels_scale_out_plans[name]
+    assert len(r.take_profits) >= 2
+    assert r.scale_out[0].fraction == pytest.approx(row.first_fraction, abs=1e-3)
+    assert r.scale_out[1].fraction == pytest.approx(row.second_fraction, abs=1e-3)
+    assert r.scale_out[-1].step == "trail_rest"
+    assert r.scale_out[-1].fraction == pytest.approx(row.trail_fraction, abs=1e-3)
+    assert sum(x.fraction for x in r.scale_out) == pytest.approx(1.0, abs=1e-3)
+    assert r.scale_out_plan is not None and r.scale_out_plan.profile == name
+    assert not r.scale_out_plan.used_fallback
+
+
+def test_scale_out_table_is_monotonic_with_aggressiveness() -> None:
+    rows = [S.exit_levels_scale_out_plans[n] for n in ORDER]
+    for a, b in pairwise(rows):
+        assert a.first_fraction >= b.first_fraction
+        assert a.trail_atr_scale <= b.trail_atr_scale
+        assert a.breakeven_atr_multiple <= b.breakeven_atr_multiple
+        assert a.trail_fraction <= b.trail_fraction
+    assert all(r.trail_fraction > 0 for r in rows)
+
+
+def test_scale_out_reasons_name_the_profile_and_stay_verdict_free() -> None:
+    for name in ORDER:
+        r = run(horizon="1m", risk=_preset_filter(name))
+        label = name.replace("_", " ").capitalize() + " profile"
+        assert all(label in s.reason for s in r.scale_out)
+        assert r.scale_out_plan is not None
+        assert label in r.scale_out_plan.explanation.summary
+        assert label in r.explanation.rules_applied[-1] or any(
+            label in x for x in r.explanation.rules_applied
+        )
+        assert "not an instruction" in r.scale_out_plan.note
+        assert (
+            verdict_words_in_text(r.scale_out_plan.note + r.scale_out_plan.explanation.summary)
+            == []
+        )
+        assert all(verdict_words_in_text(s.reason) == [] for s in r.scale_out)
+
+
+def test_custom_filter_without_preset_uses_the_fallback_row() -> None:
+    r = run(horizon="1m", risk=BALANCED.model_copy(update={"preset": None, "min_rr": 1.0}))
+    assert r.scale_out_plan is not None and r.scale_out_plan.used_fallback
+    assert r.scale_out_plan.profile == S.exit_levels_scale_out_fallback_preset
+
+
+def test_a_wider_profile_trails_further_below_the_high() -> None:
+    trail = {"stop_type": "atr"}
+    cons = run(horizon="1m", risk=_preset_filter("very_conservative").model_copy(update=trail))
+    aggr = run(horizon="1m", risk=_preset_filter("very_aggressive").model_copy(update=trail))
+    assert cons.trailing_stop is not None and aggr.trailing_stop is not None
+    assert cons.trailing_stop.price >= aggr.trailing_stop.price
+
+
+def test_no_levels_results_carry_no_scale_out_plan() -> None:
+    r = run(horizon=None)
+    assert r.status == "needs_horizon" and r.scale_out_plan is None and r.scale_out == []
