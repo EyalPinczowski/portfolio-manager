@@ -1,0 +1,10 @@
+[
+  {"symbol": "AAPL", "question": "How did services revenue and the App Store do?", "expect": "file:AAPL/news/2026-10-01_services.txt"},
+  {"symbol": "AAPL", "question": "supply chain disruption tariffs suppliers", "expect": "file:AAPL/filing/2026-08-01_10q.txt"},
+  {"symbol": "AAPL", "question": "antitrust investigation European Union fines", "expect": "file:AAPL/filing/2026-08-01_10q.txt"},
+  {"symbol": "TEVA.TA", "question": "אישור תרופה למיגרנה", "expect": "file:TEVA.TA/news/2026-09-30_hebrew.txt"},
+  {"symbol": "TEVA.TA", "question": "מי המתחרות של טבע", "expect": "file:TEVA.TA/profile/2026-06-01_profile.txt"},
+  {"symbol": "TEVA.TA", "question": "who are the competitors of Teva", "expect": "file:TEVA.TA/profile/2026-06-01_profile.txt"},
+  {"symbol": "MSFT", "question": "Azure growth and capital expenditure guidance", "expect": "https://example.test/msft/q4-call"},
+  {"symbol": "MSFT", "question": "new head of gaming division", "expect": "https://example.test/msft/ceo"}
+]

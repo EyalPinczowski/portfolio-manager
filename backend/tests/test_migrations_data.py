@@ -16,6 +16,7 @@ import pytest
 from alembic import command
 from alembic.config import Config as AlembicConfig
 from sqlalchemy import Engine, text
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from app.db import (
@@ -345,4 +346,28 @@ def test_0014_adds_fund_holdings_without_touching_existing_data(tmp_path: Path) 
         conn.execute(text("DELETE FROM holding"))
     with engine.connect() as conn:
         assert conn.execute(text("SELECT count(*) FROM fund_holding")).scalar() == 0
+    engine.dispose()
+
+
+def test_0015_adds_doc_chunk_without_touching_existing_data(tmp_path: Path) -> None:
+    engine = make_engine(f"sqlite:///{tmp_path / 'm.db'}")
+    run_migrations(engine)
+    downgrade_migrations(engine, "0014_fund_holding")
+    with engine.connect() as conn:
+        assert "doc_chunk" not in {
+            r[0] for r in conn.exec_driver_sql("SELECT name FROM sqlite_master")
+        }
+    _seed(engine)
+    run_migrations(engine)  # expand-only: 0014 -> 0015 with data present
+    assert _counts(engine) == {"user": 1, "portfolio": 1, "session": 1, "holding": 1}
+    ins = text(
+        "INSERT INTO doc_chunk (symbol, market, doc_type, source_url, as_of, text, token_count, "
+        "text_hash, created_at) VALUES ('AAPL', 'US', 'news', 'u', '2026-01-01', 't', 1, :h, "
+        "'2026-01-01')"
+    )
+    with engine.begin() as conn:
+        conn.execute(ins, {"h": "a"})
+        assert conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
+    with pytest.raises(IntegrityError), engine.begin() as conn:  # unique per symbol + hash
+        conn.execute(ins, {"h": "a"})
     engine.dispose()

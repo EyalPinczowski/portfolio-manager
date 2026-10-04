@@ -251,6 +251,28 @@ class FundHolding(SQLModel, table=True):
     updated_at: NaiveDatetime = Field(default_factory=utcnow)
 
 
+class DocChunk(SQLModel, table=True):
+    """One retrievable passage of public text (filing, news, transcript, profile) for the RAG layer
+    (docs/rag-spec.md). Public data only and **never tied to a user**: no user id, no portfolio. Written
+    by the index job; the API only reads. The keyword index lives next to it (`app/rag/index.py`)."""
+
+    __tablename__ = "doc_chunk"
+    __table_args__ = (
+        UniqueConstraint("symbol", "text_hash", name="uq_doc_chunk_symbol_hash"),
+        Index("ix_doc_chunk_symbol_type", "symbol", "doc_type"),
+    )
+    id: int | None = Field(default=None, primary_key=True)
+    symbol: str
+    market: str  # US | TASE | CRYPTO
+    doc_type: str  # filing | news | transcript | profile
+    source_url: str
+    as_of: NaiveDatetime
+    text: str
+    token_count: int
+    text_hash: str
+    created_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
 class UserSettings(SQLModel, table=True):
     """Per-user settings, one row per user (see docs/settings-spec.md). A user without a row has the
     defaults from `Settings`. `idea_alerts` is NULL until the user saves the filter: nothing is

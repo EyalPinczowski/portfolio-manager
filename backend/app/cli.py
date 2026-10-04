@@ -108,6 +108,12 @@ def main(argv: list[str] | None = None) -> int:
     fh.add_argument("--symbols", help="Comma separated symbols instead of --symbols-from")
     fh.add_argument("--years", type=int, default=8)
     fh.add_argument("--history-dir", default=None)
+    ri = sub.add_parser(
+        "rag-index", help="Ingest local text/JSON files into the RAG index (no network)"
+    )
+    ri.add_argument("--from-dir", required=True)
+    ri.add_argument("--symbols-from", choices=["universe"], default=None)
+    ri.add_argument("--symbols", help="Comma separated symbols instead of --symbols-from")
     bt = sub.add_parser("backtest", help="Walk-forward backtest on the stored history")
     bt.add_argument("--profiles", default="conservative,balanced,balanced_aggressive,aggressive")
     bt.add_argument("--window-months", type=int, default=None)
@@ -143,6 +149,25 @@ def main(argv: list[str] | None = None) -> int:
         return run_fetch_history(
             get_settings(), args.symbols_from, args.symbols, args.years, args.history_dir
         )
+    if args.cmd == "rag-index":
+        from pathlib import Path
+
+        from app.rag.indexjob import run_index
+        from app.scoring.universe import load_universe
+
+        wanted: set[str] | None = None
+        if args.symbols:
+            wanted = {x.strip().upper() for x in args.symbols.split(",") if x.strip()}
+        elif args.symbols_from == "universe":
+            wanted = set(load_universe())
+        prepare_database(get_engine())
+        with new_session() as db:
+            stats, purged = run_index(db, Path(args.from_dir), wanted)
+        print(
+            f"rag-index: {stats.docs} documents, {stats.chunks_added} chunks added, "
+            f"{stats.chunks_skipped} already stored, {purged} expired chunks removed"
+        )
+        return 0
     if args.cmd == "backtest":
         from app.backtest.commands import run_backtest
 

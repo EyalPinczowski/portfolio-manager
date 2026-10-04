@@ -686,6 +686,32 @@ class Settings(BaseSettings):
     llm_bucket_cas_retries: int = 100
     llm_timeout_seconds: float = 30.0
     llm_max_output_tokens: int = 1024
+
+    # --- RAG (docs/rag-spec.md): chunking runs in the index job, never in the API process ---
+    rag_chunk_target_tokens: int = Field(default=300, ge=50, le=2000)
+    rag_chunk_overlap_tokens: int = Field(default=40, ge=0, le=500)
+    # Cheap token estimator (no tokenizer dependency): characters per token by script.
+    rag_chars_per_token_latin: float = Field(default=4.0, gt=0)
+    rag_chars_per_token_hebrew: float = Field(default=2.5, gt=0)
+    rag_max_k: int = Field(default=12, ge=1, le=50)  # hard cap on chunks per search
+    # A chunk older than its doc type's TTL (days) is never returned.
+    rag_doc_ttl_days: dict[str, int] = Field(
+        default_factory=lambda: {"filing": 400, "news": 14, "transcript": 120, "profile": 365}
+    )
+    # Hard cap on the whole prompt (instructions + PublicFacts + chunks) per LLM role, in estimated
+    # tokens. Retrieval for a role never returns more than the room left in this budget.
+    rag_role_budgets: dict[str, int] = Field(
+        default_factory=lambda: {
+            "company_profile": 2500,
+            "news": 2000,
+            "bear": 1500,
+            "cio": 2000,
+            "ask_portfolio": 2000,
+        }
+    )
+    # Hook for optional local embeddings (e.g. multilingual-e5-small), off until keyword recall is
+    # measured too low. Nothing reads it yet; see docs/rag-spec.md "Embeddings hook".
+    rag_embeddings_enabled: bool = False
     llm_cache_ttl_hours: float = 24.0 * 7
     llm_cache_ttl_news_hours: float = 6.0  # answers whose prompt depends on news go stale fast
     # Free-tier quotas are per day and shared by every user: reserve them. Per-minute sub-buckets
