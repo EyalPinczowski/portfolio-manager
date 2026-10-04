@@ -722,6 +722,21 @@ class Settings(BaseSettings):
     # Hook for optional local embeddings (e.g. multilingual-e5-small), off until keyword recall is
     # measured too low. Nothing reads it yet; see docs/rag-spec.md "Embeddings hook".
     rag_embeddings_enabled: bool = False
+    # Committee roles (docs/analysis-committee.md): chunks asked per role, and the CIO's hard cap on
+    # how far it may move the deterministic score. Ask-my-portfolio: tool calls per question.
+    committee_role_k: dict[str, int] = Field(
+        default_factory=lambda: {
+            "company_profile": 8,
+            "news": 8,
+            "bear": 6,
+            "cio": 6,
+            "ask_portfolio": 6,
+        }
+    )
+    committee_cio_max_adjustment: float = Field(default=15.0, ge=0, le=100)
+    committee_max_claims: int = Field(default=8, ge=1, le=30)
+    ask_max_tools_per_question: int = Field(default=4, ge=1, le=10)
+    ask_max_holdings_rows: int = Field(default=30, ge=1, le=200)
     llm_cache_ttl_hours: float = 24.0 * 7
     llm_cache_ttl_news_hours: float = 6.0  # answers whose prompt depends on news go stale fast
     # Free-tier quotas are per day and shared by every user: reserve them. Per-minute sub-buckets
