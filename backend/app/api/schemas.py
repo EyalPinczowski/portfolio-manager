@@ -17,6 +17,7 @@ from pydantic import (
 
 from app.importer.diff import ProposedChange
 from app.importer.parse import SYMBOL_PATTERN, ParsedRow, norm_symbol
+from app.portfolio.xray_rules import XrayRuleResult
 from app.scoring.risk import PresetName, StopType
 from app.signals.base import Explanation
 
@@ -302,6 +303,8 @@ class XrayOut(BaseModel):
     sector_exposure: list[ExposureItem]
     home_bias: dict[str, Any]
     breaches: list[Breach]
+    # Toggleable informational rules (breach / ok / off) with an Explanation each.
+    rules: list[XrayRuleResult]
 
 
 class HeatmapItem(BaseModel):

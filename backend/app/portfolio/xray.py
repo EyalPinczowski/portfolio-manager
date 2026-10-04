@@ -10,6 +10,7 @@ from sqlmodel import Session
 from app.config import Settings, get_settings
 from app.models import Portfolio
 from app.portfolio.valuation import PortfolioValuation, value_portfolio
+from app.portfolio.xray_rules import evaluate_rules, resolve_rules
 from app.scoring.risk import (
     Position,
     check_limits,
@@ -66,4 +67,11 @@ def build_xray(
             "pct": exposures.home_bias_pct,
         },
         "breaches": [b.model_dump() for b in breaches],
+        # Toggleable rules (informational only): breach / ok / off, each with an Explanation.
+        "rules": [
+            r.model_dump(mode="json")
+            for r in evaluate_rules(
+                positions, exposures, resolve_rules(db, portfolio, limits, s), s, valuation.as_of
+            )
+        ],
     }

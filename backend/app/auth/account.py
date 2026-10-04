@@ -19,6 +19,7 @@ from app.models import (
     User,
     UserSettings,
     WatchlistItem,
+    XrayRuleSetting,
 )
 from app.timeutil import utcnow
 
@@ -50,6 +51,12 @@ def export_user_data(db: Session, user: User) -> dict[str, Any]:
                     x.model_dump(mode="json")
                     for x in db.exec(
                         select(PortfolioSnapshot).where(PortfolioSnapshot.portfolio_id == pid)
+                    )
+                ],
+                "xray_rules": [
+                    x.model_dump(mode="json")
+                    for x in db.exec(
+                        select(XrayRuleSetting).where(XrayRuleSetting.portfolio_id == pid)
                     )
                 ],
                 "import_drafts": [
@@ -87,7 +94,7 @@ def export_user_data(db: Session, user: User) -> dict[str, Any]:
 def delete_user(db: Session, user: User) -> None:
     """Permanently delete the user and everything they own.
 
-    One DELETE: the foreign keys cascade (portfolios -> holdings, transactions, snapshots, drafts;
+    One DELETE: the foreign keys cascade (portfolios -> holdings, transactions, snapshots, drafts, X-ray rule settings;
     sessions, alerts, notifications, search history, watchlist, settings, Telegram link codes, invites they created) and set `Invite.used_by` to NULL.
     """
     db.delete(user)

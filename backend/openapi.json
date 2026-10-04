@@ -2485,6 +2485,120 @@
         }
       }
     },
+    "/api/track-record": {
+      "get": {
+        "tags": [
+          "track-record"
+        ],
+        "summary": "Track Record",
+        "description": "Global paper calls whose horizon has ended, against S&P 500 / TA-125 buy-and-hold.",
+        "operationId": "track_record_api_track_record_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackRecordOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/portfolios/{portfolio_id}/xray-rules": {
+      "get": {
+        "tags": [
+          "xray-rules"
+        ],
+        "summary": "Get Xray Rules",
+        "operationId": "get_xray_rules_api_portfolios__portfolio_id__xray_rules_get",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/XrayRulesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "xray-rules"
+        ],
+        "summary": "Patch Xray Rules",
+        "operationId": "patch_xray_rules_api_portfolios__portfolio_id__xray_rules_patch",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Portfolio Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/XrayRulesPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/XrayRulesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -2820,6 +2934,48 @@
         ],
         "title": "AskOut"
       },
+      "BenchmarkAggregate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "hit_rate_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Rate Pct"
+          },
+          "avg_excess_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Excess Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "count",
+          "hit_rate_pct",
+          "avg_excess_pct"
+        ],
+        "title": "BenchmarkAggregate"
+      },
       "BenchmarkOut": {
         "properties": {
           "symbol": {
@@ -2866,6 +3022,36 @@
           "weight_pct"
         ],
         "title": "BenchmarkOut"
+      },
+      "BenchmarkResult": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "return_pct": {
+            "type": "number",
+            "title": "Return Pct"
+          },
+          "excess_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excess Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "return_pct",
+          "excess_pct"
+        ],
+        "title": "BenchmarkResult"
       },
       "Breach": {
         "properties": {
@@ -4561,6 +4747,57 @@
           "amount_ils"
         ],
         "title": "GapItem"
+      },
+      "GateProgress": {
+        "properties": {
+          "open": {
+            "type": "boolean",
+            "title": "Open"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "weeks_running": {
+            "type": "number",
+            "title": "Weeks Running"
+          },
+          "weeks_required": {
+            "type": "integer",
+            "title": "Weeks Required"
+          },
+          "resolved_at_1m": {
+            "type": "integer",
+            "title": "Resolved At 1M"
+          },
+          "resolved_required": {
+            "type": "integer",
+            "title": "Resolved Required"
+          },
+          "critical_errors": {
+            "type": "integer",
+            "title": "Critical Errors"
+          },
+          "recorded": {
+            "type": "integer",
+            "title": "Recorded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "open",
+          "reasons",
+          "weeks_running",
+          "weeks_required",
+          "resolved_at_1m",
+          "resolved_required",
+          "critical_errors",
+          "recorded"
+        ],
+        "title": "GateProgress"
       },
       "HTTPValidationError": {
         "properties": {
@@ -7721,6 +7958,24 @@
         "title": "RowConflict",
         "description": "The numbers of the copy that lost when the same card is in two screenshots with different\nvalues (the later screenshot wins). Reported so the user can see what was dropped."
       },
+      "RuleItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "value_pct": {
+            "type": "number",
+            "title": "Value Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "value_pct"
+        ],
+        "title": "RuleItem"
+      },
       "RuleResult": {
         "properties": {
           "rule": {
@@ -9033,6 +9288,152 @@
         ],
         "title": "TelegramStatusOut"
       },
+      "TrackCallRow": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "made_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Made On"
+          },
+          "horizon": {
+            "type": "string",
+            "title": "Horizon"
+          },
+          "horizon_ended_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Horizon Ended On"
+          },
+          "resolved_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Resolved On"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "reached_goal",
+              "reached_limit",
+              "horizon_ended"
+            ],
+            "title": "Outcome"
+          },
+          "return_pct": {
+            "type": "number",
+            "title": "Return Pct"
+          },
+          "active_weights": {
+            "type": "boolean",
+            "title": "Active Weights"
+          },
+          "benchmarks": {
+            "items": {
+              "$ref": "#/components/schemas/BenchmarkResult"
+            },
+            "type": "array",
+            "title": "Benchmarks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "made_on",
+          "horizon",
+          "horizon_ended_on",
+          "resolved_on",
+          "outcome",
+          "return_pct",
+          "active_weights",
+          "benchmarks"
+        ],
+        "title": "TrackCallRow"
+      },
+      "TrackRecordOut": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "not_started",
+              "none_ended",
+              "ready"
+            ],
+            "title": "State"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "resolved_at_1m": {
+            "type": "integer",
+            "title": "Resolved At 1M"
+          },
+          "awaiting_resolution": {
+            "type": "integer",
+            "title": "Awaiting Resolution"
+          },
+          "excluded_errors": {
+            "type": "integer",
+            "title": "Excluded Errors"
+          },
+          "benchmarks": {
+            "items": {
+              "$ref": "#/components/schemas/BenchmarkAggregate"
+            },
+            "type": "array",
+            "title": "Benchmarks"
+          },
+          "gate": {
+            "$ref": "#/components/schemas/GateProgress"
+          },
+          "methodology": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Methodology"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/TrackCallRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "message",
+          "as_of",
+          "count",
+          "resolved_at_1m",
+          "awaiting_resolution",
+          "excluded_errors",
+          "benchmarks",
+          "gate",
+          "methodology",
+          "rows",
+          "truncated"
+        ],
+        "title": "TrackRecordOut"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -9293,6 +9694,13 @@
             },
             "type": "array",
             "title": "Breaches"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/XrayRuleResult"
+            },
+            "type": "array",
+            "title": "Rules"
           }
         },
         "type": "object",
@@ -9302,9 +9710,233 @@
           "country_exposure",
           "sector_exposure",
           "home_bias",
-          "breaches"
+          "breaches",
+          "rules"
         ],
         "title": "XrayOut"
+      },
+      "XrayRuleChange": {
+        "properties": {
+          "rule": {
+            "type": "string",
+            "enum": [
+              "concentration",
+              "currency",
+              "country_home",
+              "sector"
+            ],
+            "title": "Rule"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "threshold_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Pct"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rule"
+        ],
+        "title": "XrayRuleChange"
+      },
+      "XrayRuleOut": {
+        "properties": {
+          "rule": {
+            "type": "string",
+            "enum": [
+              "concentration",
+              "currency",
+              "country_home",
+              "sector"
+            ],
+            "title": "Rule"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "threshold_pct": {
+            "type": "number",
+            "title": "Threshold Pct"
+          },
+          "threshold_source": {
+            "type": "string",
+            "enum": [
+              "risk_filter",
+              "config_default",
+              "override"
+            ],
+            "title": "Threshold Source"
+          },
+          "default_threshold_pct": {
+            "type": "number",
+            "title": "Default Threshold Pct"
+          },
+          "override_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override Pct"
+          },
+          "min_pct": {
+            "type": "number",
+            "title": "Min Pct"
+          },
+          "max_pct": {
+            "type": "number",
+            "title": "Max Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule",
+          "enabled",
+          "threshold_pct",
+          "threshold_source",
+          "default_threshold_pct",
+          "override_pct",
+          "min_pct",
+          "max_pct"
+        ],
+        "title": "XrayRuleOut"
+      },
+      "XrayRuleResult": {
+        "properties": {
+          "rule": {
+            "type": "string",
+            "enum": [
+              "concentration",
+              "currency",
+              "country_home",
+              "sector"
+            ],
+            "title": "Rule"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "breach",
+              "ok",
+              "off"
+            ],
+            "title": "State"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "threshold_pct": {
+            "type": "number",
+            "title": "Threshold Pct"
+          },
+          "threshold_source": {
+            "type": "string",
+            "enum": [
+              "risk_filter",
+              "config_default",
+              "override"
+            ],
+            "title": "Threshold Source"
+          },
+          "value_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Pct"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RuleItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "explanation": {
+            "$ref": "#/components/schemas/Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule",
+          "label",
+          "state",
+          "enabled",
+          "threshold_pct",
+          "threshold_source",
+          "value_pct",
+          "items",
+          "explanation"
+        ],
+        "title": "XrayRuleResult"
+      },
+      "XrayRulesOut": {
+        "properties": {
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/XrayRuleOut"
+            },
+            "type": "array",
+            "title": "Rules"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rules"
+        ],
+        "title": "XrayRulesOut"
+      },
+      "XrayRulesPatch": {
+        "properties": {
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/XrayRuleChange"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Rules"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rules"
+        ],
+        "title": "XrayRulesPatch"
       }
     }
   }

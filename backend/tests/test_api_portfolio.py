@@ -312,6 +312,7 @@ def test_risk_presets_filter_and_xray(signup: SignupFn, quotes: FakeQuotes) -> N
         "sector_exposure",
         "home_bias",
         "breaches",
+        "rules",
     }
     assert xr["concentration"][0]["symbol"] == "NVDA"
     cur = {i["name"]: i["weight_pct"] for i in xr["currency_exposure"]}

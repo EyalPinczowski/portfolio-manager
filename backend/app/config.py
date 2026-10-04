@@ -525,6 +525,18 @@ class Settings(BaseSettings):
         default_factory=lambda: ["Diversified", "Broad Market", "Crypto", "Unknown"]
     )
     non_country_labels: list[str] = Field(default_factory=lambda: ["Global", "Unknown"])
+    # Toggleable X-ray rules (informational only; nothing is ever blocked). A rule's threshold is
+    # taken from the portfolio's RiskFilter unless the user overrides it within these bounds (%).
+    xray_currency_default_max_pct: float = Field(default=80.0, gt=0, le=100)  # no RiskFilter field
+    xray_home_bias_default_max_pct: float = Field(default=50.0, gt=0, le=100)  # no RiskFilter field
+    xray_rule_override_bounds: dict[str, tuple[float, float]] = Field(
+        default_factory=lambda: {
+            "concentration": (1.0, 100.0),
+            "currency": (10.0, 100.0),
+            "country_home": (5.0, 100.0),
+            "sector": (5.0, 100.0),
+        }
+    )
 
     # --- importer ---
     max_upload_bytes: int = 8 * 1024 * 1024  # raw image body on the server-OCR import route
@@ -645,6 +657,11 @@ class Settings(BaseSettings):
     # committee run, not by the app config.
     launch_paper_model_hash: str | None = None
     launch_paper_must_beat: list[str] = Field(default_factory=lambda: ["^GSPC", "^TA125.TA"])
+    # Track-record page (members only): how long each horizon lasts, in days, and the row cap.
+    track_record_horizon_days: dict[str, int] = Field(
+        default_factory=lambda: {"1w": 7, "1m": 30, "3m": 91, "6m": 182, "1y": 365}
+    )
+    track_record_max_rows: int = Field(default=500, ge=1, le=5000)
 
     # --- alerts ---
     # Words that make outgoing text (Telegram, notifications, weekly review) read as a buy/sell

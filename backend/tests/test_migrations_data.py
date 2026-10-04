@@ -288,3 +288,31 @@ def test_0012_adds_settings_tables_without_touching_existing_data(tmp_path: Path
             "user.disable",
         )
     engine.dispose()
+
+
+def test_0013_adds_xray_rules_without_touching_existing_data(tmp_path: Path) -> None:
+    engine = make_engine(f"sqlite:///{tmp_path / 'm.db'}")
+    run_migrations(engine)
+    downgrade_migrations(engine, "0012_user_settings_telegram_admin")
+    with engine.connect() as conn:
+        assert "xray_rule_setting" not in {
+            r[0] for r in conn.exec_driver_sql("SELECT name FROM sqlite_master")
+        }
+    _seed(engine)
+    run_migrations(engine)  # expand-only: 0012 -> 0013 with data present
+    assert _counts(engine) == {"user": 1, "portfolio": 1, "session": 1, "holding": 1}
+    with engine.begin() as conn:
+        # existing portfolios get no rows: every rule is on with the default threshold
+        assert conn.execute(text("SELECT count(*) FROM xray_rule_setting")).scalar() == 0
+        conn.execute(
+            text(
+                "INSERT INTO xray_rule_setting (portfolio_id, rule, enabled, threshold_pct, "
+                "updated_at) VALUES (1, 'sector', 0, 40, '2026-01-01')"
+            )
+        )
+        assert conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
+    with engine.begin() as conn:  # the cascade works on the migrated schema
+        conn.execute(text("DELETE FROM portfolio"))
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT count(*) FROM xray_rule_setting")).scalar() == 0
+    engine.dispose()

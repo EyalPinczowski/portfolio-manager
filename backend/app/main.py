@@ -22,6 +22,8 @@ from app.api import (
     misc,
     portfolios,
     telegram,
+    track_record,
+    xray_rules,
 )
 from app.api import settings as settings_api
 from app.config import get_settings, validate_production, validate_proxy
@@ -106,6 +108,8 @@ def create_app() -> FastAPI:
         settings_api,
         telegram,
         admin,
+        track_record,
+        xray_rules,
     ):
         api.include_router(module.router)
 

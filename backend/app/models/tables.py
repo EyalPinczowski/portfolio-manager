@@ -220,6 +220,21 @@ class WatchlistItem(SQLModel, table=True):
     added_at: NaiveDatetime = Field(default_factory=utcnow)
 
 
+class XrayRuleSetting(SQLModel, table=True):
+    """A portfolio's change to one X-ray rule. Only rows the user changed exist: a rule without a
+    row is on, with the threshold taken from the portfolio's RiskFilter (or the config default).
+    `threshold_pct` NULL means "no override". Informational only: nothing is ever blocked."""
+
+    __tablename__ = "xray_rule_setting"
+    __table_args__ = (UniqueConstraint("portfolio_id", "rule", name="uq_xray_rule_portfolio_rule"),)
+    id: int | None = Field(default=None, primary_key=True)
+    portfolio_id: int = Field(foreign_key="portfolio.id", index=True, ondelete="CASCADE")
+    rule: str  # concentration|currency|country_home|sector
+    enabled: bool = True
+    threshold_pct: float | None = None
+    updated_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
 class UserSettings(SQLModel, table=True):
     """Per-user settings, one row per user (see docs/settings-spec.md). A user without a row has the
     defaults from `Settings`. `idea_alerts` is NULL until the user saves the filter: nothing is

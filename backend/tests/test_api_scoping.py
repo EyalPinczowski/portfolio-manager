@@ -69,6 +69,12 @@ def test_cross_user_access_returns_404(
             {"expected_return_pct": 9, "expected_return_horizon_months": 12},
         ),
         ("GET", f"/api/portfolios/{pid}/heatmap", None),
+        ("GET", f"/api/portfolios/{pid}/xray-rules", None),
+        (
+            "PATCH",
+            f"/api/portfolios/{pid}/xray-rules",
+            {"rules": [{"rule": "sector", "enabled": False}]},
+        ),
         ("POST", f"/api/portfolios/{pid}/exit-review", {}),
         (
             "POST",
@@ -178,6 +184,8 @@ def test_unauthenticated_requests_are_rejected(client: TestClient) -> None:
         "/api/auth/sessions",
         "/api/launch-gate",
         "/api/portfolios/1/xray",
+        "/api/portfolios/1/xray-rules",
+        "/api/track-record",
         "/api/imports/1",
         "/api/search-history",
         "/api/watchlist",
@@ -194,6 +202,11 @@ def test_unauthenticated_requests_are_rejected(client: TestClient) -> None:
         ("POST", "/api/auth/sessions/revoke-all", None),
         ("POST", "/api/portfolios/1/imports/rows", {"rows": []}),
         ("PATCH", "/api/settings", {"theme": "dark"}),
+        (
+            "PATCH",
+            "/api/portfolios/1/xray-rules",
+            {"rules": [{"rule": "sector", "enabled": False}]},
+        ),
         ("POST", "/api/telegram/link-code", None),
         ("DELETE", "/api/telegram/link", None),
         ("POST", "/api/admin/invites", {}),
@@ -227,3 +240,18 @@ def test_settings_and_telegram_link_are_per_user_and_admin_is_closed(signup: Sig
     assert b.get("/api/admin/users").status_code == 403
     assert b.post("/api/admin/users/1/disable").status_code == 403
     assert a.get("/api/portfolios").status_code == 200
+
+
+def test_track_record_has_no_user_data_in_it(signup: SignupFn) -> None:
+    """Global calls only: another member's own paper call never shows up in the shared page."""
+    from tests.test_paper_metrics_2_0f import put, resolve
+
+    a = signup("a@mail.com")
+    b = signup("b@mail.com")
+    with new_session() as db:
+        mine = put(db, age_days=40, symbol="ZZZZ", is_global=False, user_id=1)
+        resolve(db, mine, 110.0, {"^GSPC": 1.0}, 30)
+    for c in (a, b):
+        body = c.get("/api/track-record").json()
+        assert body["rows"] == [] and body["state"] == "not_started"
+        assert "ZZZZ" not in str(body)

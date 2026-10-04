@@ -24,6 +24,7 @@ from app.models.tables import (
     User,
     UserSettings,
     WatchlistItem,
+    XrayRuleSetting,
 )
 
 __all__ = [
@@ -51,4 +52,5 @@ __all__ = [
     "User",
     "UserSettings",
     "WatchlistItem",
+    "XrayRuleSetting",
 ]
