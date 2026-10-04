@@ -794,7 +794,7 @@ def compute_exit_levels(
             symbol,
             "needs_horizon",
             "needs_horizon",
-            "How long do you plan to hold this? No levels are computed until you choose a horizon.",
+            "How long do you plan to keep this? No levels are computed until you choose a horizon.",
             risk=risk,
         )
     spec = s.horizon_table[hz.value]

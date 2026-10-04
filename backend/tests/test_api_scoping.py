@@ -81,6 +81,11 @@ def test_cross_user_access_returns_404(
             },
         ),
         ("POST", f"/api/portfolios/{pid}/holdings", {"symbol": "MSFT", "quantity": 1}),
+        (
+            "GET",
+            f"/api/analyze/AAPL?portfolio_id={pid}&amount=1000&currency=ILS&horizon=1m",
+            None,
+        ),
     ]:
         assert status_of(method, path, body) == 404, (method, path)
 

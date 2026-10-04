@@ -1651,6 +1651,203 @@
         }
       }
     },
+    "/api/analyze/{symbol}": {
+      "get": {
+        "tags": [
+          "analyze"
+        ],
+        "summary": "Analyze",
+        "description": "Scout + Chartist reports and, with a portfolio, how this stock fits it. `amount` (with\n`currency`) and `horizon` have no defaults: missing ones come back in `needs_input`.",
+        "operationId": "analyze_api_analyze__symbol__get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "portfolio_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Portfolio Id"
+            }
+          },
+          {
+            "name": "amount",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1000000000000.0,
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Amount"
+            }
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "ILS",
+                    "USD"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Currency"
+            }
+          },
+          {
+            "name": "horizon",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "1w",
+                    "1m",
+                    "3m",
+                    "6m",
+                    "1y"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Horizon"
+            }
+          },
+          {
+            "name": "risk",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "very_conservative",
+                    "conservative",
+                    "balanced",
+                    "balanced_aggressive",
+                    "aggressive",
+                    "very_aggressive"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Risk"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/analyze/{symbol}/ask": {
+      "post": {
+        "tags": [
+          "analyze"
+        ],
+        "summary": "Ask",
+        "description": "Answer a question about a stock from the computed data with a template. The question and\nnotes are not stored and are never sent to an AI provider (template-only for now).",
+        "operationId": "ask_api_analyze__symbol__ask_post",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -1786,6 +1983,153 @@
         "additionalProperties": false,
         "type": "object",
         "title": "AnalystTargetsIn"
+      },
+      "AnalyzeOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "cached": {
+            "type": "boolean",
+            "title": "Cached"
+          },
+          "scout": {
+            "$ref": "#/components/schemas/ScoutReport"
+          },
+          "chart": {
+            "$ref": "#/components/schemas/ChartReport"
+          },
+          "portfolio_fit": {
+            "$ref": "#/components/schemas/PortfolioFit"
+          },
+          "candidate_info": {
+            "$ref": "#/components/schemas/CandidateInfo"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "llm_used": {
+            "type": "boolean",
+            "title": "Llm Used",
+            "default": false
+          },
+          "needs_input": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "portfolio_id",
+                "amount",
+                "currency",
+                "horizon"
+              ]
+            },
+            "type": "array",
+            "title": "Needs Input"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "generated_at",
+          "cached",
+          "scout",
+          "chart",
+          "portfolio_fit",
+          "candidate_info",
+          "summary"
+        ],
+        "title": "AnalyzeOut"
+      },
+      "AskIn": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "AskIn"
+      },
+      "AskOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "grounded_in": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Grounded In"
+          },
+          "llm_used": {
+            "type": "boolean",
+            "title": "Llm Used",
+            "default": false
+          },
+          "notes_stored": {
+            "type": "boolean",
+            "title": "Notes Stored",
+            "default": false
+          },
+          "question_declined": {
+            "type": "boolean",
+            "title": "Question Declined",
+            "default": false
+          },
+          "privacy_note": {
+            "type": "string",
+            "title": "Privacy Note",
+            "default": "Your question and notes stay on the server and are never sent to a free AI provider."
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "answer",
+          "grounded_in"
+        ],
+        "title": "AskOut"
       },
       "Breach": {
         "properties": {
@@ -2054,6 +2398,59 @@
         ],
         "title": "Candidate"
       },
+      "CandidateInfo": {
+        "properties": {
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "score_available": {
+            "type": "boolean",
+            "title": "Score Available"
+          },
+          "fit_passes": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fit Passes"
+          },
+          "launch_gate_open": {
+            "type": "boolean",
+            "title": "Launch Gate Open"
+          },
+          "launch_gate_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Launch Gate Reasons"
+          },
+          "notice": {
+            "type": "string",
+            "title": "Notice",
+            "default": "Scores are not yet validated by a backtest and paper trading, so this page shows neutral analysis for you to research, not an instruction to trade. Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "score",
+          "confidence",
+          "score_available",
+          "launch_gate_open",
+          "launch_gate_reasons"
+        ],
+        "title": "CandidateInfo",
+        "description": "Neutral facts only: no verdict while the launch gate is closed (and none from this route)."
+      },
       "CandidatesOut": {
         "properties": {
           "portfolio_id": {
@@ -2237,6 +2634,79 @@
         ],
         "title": "ChartAnnotation",
         "description": "Something the chart should draw: a level, a moving average or a detected pattern."
+      },
+      "ChartReport": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/SignalLine"
+            },
+            "type": "array",
+            "title": "Breakdown"
+          },
+          "indicators": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Indicators"
+          },
+          "levels": {
+            "items": {
+              "$ref": "#/components/schemas/Level"
+            },
+            "type": "array",
+            "title": "Levels"
+          },
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/ChartAnnotation"
+            },
+            "type": "array",
+            "title": "Annotations"
+          },
+          "data_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data As Of"
+          },
+          "bars": {
+            "type": "integer",
+            "title": "Bars"
+          },
+          "explanation": {
+            "$ref": "#/components/schemas/Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "available",
+          "score",
+          "confidence",
+          "breakdown",
+          "bars",
+          "explanation"
+        ],
+        "title": "ChartReport"
       },
       "ExitLevel": {
         "properties": {
@@ -2828,6 +3298,97 @@
         "title": "ExplanationSource",
         "description": "Where a number came from and how fresh it is."
       },
+      "ExposureCheck": {
+        "properties": {
+          "dimension": {
+            "type": "string",
+            "enum": [
+              "position",
+              "sector",
+              "country"
+            ],
+            "title": "Dimension"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "rule": {
+            "type": "string",
+            "enum": [
+              "max_position_pct",
+              "max_sector_pct",
+              "max_country_pct"
+            ],
+            "title": "Rule"
+          },
+          "applies": {
+            "type": "boolean",
+            "title": "Applies"
+          },
+          "limit_pct": {
+            "type": "number",
+            "title": "Limit Pct"
+          },
+          "limit_source": {
+            "type": "string",
+            "title": "Limit Source"
+          },
+          "before_pct": {
+            "type": "number",
+            "title": "Before Pct"
+          },
+          "after_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Pct"
+          },
+          "breaks": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breaks"
+          },
+          "headroom_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headroom Ils"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dimension",
+          "name",
+          "rule",
+          "applies",
+          "limit_pct",
+          "limit_source",
+          "before_pct",
+          "reason"
+        ],
+        "title": "ExposureCheck"
+      },
       "ExposureItem": {
         "properties": {
           "name": {
@@ -2942,6 +3503,56 @@
           "day_change_pct"
         ],
         "title": "HeatmapItem"
+      },
+      "HeldPosition": {
+        "properties": {
+          "holding_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holding Id"
+          },
+          "quantity": {
+            "type": "number",
+            "title": "Quantity"
+          },
+          "value_ils": {
+            "type": "number",
+            "title": "Value Ils"
+          },
+          "weight_pct": {
+            "type": "number",
+            "title": "Weight Pct"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          },
+          "via_dual_listing": {
+            "type": "boolean",
+            "title": "Via Dual Listing",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "quantity",
+          "value_ils",
+          "weight_pct"
+        ],
+        "title": "HeldPosition"
       },
       "HoldingCreate": {
         "properties": {
@@ -3614,6 +4225,38 @@
         ],
         "title": "LaunchGateOut"
       },
+      "Level": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "support",
+              "resistance"
+            ],
+            "title": "Kind"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "distance_pct": {
+            "type": "number",
+            "title": "Distance Pct"
+          },
+          "touches": {
+            "type": "integer",
+            "title": "Touches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "price",
+          "distance_pct",
+          "touches"
+        ],
+        "title": "Level"
+      },
       "LoginIn": {
         "properties": {
           "email": {
@@ -3709,6 +4352,62 @@
         "title": "MatchCandidate",
         "description": "A possible security for a row whose name match was too weak to accept automatically."
       },
+      "MaxPositionSize": {
+        "properties": {
+          "position_limit_pct": {
+            "type": "number",
+            "title": "Position Limit Pct"
+          },
+          "limit_source": {
+            "type": "string",
+            "title": "Limit Source"
+          },
+          "max_additional_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Additional Ils"
+          },
+          "max_additional_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Additional Usd"
+          },
+          "binding_rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Binding Rule"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "position_limit_pct",
+          "limit_source",
+          "reason"
+        ],
+        "title": "MaxPositionSize"
+      },
       "MeOut": {
         "properties": {
           "id": {
@@ -3750,6 +4449,30 @@
           "csrf_token"
         ],
         "title": "MeOut"
+      },
+      "MissingInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence",
+            "default": 0.0
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "reason"
+        ],
+        "title": "MissingInput",
+        "description": "A signal or data field the Scout has nothing for: reported, never counted as neutral."
       },
       "MissingStop": {
         "properties": {
@@ -3930,6 +4653,255 @@
         ],
         "title": "PortfolioCreate"
       },
+      "PortfolioFit": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "fits",
+              "fits_smaller",
+              "does_not_fit",
+              "incomplete"
+            ],
+            "title": "Status"
+          },
+          "needs_input": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "portfolio_id",
+                "amount",
+                "currency",
+                "horizon"
+              ]
+            },
+            "type": "array",
+            "title": "Needs Input"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "portfolio_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Id"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "new_position",
+                  "increase_existing"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "held": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HeldPosition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "risk_preset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Preset"
+          },
+          "risk_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Source"
+          },
+          "horizon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon"
+          },
+          "horizon_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "request",
+                  "holding"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon Source"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "amount_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Ils"
+          },
+          "portfolio_value_ils": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Value Ils"
+          },
+          "max_position_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaxPositionSize"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "exposures": {
+            "items": {
+              "$ref": "#/components/schemas/ExposureCheck"
+            },
+            "type": "array",
+            "title": "Exposures"
+          },
+          "caps_broken_at_requested_amount": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Caps Broken At Requested Amount"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleResult"
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "rules_not_checked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rules Not Checked"
+          },
+          "suggested_size": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SizeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entry": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry"
+          },
+          "levels": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExitLevelsResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "levels_unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Levels Unavailable Reason"
+          },
+          "explanation": {
+            "$ref": "#/components/schemas/Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "summary",
+          "explanation"
+        ],
+        "title": "PortfolioFit"
+      },
       "PortfolioOut": {
         "properties": {
           "id": {
@@ -4039,6 +5011,71 @@
         "additionalProperties": false,
         "type": "object",
         "title": "PortfolioPatch"
+      },
+      "PriceInfo": {
+        "properties": {
+          "price": {
+            "type": "number",
+            "title": "Price"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "live",
+              "last_close"
+            ],
+            "title": "Basis"
+          },
+          "flag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag"
+          },
+          "change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Pct"
+          },
+          "is_fresh": {
+            "type": "boolean",
+            "title": "Is Fresh"
+          }
+        },
+        "type": "object",
+        "required": [
+          "price",
+          "currency",
+          "as_of",
+          "source",
+          "basis",
+          "is_fresh"
+        ],
+        "title": "PriceInfo"
       },
       "ProposedChange": {
         "properties": {
@@ -4966,6 +6003,56 @@
         "title": "RowConflict",
         "description": "The numbers of the copy that lost when the same card is in two screenshots with different\nvalues (the later screenshot wins). Reported so the user can see what was dropped."
       },
+      "RuleResult": {
+        "properties": {
+          "rule": {
+            "type": "string",
+            "title": "Rule"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "fail",
+              "not_evaluated"
+            ],
+            "title": "Status"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule",
+          "status",
+          "reason"
+        ],
+        "title": "RuleResult"
+      },
       "ScaleOutStep": {
         "properties": {
           "step": {
@@ -5128,6 +6215,108 @@
           "confidence"
         ],
         "title": "ScoreCardMini"
+      },
+      "ScoutReport": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name_en": {
+            "type": "string",
+            "title": "Name En"
+          },
+          "name_he": {
+            "type": "string",
+            "title": "Name He"
+          },
+          "market": {
+            "type": "string",
+            "title": "Market"
+          },
+          "asset_type": {
+            "type": "string",
+            "title": "Asset Type"
+          },
+          "sector": {
+            "type": "string",
+            "title": "Sector"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriceInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "price_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Reason"
+          },
+          "bars": {
+            "type": "integer",
+            "title": "Bars"
+          },
+          "history_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History As Of"
+          },
+          "not_available": {
+            "items": {
+              "$ref": "#/components/schemas/MissingInput"
+            },
+            "type": "array",
+            "title": "Not Available"
+          },
+          "explanation": {
+            "$ref": "#/components/schemas/Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name_en",
+          "name_he",
+          "market",
+          "asset_type",
+          "sector",
+          "country",
+          "currency",
+          "verified",
+          "bars",
+          "explanation"
+        ],
+        "title": "ScoutReport"
       },
       "SecurityHit": {
         "properties": {
@@ -5345,6 +6534,58 @@
         ],
         "title": "SignalContribution",
         "description": "One signal's part in a combined score: what it said and how much it counted."
+      },
+      "SignalLine": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "weight": {
+            "type": "number",
+            "title": "Weight"
+          },
+          "nominal_weight": {
+            "type": "number",
+            "title": "Nominal Weight"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "data_as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Data As Of"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "available",
+          "score",
+          "confidence",
+          "weight",
+          "nominal_weight",
+          "reasons",
+          "data_as_of"
+        ],
+        "title": "SignalLine"
       },
       "SignupIn": {
         "properties": {

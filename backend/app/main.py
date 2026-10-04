@@ -11,7 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import auth, buy_ideas, exit_levels, imports, misc, portfolios
+from app.api import analyze, auth, buy_ideas, exit_levels, imports, misc, portfolios
 from app.config import get_settings, validate_production, validate_proxy
 from app.db import get_engine, new_session, prepare_database
 from app.errors import ApiError, api_error_handler
@@ -82,7 +82,7 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
     api = APIRouter(prefix="/api", route_class=StrictJsonRoute)
-    for module in (auth, portfolios, imports, misc, exit_levels, buy_ideas):
+    for module in (auth, portfolios, imports, misc, exit_levels, buy_ideas, analyze):
         api.include_router(module.router)
 
     @api.get("/health", tags=["meta"], response_model=HealthOut)
