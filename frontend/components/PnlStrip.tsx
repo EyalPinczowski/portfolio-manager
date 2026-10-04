@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import type { Summary } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { palette, PnlBarChart, SinceStartChart } from "./charts";
+import { Link } from "@/i18n/navigation";
 import { PnlText } from "./Pnl";
 
 export function PnlStrip({ s }: { s: Summary }) {
@@ -58,6 +59,7 @@ export function PnlStrip({ s }: { s: Summary }) {
           </>
         )}
       </div>
+      <Link href="/postmortem" className="inline-flex min-h-11 items-center text-sm font-medium text-brand-text hover:underline">{t("postmortemLink")}</Link>
     </section>
   );
 }

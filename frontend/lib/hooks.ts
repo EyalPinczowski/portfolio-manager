@@ -45,6 +45,9 @@ export const useAnalyze = (symbol: string | null, q: AnalyzeQuery) =>
 export const useSearchHistory = () => useSWR("search-history", () => api.searchHistory(), { revalidateOnFocus: true });
 export const useWatchlist = () => useSWR("watchlist", () => api.watchlist(), cfg);
 export const useAlerts = () => useSWR("alerts", () => api.alerts(), cfg);
+/** Post-mortem of one portfolio and period (dates are ISO yyyy-mm-dd or null). On demand, not polled. */
+export const usePostmortem = (pid: number | null, start: string | null, end: string | null) =>
+  useSWR(pid === null ? null : ["post-mortem", pid, start, end], () => api.postmortem(pid as number, { start, end }), { revalidateOnFocus: false, shouldRetryOnError: false });
 export const useXray = (pid: number | null) => useSWR(pid === null ? null : ["xray", pid], () => api.xray(pid as number), cfg);
 export const useHeatmap = (pid: number | null) => useSWR(pid === null ? null : ["heatmap", pid], () => api.heatmap(pid as number), cfg);
 

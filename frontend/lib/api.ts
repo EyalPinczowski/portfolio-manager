@@ -51,6 +51,16 @@ export type ReviewTotals = S["ReviewTotals"];
 export type ExitReviewOut = S["ExitReviewOut"];
 export type ExitReviewIn = S["ExitReviewIn"];
 export type RiskPresetName = NonNullable<ExitReviewIn["risk"]>;
+export type Postmortem = S["PostmortemOut"];
+export type PostmortemStatus = Postmortem["status"];
+export type PostmortemFinding = S["Finding"];
+export type FindingKind = PostmortemFinding["kind"];
+export type FindingStatus = PostmortemFinding["status"];
+export type EvidenceRow = S["EvidenceRow"];
+export type GapBreakdown = S["GapBreakdown"];
+export type GapItem = S["GapItem"];
+export type HoldingResult = S["HoldingResult"];
+export type ExpectationPatch = Pick<S["PortfolioPatch"], "expected_return_pct" | "expected_return_horizon_months">;
 export type Health = S["HealthOut"];
 export type ChallengeRequired = S["ChallengeRequiredOut"];
 
@@ -177,8 +187,16 @@ export const api = {
 
   portfolios: () => get<Portfolio[]>("/portfolios"),
   createPortfolio: (b: { name: string; base_currency: string }) => post<Portfolio>("/portfolios", b),
-  patchPortfolio: (id: number, b: Partial<Pick<Portfolio, "name" | "risk_filter">>) =>
+  patchPortfolio: (id: number, b: Partial<Pick<Portfolio, "name" | "risk_filter">> & ExpectationPatch) =>
     patch<Portfolio>(`/portfolios/${id}`, b),
+  /** Descriptive "why not my expected return" report. No dates = since the user started tracking. */
+  postmortem: (id: number, q: { start?: string | null; end?: string | null } = {}) => {
+    const qs = new URLSearchParams();
+    if (q.start) qs.set("start", q.start);
+    if (q.end) qs.set("end", q.end);
+    const str = qs.toString();
+    return get<Postmortem>(`/portfolios/${id}/post-mortem${str ? `?${str}` : ""}`);
+  },
   summary: (id: number | "combined") => get<Summary>(`/portfolios/${id}/summary`),
   holdings: (id: number) => get<Holding[]>(`/portfolios/${id}/holdings`),
   /** Manual entry (no screenshot). 409 = already in the portfolio, 422 = invalid symbol or number, 429 = rate limit. */

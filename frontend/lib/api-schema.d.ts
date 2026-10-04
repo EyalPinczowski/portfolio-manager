@@ -268,6 +268,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/portfolios/{portfolio_id}/post-mortem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Post Mortem
+         * @description Why the return differs from the expectation: deterministic, template text, no LLM.
+         */
+        get: operations["post_mortem_api_portfolios__portfolio_id__post_mortem_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/portfolios/{portfolio_id}/xray": {
         parameters: {
             query?: never;
@@ -839,6 +859,19 @@ export interface components {
              */
             disclaimer: string;
         };
+        /** BenchmarkOut */
+        BenchmarkOut: {
+            /** Symbol */
+            symbol: string;
+            /** Weight Pct */
+            weight_pct: number;
+            /** Local Pct */
+            local_pct?: number | null;
+            /** Ils Pct */
+            ils_pct?: number | null;
+            /** Flags */
+            flags?: string[];
+        };
         /** Breach */
         Breach: {
             /** Rule */
@@ -1076,6 +1109,24 @@ export interface components {
             bars: number;
             explanation: components["schemas"]["Explanation"];
         };
+        /** EvidenceRow */
+        EvidenceRow: {
+            /** Label */
+            label: string;
+            /** Value */
+            value?: number | string | null;
+            /** Unit */
+            unit?: string | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** Excluded */
+        Excluded: {
+            /** Symbol */
+            symbol: string;
+            /** Reason */
+            reason: string;
+        };
         /** ExitLevel */
         ExitLevel: {
             /**
@@ -1196,6 +1247,22 @@ export interface components {
              */
             disclaimer: string;
         };
+        /** ExpectationOut */
+        ExpectationOut: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "needs_expectation";
+            /** Expected Return Pct */
+            expected_return_pct?: number | null;
+            /** Horizon Months */
+            horizon_months?: number | null;
+            /** Expected For Period Pct */
+            expected_for_period_pct?: number | null;
+            /** Gap Pp */
+            gap_pp?: number | null;
+        };
         /**
          * Explanation
          * @description The "Why?" of a scored object (CLAUDE.md shape), versioned and stored with it.
@@ -1283,6 +1350,79 @@ export interface components {
             /** Weight Pct */
             weight_pct: number;
         };
+        /** Finding */
+        Finding: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "performance" | "contribution" | "timing" | "concentration" | "fx" | "cash" | "costs" | "stops" | "flows";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "not_recorded" | "not_enough_data" | "needs_expectation" | "no_activity" | "no_foreign_assets";
+            /** Headline */
+            headline: string;
+            /** Amount Ils */
+            amount_ils?: number | null;
+            /** Amount Pct */
+            amount_pct?: number | null;
+            /** Gap Contribution Pp */
+            gap_contribution_pp?: number | null;
+            /** Evidence */
+            evidence?: components["schemas"]["EvidenceRow"][];
+            /** Flags */
+            flags?: string[];
+            explanation: components["schemas"]["Explanation"];
+        };
+        /** GapBreakdown */
+        GapBreakdown: {
+            /**
+             * Reference
+             * @enum {string}
+             */
+            reference: "expectation" | "benchmark";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "needs_expectation" | "not_enough_data";
+            /** Reference Pct */
+            reference_pct?: number | null;
+            /** Portfolio Pct */
+            portfolio_pct?: number | null;
+            /** Gap Pp */
+            gap_pp?: number | null;
+            /** Items */
+            items?: components["schemas"]["GapItem"][];
+            /** Attributed Pp */
+            attributed_pp?: number | null;
+            /** Residual Pp */
+            residual_pp?: number | null;
+            /** Residual Ils */
+            residual_ils?: number | null;
+            /** Reconciles */
+            reconciles?: boolean | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /** GapItem */
+        GapItem: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Symbol */
+            symbol?: string | null;
+            /** Pp */
+            pp: number;
+            /** Amount Ils */
+            amount_ils: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1335,6 +1475,15 @@ export interface components {
              * @default false
              */
             via_dual_listing: boolean;
+        };
+        /** HistoryOut */
+        HistoryOut: {
+            /** Days Available */
+            days_available: number;
+            /** Days Required */
+            days_required: number;
+            /** Days Remaining */
+            days_remaining: number;
         };
         /** HoldingCreate */
         HoldingCreate: {
@@ -1424,6 +1573,29 @@ export interface components {
             /** Horizon */
             horizon?: ("1w" | "1m" | "3m" | "6m" | "1y") | null;
             risk_override?: components["schemas"]["RiskOverride"] | null;
+        };
+        /** HoldingResult */
+        HoldingResult: {
+            /** Symbol */
+            symbol: string;
+            /** Name */
+            name: string;
+            /** Currency */
+            currency: string;
+            /** Realized Ils */
+            realized_ils: number;
+            /** Unrealized Ils */
+            unrealized_ils: number;
+            /** Local Ils */
+            local_ils: number;
+            /** Fx Ils */
+            fx_ils: number;
+            /** Total Ils */
+            total_ils: number;
+            /** Pct Of Capital */
+            pct_of_capital: number;
+            /** Still Held */
+            still_held: boolean;
         };
         /**
          * Horizon
@@ -1758,6 +1930,10 @@ export interface components {
             risk_filter: components["schemas"]["RiskFilterOut"];
             /** Tracking Started At */
             tracking_started_at?: string | null;
+            /** Expected Return Pct */
+            expected_return_pct?: number | null;
+            /** Expected Return Horizon Months */
+            expected_return_horizon_months?: number | null;
             /** Last Screenshot Update At */
             last_screenshot_update_at?: string | null;
             /**
@@ -1778,6 +1954,71 @@ export interface components {
             /** Base Currency */
             base_currency?: ("ILS" | "USD") | null;
             risk_filter?: components["schemas"]["RiskFilterIn"] | null;
+            /** Expected Return Pct */
+            expected_return_pct?: number | null;
+            /** Expected Return Horizon Months */
+            expected_return_horizon_months?: number | null;
+        };
+        /** PostmortemOut */
+        PostmortemOut: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "not_enough_history" | "not_enough_data";
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Days */
+            days: number;
+            history?: components["schemas"]["HistoryOut"] | null;
+            /** Twr Pct */
+            twr_pct?: number | null;
+            /** Pnl Ils */
+            pnl_ils?: number | null;
+            /** Annualised Pct */
+            annualised_pct?: number | null;
+            /**
+             * Annualised Is Extrapolated
+             * @default false
+             */
+            annualised_is_extrapolated: boolean;
+            /** Capital Ils */
+            capital_ils?: number | null;
+            expectation: components["schemas"]["ExpectationOut"];
+            /** Benchmarks */
+            benchmarks?: components["schemas"]["BenchmarkOut"][];
+            gap_vs_expectation?: components["schemas"]["GapBreakdown"] | null;
+            gap_vs_benchmark?: components["schemas"]["GapBreakdown"] | null;
+            /** Holdings */
+            holdings?: components["schemas"]["HoldingResult"][];
+            /** Top Contributors */
+            top_contributors?: string[];
+            /** Top Detractors */
+            top_detractors?: string[];
+            /** Findings */
+            findings?: components["schemas"]["Finding"][];
+            /** Excluded */
+            excluded?: components["schemas"]["Excluded"][];
+            /** Flags */
+            flags?: string[];
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+            /**
+             * Disclaimer
+             * @default Not financial advice.
+             */
+            disclaimer: string;
         };
         /** PriceInfo */
         PriceInfo: {
@@ -3016,6 +3257,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HoldingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_mortem_api_portfolios__portfolio_id__post_mortem_get: {
+        parameters: {
+            query?: {
+                start?: string | null;
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostmortemOut"];
                 };
             };
             /** @description Validation Error */

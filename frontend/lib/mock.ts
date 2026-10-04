@@ -6,6 +6,7 @@ import type {
 import type { LaunchGate, SessionInfo } from "./api";
 import { ApiError } from "./errors";
 import type { Health } from "./api";
+import { mockPostmortem } from "./mock-postmortem";
 import { mockExitLevels, mockExitReview, type ExitSeed } from "./mock-exit";
 import {
   mockAnalyze, mockAsk, mockHistoryDelete, mockSearchHistory, mockSearchHits, mockWatchAdd, mockWatchDelete, mockWatchlist,
@@ -392,6 +393,12 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
     return holdingsFor(pid).find((h) => h.id === seed.id);
   }
   if ((m = p.match(/^\/portfolios\/(\d+)\/holdings$/))) return holdingsFor(Number(m[1]));
+  if ((m = p.match(/^\/portfolios\/(\d+)\/post-mortem$/))) {
+    const pf = PORTFOLIOS.find((x) => x.id === Number(m![1]));
+    if (!pf) throw new ApiError(404, "Not found");
+    const qs = new URLSearchParams(path.split("?")[1] ?? "");
+    return mockPostmortem(pf, qs.get("start"), qs.get("end"));
+  }
   if ((m = p.match(/^\/portfolios\/(\d+)\/xray$/))) return xray();
   if ((m = p.match(/^\/portfolios\/(\d+)\/heatmap$/))) return heatmap();
   if ((m = p.match(/^\/portfolios\/(\d+)\/imports\/rows$/))) return (validateRows((b.rows as ImportRow[]) ?? []), draftFromRows(Number(m[1]), (b.rows as ImportRow[]) ?? [], b.scope === "full" ? "full" : "partial"));
@@ -401,7 +408,11 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
   }
   if ((m = p.match(/^\/portfolios\/(\d+)$/))) {
     const pf = PORTFOLIOS.find((x) => x.id === Number(m![1]));
-    if (pf && method === "PATCH") Object.assign(pf, b);
+    if (pf && method === "PATCH") {
+      const a = b.expected_return_pct, h = b.expected_return_horizon_months;
+      if ((a == null) !== (h == null)) throw new ApiError(422, "expected_return_pct and expected_return_horizon_months go together");
+      Object.assign(pf, b);
+    }
     return pf;
   }
   if (p === "/risk/presets") return PRESETS;

@@ -9,3 +9,6 @@ export const analyzeSymbol = (raw: string | null | undefined): string | null => 
 };
 /** Path of one stock analysis. Query-based so it works in a static export. */
 export const analyzeHref = (symbol: string): string => `/analyze?symbol=${encodeURIComponent(symbol)}`;
+
+/** Path of the portfolio post-mortem. Query-based so it works in a static export. */
+export const postmortemHref = (portfolioId?: number | null): string => (portfolioId ? `/postmortem?id=${portfolioId}` : "/postmortem");

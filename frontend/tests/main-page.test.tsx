@@ -53,6 +53,14 @@ describe("main page (mock mode)", () => {
     expect(screen.getAllByText(en.holdings.pnlHint).length).toBeGreaterThan(0);
   });
 
+  it("links from the performance area to the post-mortem (en and he)", async () => {
+    const { unmount } = renderMain("en");
+    expect(await screen.findByRole("link", { name: en.pnl.postmortemLink })).toHaveAttribute("href", "/postmortem");
+    unmount();
+    renderMain("he");
+    expect(await screen.findByRole("link", { name: he.pnl.postmortemLink })).toHaveAttribute("href", "/postmortem");
+  });
+
   it("shows Hebrew names and signed P&L in he", async () => {
     renderMain("he");
     await waitFor(() => expect(screen.getAllByRole("link", { name: "פתיחת טבע" }).length).toBeGreaterThan(0));

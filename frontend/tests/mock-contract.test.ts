@@ -56,6 +56,12 @@ const CASES: Case[] = [
   { method: "GET", path: "/portfolios/2/holdings", api: "/portfolios/{portfolio_id}/holdings" },
   { method: "PATCH", path: "/portfolios/1/holdings/1", api: "/portfolios/{portfolio_id}/holdings/{holding_id}", body: { horizon: "3m" } },
   { method: "PATCH", path: "/portfolios/1", api: "/portfolios/{portfolio_id}", body: { name: "x" } },
+  { method: "GET", path: "/portfolios/1/post-mortem", api: "/portfolios/{portfolio_id}/post-mortem" }, // no expectation set
+  { method: "PATCH", path: "/portfolios/1", api: "/portfolios/{portfolio_id}", body: { expected_return_pct: 12, expected_return_horizon_months: 12 } },
+  { method: "GET", path: "/portfolios/1/post-mortem", api: "/portfolios/{portfolio_id}/post-mortem" }, // ok, reconciliation, not_recorded findings
+  { method: "GET", path: "/portfolios/1/post-mortem?start=2026-09-01&end=2026-10-03", api: "/portfolios/{portfolio_id}/post-mortem" },
+  { method: "GET", path: "/portfolios/2/post-mortem", api: "/portfolios/{portfolio_id}/post-mortem" }, // not_enough_history
+  { method: "PATCH", path: "/portfolios/1", api: "/portfolios/{portfolio_id}", body: { expected_return_pct: null, expected_return_horizon_months: null } },
   { method: "GET", path: "/portfolios/1/xray", api: "/portfolios/{portfolio_id}/xray" },
   { method: "GET", path: "/portfolios/1/heatmap", api: "/portfolios/{portfolio_id}/heatmap" },
   { method: "GET", path: "/risk/presets", api: "/risk/presets" },
@@ -149,6 +155,19 @@ describe("mock fixtures match backend/openapi.json", () => {
     expect(st(11, "?horizon=3m")).toBe("no_levels");
     expect(st(2, "?horizon=1y")).toBe("levels"); // what-if override
     validate({ $ref: "openapi#/components/schemas/ExitReviewIn" }, { horizon: "1y", risk: "balanced", prior_stops: { "TEVA.TA": 50 } }, "ExitReviewIn");
+  });
+
+  it("post-mortem: every state is in the mock, and a half-set expectation is rejected", () => {
+    const pm = (id: number) => mockRequest("GET", `/portfolios/${id}/post-mortem`) as { status: string; expectation: { status: string }; findings: { status: string }[]; gap_vs_benchmark: { reconciles: boolean; residual_pp: number } };
+    expect(pm(1).expectation.status).toBe("needs_expectation");
+    expect(pm(2).status).toBe("not_enough_history");
+    mockRequest("PATCH", "/portfolios/1", { expected_return_pct: 8, expected_return_horizon_months: 12 });
+    expect(pm(1).expectation.status).toBe("ok");
+    expect(pm(1).findings.filter((f) => f.status === "not_recorded").length).toBeGreaterThanOrEqual(3);
+    expect(pm(1).gap_vs_benchmark.reconciles).toBe(false); // residual stays visible
+    expect(() => mockRequest("PATCH", "/portfolios/1", { expected_return_pct: 8, expected_return_horizon_months: null })).toThrow(ApiError);
+    mockRequest("PATCH", "/portfolios/1", { expected_return_pct: null, expected_return_horizon_months: null });
+    validate({ $ref: "openapi#/components/schemas/PortfolioPatch" }, { expected_return_pct: 8, expected_return_horizon_months: 12 }, "PortfolioPatch");
   });
 
   it("analyze: every status and the 404 / list behaviour", () => {
