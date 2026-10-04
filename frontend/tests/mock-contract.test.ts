@@ -67,6 +67,13 @@ const CASES: Case[] = [
   { method: "GET", path: "/notifications", api: "/notifications" },
   { method: "POST", path: "/portfolios/1/imports", api: "/portfolios/{portfolio_id}/imports", body: png() },
   { method: "POST", path: "/portfolios/1/imports/rows", api: "/portfolios/{portfolio_id}/imports/rows", body: { rows: [{ index: 0, name: "טבע", symbol: "TEVA.TA", quantity: 1, price: 2, value: 2, currency: "ILS", unit: "ILS", flags: [] }] } },
+  { method: "POST", path: "/portfolios/1/imports/rows", api: "/portfolios/{portfolio_id}/imports/rows", body: { scope: "full", rows: [
+    { index: 0, name: "ACME", symbol: "ACME", quantity: null, price: 1, value: 1, currency: "USD", unit: "USD", flags: ["quantity_uncertain", "quantity_fractional", "cost_inferred", "duplicate_removed", "conflict"], exchange: "NASDAQ", conflict: { price: 1, value: 2, quantity: null } },
+  ] } },
+  { method: "PATCH", path: "/imports/1", api: "/imports/{draft_id}", body: { scope: "partial" } },
+  { method: "PATCH", path: "/imports/1", api: "/imports/{draft_id}", body: { scope: "full" } },
+  { method: "POST", path: "/portfolios/1/holdings", api: "/portfolios/{portfolio_id}/holdings", body: { symbol: "ZZCONTRACT.TA", quantity: 3, avg_cost: 10, cost_currency: "ILS", horizon: null } },
+  { method: "POST", path: "/imports/1/confirm", api: "/imports/{draft_id}/confirm" },
   { method: "GET", path: "/imports/1", api: "/imports/{draft_id}" },
   { method: "PATCH", path: "/imports/1", api: "/imports/{draft_id}", body: {} },
   { method: "GET", path: "/auth/sessions", api: "/auth/sessions" },
@@ -93,6 +100,32 @@ describe("mock fixtures match backend/openapi.json", () => {
     expect(combined.since_start_series.some((p) => p.sp500_pct === null && p.ta125_pct === null)).toBe(true);
     const sc = mockRequest("GET", "/holdings/11/scorecard") as { available: boolean };
     expect(sc.available).toBe(false);
+  });
+
+  it("the 'keep' choice, the scope and the screenshot-update fields are in the mock data and valid", () => {
+    const full = mockRequest("POST", "/portfolios/1/imports/rows", { scope: "full", rows: [] }) as { scope: string; proposed_changes: { type: string; row_index: number }[] };
+    expect(full.scope).toBe("full");
+    expect(full.proposed_changes.length).toBeGreaterThan(0);
+    expect(full.proposed_changes.every((c) => c.row_index === -1 && c.type === "keep")).toBe(true);
+    const partial = mockRequest("POST", "/portfolios/1/imports/rows", { rows: [] }) as { scope: string; proposed_changes: unknown[] };
+    expect(partial.scope).toBe("partial");
+    expect(partial.proposed_changes).toEqual([]);
+    const ps = mockRequest("GET", "/portfolios") as { last_screenshot_update_at: string | null; screenshot_update_stale: boolean }[];
+    expect(ps.some((p) => p.last_screenshot_update_at !== null)).toBe(true);
+    expect(ps.every((p) => typeof p.screenshot_update_stale === "boolean")).toBe(true);
+  });
+
+  it("what the client sends validates against the request schemas (scope, flags, conflict, manual holding)", () => {
+    const body = (name: string, data: unknown) => validate({ $ref: `openapi#/components/schemas/${name}` }, data, name);
+    body("ImportRowsBody", { scope: "full", rows: [{ index: 0, name: "A", symbol: "A", quantity: null, flags: ["conflict", "quantity_uncertain"], conflict: { price: 1, value: 2, quantity: null }, exchange: "NYSE" }] });
+    body("ImportPatch", { scope: "partial", rows: [], proposed_changes: [{ row_index: -1, symbol: "A", type: "keep", quantity: 1, amount: null, currency: "ILS" }] });
+    body("HoldingCreate", { symbol: "AAPL", quantity: 1.5, avg_cost: null, cost_currency: null, horizon: null });
+    expect(() => body("ImportRowsBody", { scope: "everything", rows: [] })).toThrow(); // the validator really rejects a wrong scope
+  });
+
+  it("manual create: duplicate -> 409, bad symbol -> 422", () => {
+    expect(() => mockRequest("POST", "/portfolios/1/holdings", { symbol: "TEVA.TA", quantity: 1 })).toThrowError(/already in this portfolio/);
+    expect(() => mockRequest("POST", "/portfolios/1/holdings", { symbol: "bad symbol", quantity: 1 })).toThrow(ApiError);
   });
 
   it("weeks start on Sunday (mock data and summary.week_start)", () => {

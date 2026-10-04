@@ -37,7 +37,7 @@ const summary = (over: Partial<Summary> = {}): Summary => ({
     { date: "2026-10-01", pct: 1.5, sp500_pct: null, ta125_pct: null },
     { date: "2026-10-02", pct: 2.1, sp500_pct: null, ta125_pct: undefined },
   ],
-  as_of: "2026-10-03T08:55:00Z", markets: { US: { open: false }, TASE: { open: true }, CRYPTO: { open: true } }, ...over,
+  as_of: "2026-10-03T08:55:00Z", screenshot_update_stale: false, markets: { US: { open: false }, TASE: { open: true }, CRYPTO: { open: true } }, ...over,
 });
 
 const wrap = (locale: "en" | "he", ui: ReactNode) =>

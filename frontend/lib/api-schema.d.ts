@@ -169,6 +169,8 @@ export interface paths {
         /**
          * Revoke All Sessions
          * @description Log out everywhere else: every session of this user except the current one.
+         *
+         *     Other browsers also lose their "known device" status (new nonce); this one keeps it.
          */
         post: operations["revoke_all_sessions_api_auth_sessions_revoke_all_post"];
         delete?: never;
@@ -804,6 +806,12 @@ export interface components {
              * @enum {string}
              */
             status: "draft" | "confirmed" | "discarded";
+            /**
+             * Scope
+             * @default partial
+             * @enum {string}
+             */
+            scope: "partial" | "full";
             /** Rows */
             rows: components["schemas"]["ImportRowModel"][];
             /** Proposed Changes */
@@ -820,6 +828,8 @@ export interface components {
             rows?: components["schemas"]["ImportRowModel"][] | null;
             /** Proposed Changes */
             proposed_changes?: components["schemas"]["ProposedChange"][] | null;
+            /** Scope */
+            scope?: ("partial" | "full") | null;
         };
         /** ImportRowModel */
         ImportRowModel: {
@@ -862,7 +872,10 @@ export interface components {
             /** Candidates */
             candidates?: components["schemas"]["MatchCandidate"][];
             /** Flags */
-            flags?: ("missing_fields" | "value_mismatch" | "unmatched" | "low_confidence_match" | "currency_changed" | "unit_mismatch")[];
+            flags?: ("missing_fields" | "value_mismatch" | "unmatched" | "low_confidence_match" | "currency_changed" | "unit_mismatch" | "quantity_uncertain" | "quantity_fractional" | "cost_inferred" | "duplicate_removed" | "conflict")[];
+            /** Exchange */
+            exchange?: ("NASDAQ" | "NYSE" | "AMEX") | null;
+            conflict?: components["schemas"]["RowConflict"] | null;
         };
         /**
          * ImportRowsBody
@@ -871,6 +884,12 @@ export interface components {
         ImportRowsBody: {
             /** Rows */
             rows: components["schemas"]["ImportRowModel"][];
+            /**
+             * Scope
+             * @default partial
+             * @enum {string}
+             */
+            scope: "partial" | "full";
         };
         /** LaunchGateOut */
         LaunchGateOut: {
@@ -1002,6 +1021,13 @@ export interface components {
             risk_filter: components["schemas"]["RiskFilterOut"];
             /** Tracking Started At */
             tracking_started_at?: string | null;
+            /** Last Screenshot Update At */
+            last_screenshot_update_at?: string | null;
+            /**
+             * Screenshot Update Stale
+             * @default false
+             */
+            screenshot_update_stale: boolean;
             /**
              * Created At
              * Format: date-time
@@ -1026,7 +1052,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "buy" | "sell" | "deposit" | "withdrawal";
+            type: "buy" | "sell" | "deposit" | "withdrawal" | "keep";
             /** Quantity */
             quantity: number | null;
             /** Amount */
@@ -1144,6 +1170,19 @@ export interface components {
             drawdown_defensive_pct: number;
             /** Name */
             name: string;
+        };
+        /**
+         * RowConflict
+         * @description The numbers of the copy that lost when the same card is in two screenshots with different
+         *     values (the later screenshot wins). Reported so the user can see what was dropped.
+         */
+        RowConflict: {
+            /** Price */
+            price?: number | null;
+            /** Value */
+            value?: number | null;
+            /** Quantity */
+            quantity?: number | null;
         };
         /** ScoreCardDetail */
         ScoreCardDetail: {
@@ -1291,6 +1330,13 @@ export interface components {
             since_start_pnl: components["schemas"]["Pnl"];
             /** Since Start Date */
             since_start_date?: string | null;
+            /** Last Screenshot Update At */
+            last_screenshot_update_at?: string | null;
+            /**
+             * Screenshot Update Stale
+             * @default false
+             */
+            screenshot_update_stale: boolean;
             /**
              * Week Start
              * Format: date

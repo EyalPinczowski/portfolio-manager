@@ -197,7 +197,7 @@
     "challengeLabel": "Security check"
   },
   "import": {
-    "title": "Import holdings",
+    "title": "Update portfolio from screenshots",
     "intro": "Take a screenshot of your holdings from your broker. It is read on this device, and you review every row before anything is saved.",
     "portfolio": "Import into",
     "chooseFile": "Choose a screenshot",
@@ -270,8 +270,9 @@
     "removeRow": "Remove row {n}",
     "vanished": {
       "title": "Not in this screenshot",
-      "hint": "You held these before, but they are not in this screenshot, so they will be removed from the portfolio. Was it a sale, or did you move them out (withdrawal)?",
+      "hint": "You held these before, but they are not in these screenshots. Tell us what happened: still held (keep), sold, or moved out (withdrawal). Nothing is sold unless you choose it.",
       "type": {
+        "keep": "Keep (nothing changed)",
         "sell": "Sold",
         "withdrawal": "Moved out (withdrawal)"
       },
@@ -298,12 +299,40 @@
     "layoutAuto": "Detect automatically",
     "layoutMeitav": "Meitav Trade (cards with exchange • ticker)",
     "notes": {
-      "quantityUncertain": "The quantity cannot be read from the screenshot. Enter it yourself.",
+      "quantityUncertain": "The quantity cannot be read from the screenshot (the value is too small to work it out). Enter it yourself.",
       "quantityRequiredHint": "Enter the quantity for the highlighted rows before you confirm.",
-      "quantityFractional": "Value ÷ price is not a whole number. Check the price and the value.",
-      "costInferred": "Cost estimated from the broker's P&L % ({pnl}).",
-      "duplicateRemoved": "This card was in more than one screenshot: duplicate removed, counted once.",
-      "conflict": "In several screenshots with different numbers (the other one: value {value}, price {price}). Check which is right."
+      "quantityFractional": "Value ÷ price is not a whole number. That can be a fractional share, or a wrong price or value. Check them.",
+      "costInferred": "Cost was estimated from the broker's P&L % ({pnl}), so it is approximate. Edit it if you know the real cost.",
+      "duplicateRemoved": "This card was in more than one screenshot. The copy was dropped and it is counted once, not added up.",
+      "conflict": "This card is in several screenshots with different numbers. The later screenshot was kept; the other one said value {value}, price {price}. Check which is right.",
+      "costInferredNoPct": "Cost was estimated from the broker's P&L %, so it is approximate. Edit it if you know the real cost.",
+      "conflictAck": "I checked these numbers",
+      "conflictRequiredHint": "Check the numbers of the rows that differ between screenshots and tick \"I checked these numbers\" before you confirm."
+    },
+    "scope": {
+      "whole": "These screenshots show my whole portfolio",
+      "wholeHint": "Leave this off if they show only part of it: holdings that are not in the screenshots are then left untouched.",
+      "fullActive": "Whole portfolio: holdings that are not in the screenshots are listed below, and you choose what happened to each one. Nothing is sold automatically.",
+      "partialActive": "Part of the portfolio: holdings that are not in the screenshots are left untouched."
+    },
+    "groups": {
+      "new": {
+        "title": "New holdings",
+        "hint": "Not in your portfolio yet. They are added with the quantity shown. Was it bought, or did you deposit or transfer it in?"
+      },
+      "changed": {
+        "title": "Quantity changed",
+        "hint": "The quantity differs from what the app had. Tell us what happened: a buy or a sale, or a deposit or withdrawal. A deposit or withdrawal is money moved in or out, not profit or loss."
+      },
+      "unchanged": {
+        "title": "Unchanged",
+        "hint": "Same quantity as before (a different price alone changes nothing). Open it to check them."
+      }
+    },
+    "totals": {
+      "title": "Portfolio value",
+      "before": "Value now",
+      "after": "Value after this update"
     }
   },
   "xray": {
@@ -467,6 +496,35 @@
         "title": "Set a holding period for each stock",
         "hint": "How long do you plan to hold each one? No default is filled in."
       }
+    }
+  },
+  "screenshotUpdate": {
+    "last": "Last updated from a screenshot: {date}",
+    "nudge": "It has been a while. Your holdings may have changed.",
+    "cta": "Update from screenshots"
+  },
+  "addHolding": {
+    "open": "Add a holding manually",
+    "title": "Add a holding",
+    "intro": "For a holding that is not in a screenshot. The price comes from the market data, so you only enter what you own.",
+    "portfolio": "Portfolio",
+    "symbol": "Symbol",
+    "symbolHint": "For example AAPL, TEVA.TA (Tel Aviv stocks end in .TA) or BTC-USD.",
+    "quantity": "Quantity",
+    "cost": "Average cost per unit",
+    "costCurrency": "Cost currency",
+    "costCurrencyAuto": "The security's currency",
+    "costHint": "Cost is optional. Without it the app shows no profit or loss for this holding, never a made-up one. Israeli stocks: enter shekels, not agorot.",
+    "horizonLater": "Decide later",
+    "add": "Add holding",
+    "adding": "Adding…",
+    "error": {
+      "symbol": "This symbol is not valid. Use letters and digits only, for example AAPL or TEVA.TA.",
+      "quantity": "Enter a quantity above zero.",
+      "cost": "The cost is not a valid number.",
+      "duplicate": "This holding is already in the portfolio. Change its quantity there instead.",
+      "rate": "Too many additions. Try again in a little while.",
+      "generic": "Could not add the holding. Try again."
     }
   }
 }

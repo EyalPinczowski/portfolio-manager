@@ -58,7 +58,7 @@ describe("import page", () => {
     await screen.findByRole("region", { name: "Review the rows" });
 
     expect(readScreenshotsOnDevice).toHaveBeenCalledTimes(1);
-    expect(importRows).toHaveBeenCalledWith(1, parsed);
+    expect(importRows).toHaveBeenCalledWith(1, parsed, "partial");
     expect(upload).not.toHaveBeenCalled(); // the image never goes to the server
     expect(createUrl).not.toHaveBeenCalled(); // no blob URL for the screenshot
     expect(screen.getByText(/This draft is deleted automatically on/)).toBeInTheDocument();
@@ -126,6 +126,7 @@ describe("import page", () => {
     renderPage();
     await pick();
     clickRead();
+    await screen.findByRole("region", { name: "Review the rows" });
     expect(await screen.findByText(/Weak match: check the symbol/)).toBeInTheDocument();
     expect(screen.getByText("Did you mean:")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Use MNDY (monday.com, 58% match)" }));
@@ -177,14 +178,28 @@ describe("import page", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/not matched to a security/);
   });
 
-  it("holdings that vanished from the screenshot are listed and their sale/withdrawal choice is sent", async () => {
-    const patch = vi.spyOn(api, "patchImport");
+  it("partial scope (the default) leaves holdings that are not in the screenshots alone: no 'not in these screenshots' group", async () => {
     renderPage();
     await pick();
     clickRead();
-    const group = await screen.findByRole("group", { name: "Not in this screenshot" });
+    await screen.findByRole("region", { name: "Review the rows" });
+    expect(screen.queryByRole("group", { name: /Not in this screenshot/ })).toBeNull();
+    expect(screen.getByRole("checkbox", { name: "These screenshots show my whole portfolio" })).not.toBeChecked();
+  });
+
+  it("full scope: holdings that are not in the screenshots default to keep; sell and withdrawal are the user's choice", async () => {
+    const importRows = vi.spyOn(api, "importRows");
+    const patch = vi.spyOn(api, "patchImport");
+    renderPage();
+    await pick();
+    fireEvent.click(await screen.findByRole("checkbox", { name: /These screenshots show my whole portfolio/ }));
+    clickRead();
+    const group = await screen.findByRole("group", { name: /Not in th(is|ese) screenshots?/ });
+    expect(importRows).toHaveBeenCalledWith(1, parsed, "full");
     const picker = within(group).getAllByRole("combobox")[0];
-    expect(within(picker).getAllByRole("option").map((o) => o.getAttribute("value"))).toEqual(["sell", "withdrawal"]);
+    expect(within(picker).getAllByRole("option").map((o) => o.getAttribute("value"))).toEqual(["keep", "sell", "withdrawal"]);
+    expect((picker as HTMLSelectElement).value).toBe("keep");
+    expect(patch).not.toHaveBeenCalled();
     fireEvent.change(picker, { target: { value: "withdrawal" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirm import" }));
     await waitFor(() => expect(patch).toHaveBeenCalled());
@@ -234,16 +249,104 @@ describe("import page", () => {
     await pick();
     clickRead();
     await screen.findByRole("region", { name: "Review the rows" });
-    expect(screen.getAllByTestId("note-cost-inferred")[0]).toHaveTextContent("Cost estimated from the broker's P&L % (-8.37%).");
-    expect(screen.getByTestId("note-duplicate")).toHaveTextContent("duplicate removed");
+    expect(screen.getAllByTestId("note-cost-inferred")[0]).toHaveTextContent("Cost was estimated from the broker's P&L % (-8.37%)");
+    expect(screen.getByTestId("note-duplicate")).toHaveTextContent("counted once");
     const qty = screen.getByLabelText("Quantity 2");
     expect(qty).toHaveAttribute("aria-required", "true");
-    expect(screen.getByText(/The quantity cannot be read from the screenshot. Enter it yourself./)).toBeInTheDocument();
+    expect(screen.getByText(/The quantity cannot be read from the screenshot/)).toBeInTheDocument();
     const confirm = screen.getByRole("button", { name: "Confirm import" });
     expect(confirm).toBeDisabled();
     fireEvent.change(qty, { target: { value: "3" } });
     expect(screen.getByLabelText("Quantity 2")).not.toHaveAttribute("aria-required");
     expect(screen.getByRole("button", { name: "Confirm import" })).toBeEnabled();
     expect(screen.getByLabelText("Quantity 1")).not.toHaveAttribute("aria-required");
+  });
+
+  it("groups the review: new holdings and changed quantities, with the trade/deposit/withdrawal picker, and totals", async () => {
+    renderPage();
+    await pick();
+    clickRead();
+    // The mock portfolio holds TEVA.TA (600), the screenshot has TEVA.TA 1000 (changed) and an unknown symbol (new).
+    expect(await screen.findByRole("group", { name: "Quantity changed" })).toBeInTheDocument();
+    expect(screen.getByText(/A deposit or withdrawal is money moved in or out, not profit or loss/)).toBeInTheDocument();
+    const picker = screen.getByLabelText("Change type 1") as HTMLSelectElement;
+    expect(within(picker).getAllByRole("option").map((o) => o.getAttribute("value"))).toEqual(["buy", "sell", "deposit", "withdrawal"]);
+    const totals = await screen.findByTestId("update-totals");
+    expect(totals).toHaveTextContent("Value now");
+    expect(totals).toHaveTextContent("Value after this update");
+  });
+
+  it("the whole-portfolio checkbox in the review switches the scope on the server and shows the 'not in these screenshots' list", async () => {
+    const patch = vi.spyOn(api, "patchImport");
+    renderPage();
+    await pick();
+    clickRead();
+    await screen.findByRole("region", { name: "Review the rows" });
+    expect(screen.queryByRole("group", { name: /Not in th(is|ese) screenshots?/ })).toBeNull();
+    fireEvent.click(screen.getByRole("checkbox", { name: "These screenshots show my whole portfolio" }));
+    await screen.findByRole("group", { name: /Not in th(is|ese) screenshots?/ });
+    expect(patch.mock.calls[0][1].scope).toBe("full");
+    fireEvent.click(screen.getByRole("checkbox", { name: "These screenshots show my whole portfolio" }));
+    await waitFor(() => expect(screen.queryByRole("group", { name: /Not in th(is|ese) screenshots?/ })).toBeNull());
+    expect(patch.mock.calls[1][1].scope).toBe("partial");
+  });
+
+  it("server reading with the whole-portfolio box ticked switches the new draft to full scope", async () => {
+    const patch = vi.spyOn(api, "patchImport");
+    renderPage();
+    await pick();
+    fireEvent.click(screen.getByRole("checkbox", { name: /These screenshots show my whole portfolio/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Use server reading" }));
+    const agree = screen.queryByRole("button", { name: "I agree, upload" }); // the mock remembers consent from earlier tests
+    if (agree) fireEvent.click(agree);
+    await screen.findByRole("region", { name: "Review the rows" });
+    expect(patch).toHaveBeenCalledWith(expect.any(Number), { scope: "full" });
+  });
+
+  describe("server flags", () => {
+    const base = (i: number, symbol: string, over: Partial<ImportRow> = {}): ImportRow => ({
+      index: i, name: symbol, symbol, tase_number: null, quantity: 10, price: 10, value: 100, cost: 9, currency: "USD", unit: "USD", matched_name: null, flags: [], ...over,
+    });
+    const load = async (rows: ImportRow[]) => {
+      vi.mocked(readScreenshotsOnDevice).mockResolvedValueOnce(wrapRows(rows));
+      renderPage();
+      await pick();
+      clickRead();
+      await screen.findByRole("region", { name: "Review the rows" });
+    };
+    const confirmBtn = () => screen.getByRole("button", { name: "Confirm import" });
+
+    it("quantity_uncertain (server flag only, no client meta) blocks confirm until a quantity is typed", async () => {
+      await load([base(0, "ACME"), base(1, "ZZZW", { quantity: null, flags: ["quantity_uncertain", "missing_fields"] })]);
+      expect(screen.getByTestId("note-quantity-uncertain")).toBeInTheDocument();
+      expect(screen.getByLabelText("Quantity 2")).toHaveAttribute("aria-required", "true");
+      expect(confirmBtn()).toBeDisabled();
+      fireEvent.change(screen.getByLabelText("Quantity 2"), { target: { value: "3" } });
+      expect(screen.queryByTestId("note-quantity-uncertain")).toBeNull();
+      expect(confirmBtn()).toBeEnabled();
+    });
+
+    it("conflict blocks confirm until the user ticks that the numbers were checked; shows what the other copy said", async () => {
+      await load([base(0, "ACME", { flags: ["conflict"], conflict: { price: 9.5, value: 95, quantity: null } })]);
+      expect(screen.getByTestId("note-conflict")).toHaveTextContent("value 95, price 9.5");
+      expect(confirmBtn()).toBeDisabled();
+      expect(screen.getByText(/tick "I checked these numbers"/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("checkbox", { name: /I checked these numbers 1/ }));
+      expect(confirmBtn()).toBeEnabled();
+      fireEvent.click(screen.getByRole("checkbox", { name: /I checked these numbers 1/ }));
+      expect(confirmBtn()).toBeDisabled();
+    });
+
+    it("quantity_fractional, cost_inferred and duplicate_removed explain themselves and do not block", async () => {
+      await load([
+        base(0, "ACME", { flags: ["quantity_fractional"] }),
+        base(1, "BETA", { flags: ["cost_inferred"] }),
+        base(2, "GAMA", { flags: ["duplicate_removed"] }),
+      ]);
+      expect(screen.getByTestId("note-quantity-fractional")).toHaveTextContent("not a whole number");
+      expect(screen.getByTestId("note-cost-inferred")).toHaveTextContent("approximate");
+      expect(screen.getByTestId("note-duplicate")).toHaveTextContent("counted once, not added up");
+      expect(confirmBtn()).toBeEnabled();
+    });
   });
 });

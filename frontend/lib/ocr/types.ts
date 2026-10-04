@@ -2,8 +2,8 @@ import type { ImportRow } from "../api";
 import type { LayoutId } from "../config";
 
 /**
- * Facts about a parsed row that the server's `ImportRowModel.flags` enum cannot carry today (it only allows
- * missing_fields, value_mismatch, unmatched, low_confidence_match, currency_changed, unit_mismatch). They stay on
+ * Facts about a parsed row that the on-device reader noted (the server now carries the same names in
+ * `ImportRowModel.flags`, which is the source of truth; this adds detail such as the P&L %). They stay on
  * the device and drive the review table. `rows[i]` and `meta[i]` always describe the same row.
  */
 export interface RowMeta {

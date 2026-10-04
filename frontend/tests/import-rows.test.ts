@@ -26,7 +26,7 @@ describe("sanitizeRow", () => {
     const r = sanitizeRow(row({
       symbol: " teva.ta ", tase_number: "12", name: `${"x".repeat(250)} 1234567`, index: 99999,
       candidates: Array.from({ length: 25 }, (_, i) => ({ symbol: `S${i}`, name: "n", score: i === 0 ? 150 : 50 })),
-      flags: Array.from({ length: 12 }, () => "unmatched" as const),
+      flags: Array.from({ length: 14 }, () => "unmatched" as const),
     }));
     expect(r.symbol).toBe("TEVA.TA");
     expect(r.tase_number).toBeNull();
@@ -34,7 +34,7 @@ describe("sanitizeRow", () => {
     expect(r.index).toBe(10000);
     expect(r.candidates).toHaveLength(20);
     expect(r.candidates![0].score).toBe(100);
-    expect(r.flags).toHaveLength(10);
+    expect(r.flags).toHaveLength(12);
     expect(sanitizeRow(row({ symbol: "" })).symbol).toBeNull();
     expect(sanitizeRow(row({ symbol: "bad symbol!" })).symbol).toBeNull();
     expect(sanitizeRow(row({ tase_number: "629014" })).tase_number).toBe("629014");

@@ -3,9 +3,10 @@
  * never gets a 422 for something the client could have fixed. Mirrors the server bounds:
  * index 0-10000; quantity 0-1e12; price/value/cost 0-1e15; currency derived from unit (agorot and ILS mean
  * ILS, USD means USD); symbol ^[A-Z0-9.^=\-]{1,20}$ (empty -> null); tase_number ^\d{5,9}$; name max 200 with
- * runs of 6+ digits masked; candidates max 20 with score 0-100; flags max 10.
+ * runs of 6+ digits masked; candidates max 20 with score 0-100; flags max 12.
  */
-import type { ImportRow, MatchCandidate } from "./api";
+import type { ImportFlag, ImportRow, MatchCandidate } from "./api";
+import type { RowMeta } from "./ocr/types";
 import { ApiError, type ValidationDetail } from "./errors";
 
 export const MAX_QTY = 1e12;
@@ -42,7 +43,7 @@ export function sanitizeRow(r: ImportRow): ImportRow {
     cost: bounded(r.cost, MAX_MONEY),
     unit,
     currency: currencyForUnit(unit),
-    flags: (r.flags ?? []).slice(0, 10),
+    flags: (r.flags ?? []).slice(0, 12),
     candidates,
   };
 }
@@ -64,3 +65,32 @@ export function rowProblems(err: unknown): RowProblem[] {
   }
   return out;
 }
+
+/**
+ * Flags of a row as the review table sees them: the server's `flags` (the source of truth, they survive PATCH)
+ * plus what the on-device reader noted for the same row (`meta`, matched by `row.index`).
+ */
+export function effectiveFlags(r: ImportRow, m: RowMeta = {}): Set<ImportFlag> {
+  const out = new Set<ImportFlag>(r.flags);
+  if (m.quantity_uncertain) out.add("quantity_uncertain");
+  if (m.quantity_fractional) out.add("quantity_fractional");
+  if (m.cost_inferred) out.add("cost_inferred");
+  if (m.duplicate_removed) out.add("duplicate_removed");
+  if (m.conflict) out.add("conflict");
+  return out;
+}
+
+/** The other screenshot's numbers when two screenshots disagreed (the later one was kept). */
+export function conflictOf(r: ImportRow, m: RowMeta = {}): { price: number | null; value: number | null; quantity: number | null } | null {
+  const c = r.conflict ?? m.conflict;
+  if (!c) return null;
+  const x = c as { price?: number | null; value?: number | null; quantity?: number | null };
+  return { price: x.price ?? null, value: x.value ?? null, quantity: x.quantity ?? null };
+}
+
+/** `quantity_uncertain` and no usable quantity yet: the user has to type it (confirm stays blocked). */
+export const needsQuantity = (r: ImportRow, m: RowMeta = {}): boolean =>
+  effectiveFlags(r, m).has("quantity_uncertain") && !(typeof r.quantity === "number" && r.quantity > 0);
+
+/** Two screenshots disagreed: the user has to say the kept numbers are right (or fix them) before confirming. */
+export const needsConflictAck = (r: ImportRow, m: RowMeta = {}): boolean => effectiveFlags(r, m).has("conflict");

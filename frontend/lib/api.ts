@@ -29,6 +29,7 @@ export type RiskFilter = Narrow<S["RiskFilterOut"], { stop_type: "fixed" | "trai
 export type RiskPreset = { name: string } & RiskFilter;
 export type Portfolio = Narrow<S["PortfolioOut"], { base_currency: "ILS" | "USD"; risk_filter: RiskFilter | null }>;
 export type ScoreCardMini = S["ScoreCardMini"];
+export type HoldingCreate = S["HoldingCreate"];
 export type Holding = Narrow<S["HoldingOut"], { asset_type: AssetType; market: MarketKey }>;
 
 /** The typed "Why?" (every field after `summary` is optional: score cards cached before v1 lack them). */
@@ -49,11 +50,15 @@ export type XrayRaw = Narrow<
 >;
 export type HeatmapItem = S["HeatmapItem"];
 
+/** What the user can pick for a row whose quantity changed. */
 export type ChangeType = "buy" | "sell" | "deposit" | "withdrawal";
+/** The server also uses `keep` for a holding that is not in the screenshots (full scope): no action. */
+export type ProposedChangeType = S["ProposedChange"]["type"];
+export type ImportScope = NonNullable<S["ImportRowsBody"]["scope"]>;
 export type ImportFlag = NonNullable<S["ImportRowModel"]["flags"]>[number];
 export type MatchCandidate = S["MatchCandidate"];
 export type ImportRow = Narrow<S["ImportRowModel"], { flags: ImportFlag[]; candidates?: MatchCandidate[] }>;
-export type ProposedChange = Narrow<S["ProposedChange"], { type: ChangeType }>;
+export type ProposedChange = Narrow<S["ProposedChange"], { type: ProposedChangeType }>;
 export type ImportDraft = Narrow<S["ImportDraftOut"], { rows: ImportRow[]; proposed_changes: ProposedChange[] }>;
 export type LaunchGate = S["LaunchGateOut"];
 export type SessionInfo = S["SessionOut"];
@@ -148,6 +153,8 @@ export const api = {
     patch<Portfolio>(`/portfolios/${id}`, b),
   summary: (id: number | "combined") => get<Summary>(`/portfolios/${id}/summary`),
   holdings: (id: number) => get<Holding[]>(`/portfolios/${id}/holdings`),
+  /** Manual entry (no screenshot). 409 = already in the portfolio, 422 = invalid symbol or number, 429 = rate limit. */
+  addHolding: (pid: number, b: HoldingCreate) => post<Holding>(`/portfolios/${pid}/holdings`, b),
   patchHolding: (pid: number, hid: number, b: { horizon?: Horizon | null; quantity?: number }) =>
     patch<Holding>(`/portfolios/${pid}/holdings/${hid}`, b),
   xray: (id: number) => get<XrayRaw>(`/portfolios/${id}/xray`),
@@ -160,10 +167,10 @@ export const api = {
     return raw<ImportDraft>("POST", `/portfolios/${portfolioId}/imports`, { image });
   },
   /** On-device path: rows parsed in the browser; the image never leaves the device. */
-  importRows: (portfolioId: number, rows: ImportRow[]) =>
-    post<ImportDraft>(`/portfolios/${portfolioId}/imports/rows`, { rows: sanitizeRows(rows) } satisfies ImportRowsBody),
+  importRows: (portfolioId: number, rows: ImportRow[], scope: ImportScope = "partial") =>
+    post<ImportDraft>(`/portfolios/${portfolioId}/imports/rows`, { rows: sanitizeRows(rows), scope } satisfies ImportRowsBody),
   getImport: (id: number) => get<ImportDraft>(`/imports/${id}`),
-  patchImport: (id: number, b: { rows?: ImportRow[]; proposed_changes?: ProposedChange[] }) =>
+  patchImport: (id: number, b: { rows?: ImportRow[]; proposed_changes?: ProposedChange[]; scope?: ImportScope }) =>
     patch<ImportDraft>(`/imports/${id}`, b.rows ? { ...b, rows: sanitizeRows(b.rows) } : b),
   confirmImport: (id: number) => post<ImportDraft>(`/imports/${id}/confirm`),
   searchSecurities: (q: string) => get<SecurityHit[]>(`/securities/search?q=${encodeURIComponent(q)}`),

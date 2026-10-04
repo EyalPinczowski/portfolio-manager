@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useGuideState } from "@/lib/guide";
 import { loadPortfolioChoice, savePortfolioChoice, useHoldings, usePortfolios, useSummary, type PortfolioRef } from "@/lib/hooks";
+import { ScreenshotNudge } from "./ScreenshotNudge";
+import { AddHoldingForm } from "./AddHoldingForm";
 import { AppShell } from "./AppShell";
 import { CreatePortfolio } from "./CreatePortfolio";
 import { FirstRunGuide } from "./FirstRunGuide";
@@ -17,6 +19,7 @@ function Body() {
   const { data: portfolios, error: pErr } = usePortfolios();
   const [choice, setChoice] = useState<PortfolioRef>(() => loadPortfolioChoice() ?? "combined");
   const guide = useGuideState();
+  const [adding, setAdding] = useState(false);
   const valid = choice === "combined" || portfolios?.some((p) => p.id === choice);
   const ref: PortfolioRef = valid ? choice : "combined";
   const summary = useSummary(portfolios && portfolios.length > 0 ? ref : null);
@@ -42,6 +45,7 @@ function Body() {
         <LiveHeader s={summary.data} anyPriceStale={!!holdings.data?.some((h) => h.price_stale)} />
       ) : summary.error ? <p role="alert">{t("common.errorLoad")}</p> : <p role="status">{t("common.loading")}</p>}
       {summary.data && <PnlStrip s={summary.data} />}
+      {summary.data && <ScreenshotNudge at={summary.data.last_screenshot_update_at ?? null} stale={summary.data.screenshot_update_stale} />}
       {holdings.data && holdings.data.length > 0 ? (
         <HoldingsList holdings={holdings.data} />
       ) : holdings.data ? (
@@ -50,6 +54,12 @@ function Body() {
           <Link href="/import" className="btn-primary">{t("holdings.importCta")}</Link>
         </div>
       ) : null}
+      {holdings.data && (
+        <div className="text-center">
+          <button type="button" className="btn-secondary" onClick={() => setAdding(true)}>{t("addHolding.open")}</button>
+        </div>
+      )}
+      {adding && <AddHoldingForm portfolios={portfolios} portfolioId={typeof ref === "number" ? ref : null} onClose={() => setAdding(false)} />}
     </>
   );
 }

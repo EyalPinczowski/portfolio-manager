@@ -78,8 +78,17 @@ describe("api client: contract changes", () => {
     await api.importRows(3, []);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("/api/portfolios/3/imports/rows");
-    expect(JSON.parse(init.body)).toEqual({ rows: [] });
+    expect(JSON.parse(init.body)).toEqual({ rows: [], scope: "partial" });
     expect(init.headers["Content-Type"]).toBe("application/json");
+  });
+
+  it("sends scope=full only when asked, and can switch the scope of a draft with PATCH", async () => {
+    fetchMock.mockResolvedValueOnce(json({ id: 1 })).mockResolvedValueOnce(json({ id: 1 }));
+    await api.importRows(3, [], "full");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ rows: [], scope: "full" });
+    await api.patchImport(1, { scope: "partial" });
+    expect(fetchMock.mock.calls[1][1].method).toBe("PATCH");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ scope: "partial" });
   });
 
   it("export is POST with the password; delete sends the password in a JSON body", async () => {

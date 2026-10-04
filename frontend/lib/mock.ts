@@ -57,8 +57,8 @@ const SEEDS: Seed[] = [
 ];
 
 const PORTFOLIOS: Portfolio[] = [
-  { id: 1, name: "התיק הראשי", base_currency: "ILS", risk_filter: { ...PRESETS[3] }, tracking_started_at: "2026-07-06", created_at: "2026-07-06T09:00:00Z" },
-  { id: 2, name: "תיק ארה״ב וקריפטו", base_currency: "USD", risk_filter: { ...PRESETS[2] }, tracking_started_at: null, created_at: "2026-08-01T09:00:00Z" },
+  { id: 1, name: "התיק הראשי", base_currency: "ILS", risk_filter: { ...PRESETS[3] }, tracking_started_at: "2026-07-06", last_screenshot_update_at: "2026-10-01T09:00:00Z", screenshot_update_stale: false, created_at: "2026-07-06T09:00:00Z" },
+  { id: 2, name: "תיק ארה״ב וקריפטו", base_currency: "USD", risk_filter: { ...PRESETS[2] }, tracking_started_at: null, last_screenshot_update_at: null, screenshot_update_stale: false, created_at: "2026-08-01T09:00:00Z" },
 ];
 
 const valueIls = (s: Seed) => s.qty * s.price * (s.cur === "USD" ? FX : 1);
@@ -125,6 +125,8 @@ function summaryFor(pid: number | "combined"): Summary {
     monthly_bars: monthly.map((pct, i) => ({ month: `2026-${String(i + 5).padStart(2, "0")}`, pnl_ils: Math.round((valueI * pct) / 100), pct })),
     since_start_series: series,
     as_of: AS_OF,
+    last_screenshot_update_at: fresh ? null : "2026-10-01T09:00:00Z",
+    screenshot_update_stale: false,
     markets: { US: { open: false }, TASE: { open: true }, CRYPTO: { open: true } },
   };
 }
@@ -224,7 +226,7 @@ function heatmap(): HeatmapItem[] {
 const EXPIRES = "2026-10-04T08:55:00Z"; // 24 h after the draft was created
 
 let draft: ImportDraft = {
-  id: 1, portfolio_id: 1, status: "draft", expires_at: EXPIRES,
+  id: 1, portfolio_id: 1, status: "draft", scope: "partial", expires_at: EXPIRES,
   rows: [
     { index: 0, name: "טבע", symbol: "TEVA.TA", tase_number: "629014", quantity: 650, price: 62.4, value: 40560, cost: 51.2, currency: "ILS", unit: "ILS", matched_name: "Teva", flags: [] },
     { index: 1, name: "לאומי", symbol: "LUMI.TA", quantity: 900, price: 4790, value: 43110, cost: 44, currency: "ILS", unit: "agorot", matched_name: "Bank Leumi", flags: [] },
@@ -240,7 +242,7 @@ let draft: ImportDraft = {
 };
 
 /** Mimics the server: keeps stock-looking rows, matches held symbols, flags weak matches, proposes changes. */
-function draftFromRows(pid: number, rows: ImportRow[]): ImportDraft {
+function draftFromRows(pid: number, rows: ImportRow[], scope: "partial" | "full" = "partial"): ImportDraft {
   const kept = rows.filter((r) => r.name.trim() !== "" || r.symbol).map((r, i) => {
     const flags: ImportRow["flags"] = r.flags.filter((f) => f !== "low_confidence_match" && f !== "unmatched");
     const weak = !r.symbol && !r.tase_number;
@@ -248,7 +250,7 @@ function draftFromRows(pid: number, rows: ImportRow[]): ImportDraft {
     return { ...r, symbol: r.symbol ?? (r.tase_number ? "TEVA.TA" : null), index: i, flags, candidates: weak ? [{ symbol: "MNDY", name: "monday.com", score: 58 }] : [] };
   });
   const held = holdingsFor(pid);
-  // Like the server: only real quantity differences, plus a sale (row_index -1) for each held symbol that vanished.
+  // Like the server: only real quantity differences, plus (full scope only) a `keep` choice (row_index -1) for each held symbol that vanished.
   const changes: ProposedChange[] = [];
   for (const r of kept) {
     const cur = held.find((h) => h.symbol === r.symbol);
@@ -256,10 +258,13 @@ function draftFromRows(pid: number, rows: ImportRow[]): ImportDraft {
     if (diff === 0) continue;
     changes.push({ row_index: r.index, symbol: r.symbol ?? null, type: diff < 0 ? "sell" : "buy", quantity: Math.abs(diff), amount: null, currency: r.currency });
   }
-  for (const h of held) {
-    if (!kept.some((r) => r.symbol === h.symbol)) changes.push({ row_index: -1, symbol: h.symbol, type: "sell", quantity: h.quantity, amount: null, currency: h.currency as "ILS" | "USD" });
+  // Only a full update asks about holdings that are not in the screenshots, and the default is `keep` (never an automatic sale).
+  if (scope === "full") {
+    for (const h of held) {
+      if (!kept.some((r) => r.symbol === h.symbol)) changes.push({ row_index: -1, symbol: h.symbol, type: "keep", quantity: h.quantity, amount: null, currency: h.currency as "ILS" | "USD" });
+    }
   }
-  draft = { id: 1, portfolio_id: pid, status: "draft", expires_at: EXPIRES, rows: kept, proposed_changes: changes };
+  draft = { id: 1, portfolio_id: pid, status: "draft", scope, expires_at: EXPIRES, rows: kept, proposed_changes: changes };
   return draft;
 }
 
@@ -341,7 +346,7 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
   }
   if (p === "/launch-gate") return LAUNCH_GATE;
   if (p === "/portfolios") {
-    if (method === "POST") { const np = { id: PORTFOLIOS.length + 1, name: String(b.name), base_currency: (b.base_currency as "ILS") ?? "ILS", risk_filter: { ...PRESETS[2] }, tracking_started_at: null, created_at: AS_OF }; PORTFOLIOS.push(np); return np; }
+    if (method === "POST") { const np = { id: PORTFOLIOS.length + 1, name: String(b.name), base_currency: (b.base_currency as "ILS") ?? "ILS", risk_filter: { ...PRESETS[2] }, tracking_started_at: null, last_screenshot_update_at: null, screenshot_update_stale: false, created_at: AS_OF }; PORTFOLIOS.push(np); return np; }
     return mockScenario() === "empty" ? [] : PORTFOLIOS;
   }
   if (p === "/portfolios/combined/summary") return summaryFor("combined");
@@ -351,10 +356,27 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
     if (s && "horizon" in b) s.horizon = (b.horizon as Horizon | null) ?? null;
     return holdingsFor(Number(m[1])).find((h) => h.id === Number(m![2]));
   }
+  if ((m = p.match(/^\/portfolios\/(\d+)\/holdings$/)) && method === "POST") {
+    const pid = Number(m[1]);
+    const symbol = String(b.symbol ?? "");
+    const qty = Number(b.quantity);
+    if (!/^[A-Z0-9.^=-]{1,20}$/.test(symbol)) throw new ApiError(422, "Validation error", undefined, { detail: [{ type: "string_pattern_mismatch", loc: ["body", "symbol"], msg: "String should match pattern" }] });
+    if (!(qty > 0) || qty > 1e12) throw new ApiError(422, "Validation error", undefined, { detail: [{ type: "greater_than", loc: ["body", "quantity"], msg: "Input should be greater than 0" }] });
+    if (SEEDS.some((x) => x.pid === pid && x.symbol === symbol)) throw new ApiError(409, `${symbol} is already in this portfolio`);
+    const cur = symbol.endsWith(".TA") ? "ILS" : "USD";
+    const seed: Seed = {
+      id: Math.max(...SEEDS.map((x) => x.id)) + 1, pid, symbol, en: symbol, he: symbol, type: symbol.endsWith("-USD") ? "crypto" : "stock",
+      market: symbol.endsWith(".TA") ? "TASE" : symbol.endsWith("-USD") ? "CRYPTO" : "US", qty, price: 100, cur, chg: 0,
+      cost: typeof b.avg_cost === "number" ? b.avg_cost : null, horizon: (b.horizon as Horizon | null | undefined) ?? null,
+      tech: 0, pat: 0, conf: 0, sector: "Unknown", country: "Unknown", noData: true,
+    };
+    SEEDS.push(seed);
+    return holdingsFor(pid).find((h) => h.id === seed.id);
+  }
   if ((m = p.match(/^\/portfolios\/(\d+)\/holdings$/))) return holdingsFor(Number(m[1]));
   if ((m = p.match(/^\/portfolios\/(\d+)\/xray$/))) return xray();
   if ((m = p.match(/^\/portfolios\/(\d+)\/heatmap$/))) return heatmap();
-  if ((m = p.match(/^\/portfolios\/(\d+)\/imports\/rows$/))) return (validateRows((b.rows as ImportRow[]) ?? []), draftFromRows(Number(m[1]), (b.rows as ImportRow[]) ?? []));
+  if ((m = p.match(/^\/portfolios\/(\d+)\/imports\/rows$/))) return (validateRows((b.rows as ImportRow[]) ?? []), draftFromRows(Number(m[1]), (b.rows as ImportRow[]) ?? [], b.scope === "full" ? "full" : "partial"));
   if ((m = p.match(/^\/portfolios\/(\d+)\/imports$/))) {
     if (typeof Blob !== "undefined" && body instanceof Blob && !/^image\/(png|jpeg|webp)$/.test(body.type)) throw new ApiError(415, "Unsupported media type");
     return draft;
@@ -365,13 +387,19 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
     return pf;
   }
   if (p === "/risk/presets") return PRESETS;
-  if (p === "/imports/1/confirm") { draft = { ...draft, status: "confirmed" }; return draft; }
+  if (p === "/imports/1/confirm") {
+    draft = { ...draft, status: "confirmed" };
+    const pf = PORTFOLIOS.find((x) => x.id === draft.portfolio_id);
+    if (pf) { pf.last_screenshot_update_at = new Date().toISOString(); pf.screenshot_update_stale = false; }
+    return draft;
+  }
   if ((m = p.match(/^\/imports\/(\d+)$/))) {
     if (method === "PATCH") {
       const patch = b as Partial<ImportDraft>;
       // Like the server: new rows without explicit changes => re-match and recompute the changes.
       if (patch.rows) validateRows(patch.rows);
-      const redone = patch.rows && !patch.proposed_changes ? draftFromRows(draft.portfolio_id, patch.rows) : null;
+      const scopeChanged = patch.scope !== undefined && patch.scope !== draft.scope;
+      const redone = (patch.rows || scopeChanged) && !patch.proposed_changes ? draftFromRows(draft.portfolio_id, patch.rows ?? draft.rows, patch.scope ?? draft.scope) : null;
       draft = { ...draft, ...patch, ...(redone ? { rows: redone.rows, proposed_changes: redone.proposed_changes } : {}) };
     }
     return draft;
