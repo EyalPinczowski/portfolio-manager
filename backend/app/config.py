@@ -164,6 +164,25 @@ def _default_tase_hours() -> dict[str, tuple[str, str]]:
     }
 
 
+class BacktestTarget(BaseModel):
+    """Success bar for one risk preset over one backtest window (PROPOSAL, awaiting user approval)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    min_return_pct: float  # the window's return must be at least this
+    max_drawdown_pct: float = Field(gt=0)  # and the worst peak-to-trough fall at most this
+
+
+def default_backtest_targets() -> dict[str, BacktestTarget]:
+    # PROPOSALS per 6-month window. Not approved by the user yet: do not treat as decided.
+    return {
+        "conservative": BacktestTarget(min_return_pct=3.0, max_drawdown_pct=6.0),
+        "balanced": BacktestTarget(min_return_pct=5.0, max_drawdown_pct=10.0),
+        "balanced_aggressive": BacktestTarget(min_return_pct=8.0, max_drawdown_pct=15.0),
+        "aggressive": BacktestTarget(min_return_pct=12.0, max_drawdown_pct=22.0),
+    }
+
+
 class Settings(BaseSettings):
     # env_parse_none_str: "none" in the environment means None (e.g. DATABASE_PREPARE_THRESHOLD=none).
     model_config = SettingsConfigDict(
@@ -570,6 +589,31 @@ class Settings(BaseSettings):
     llm_scrub_min_name_chars: int = 4  # parts of a user's e-mail name shorter than this are kept
     model_probe_enabled: bool = True
     model_probe_timeout_seconds: float = 8.0
+
+    # --- walk-forward backtest (app/backtest; deterministic technical + patterns score only) ---
+    # Where `fetch-history` writes and the simulator reads daily bars. None: backend/data/history.
+    backtest_history_dir: str | None = None
+    backtest_capital_ils: float = Field(default=100_000.0, gt=0)  # every run starts from cash only
+    backtest_horizon: str = (
+        "3m"  # the horizon the exit levels are computed for (a key of horizon_table)
+    )
+    backtest_rebalance_every_days: int = Field(default=5, gt=0)  # trading days between screenings
+    backtest_trailing_update_every_days: int = Field(default=5, gt=0)  # re-ratchet trailing stops
+    backtest_max_new_per_rebalance: int = Field(default=3, gt=0)
+    backtest_max_open_positions: int = Field(default=15, gt=0)
+    backtest_commission_bps: float = Field(default=10.0, ge=0)  # per side, on the traded value
+    backtest_slippage_bps: float = Field(default=5.0, ge=0)  # per side, against us
+    backtest_fx_series_symbol: str = "ILS=X"  # USD/ILS from the store; else fx_fallback_usd_ils
+    backtest_benchmark: str = "^GSPC"  # the excess return is measured against this symbol
+    backtest_window_months: int = Field(default=6, gt=0)
+    backtest_step_months: int = Field(default=1, gt=0)
+    backtest_success_threshold: float = Field(default=0.8, ge=0, le=1)  # held-out success rate
+    backtest_default_train_fraction: float = Field(default=0.7, gt=0, lt=1)  # when no --train-until
+    # The targets below are proposals. `--record` refuses to write a passing backtest to the launch
+    # gate until the user has approved them and set this to true.
+    backtest_targets_approved: bool = False
+    # PROPOSED targets and drawdown caps per preset and window. FLAGGED FOR USER APPROVAL.
+    backtest_targets: dict[str, BacktestTarget] = Field(default_factory=default_backtest_targets)
 
     # --- launch gate (no live buy/sell verdicts until both gates pass) ---
     launch_require_backtest: bool = True

@@ -23,17 +23,19 @@ def ema(close: pd.Series, period: int) -> pd.Series:
 
 def _wilder(values: pd.Series, period: int, first_index: int) -> pd.Series:
     """Wilder smoothing. The seed is the mean of `period` values ending at `first_index`."""
-    out = pd.Series(np.nan, index=values.index, dtype="float64")
+    res = np.full(len(values), np.nan, dtype="float64")
     arr = values.to_numpy(dtype="float64")
     if len(arr) <= first_index:
-        return out
+        return pd.Series(res, index=values.index, dtype="float64")
     seed = float(np.mean(arr[first_index - period + 1 : first_index + 1]))
-    out.iloc[first_index] = seed
+    res[first_index] = seed
     prev = seed
-    for i in range(first_index + 1, len(arr)):
+    for i in range(
+        first_index + 1, len(arr)
+    ):  # plain floats: same arithmetic, no per-cell pandas cost
         prev = (prev * (period - 1) + arr[i]) / period
-        out.iloc[i] = prev
-    return out
+        res[i] = prev
+    return pd.Series(res, index=values.index, dtype="float64")
 
 
 def rsi(close: pd.Series, period: int = 14) -> pd.Series:

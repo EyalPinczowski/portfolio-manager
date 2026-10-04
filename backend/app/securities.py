@@ -14,31 +14,39 @@ from app.models import Security
 DEFAULT_SEED = Path(__file__).parent / "data" / "securities_seed.csv"
 
 
-def seed_securities(db: Session, path: Path | None = None, settings: Settings | None = None) -> int:
-    """Insert securities missing from the DB. Idempotent. Returns the number inserted."""
+def read_seed_securities(
+    path: Path | None = None, settings: Settings | None = None
+) -> list[Security]:
+    """The seed CSV as (unsaved) `Security` rows, in file order. No database needed."""
     s = settings or get_settings()
     csv_path = path or (Path(s.seed_csv_path) if s.seed_csv_path else DEFAULT_SEED)
+    with csv_path.open(encoding="utf-8", newline="") as fh:
+        return [
+            Security(
+                symbol=row["symbol"],
+                name_en=row["name_en"],
+                name_he=row["name_he"],
+                tase_number=row["tase_number"] or None,
+                asset_type=row["asset_type"],
+                market=row["market"],
+                currency=row["currency"],
+                sector=row["sector"] or "Unknown",
+                country=row["country"] or "Unknown",
+                dual_listing_group=row["dual_listing_group"] or None,
+            )
+            for row in csv.DictReader(fh)
+        ]
+
+
+def seed_securities(db: Session, path: Path | None = None, settings: Settings | None = None) -> int:
+    """Insert securities missing from the DB. Idempotent. Returns the number inserted."""
     existing = {sym for sym in db.exec(select(Security.symbol)).all()}
     inserted = 0
-    with csv_path.open(encoding="utf-8", newline="") as fh:
-        for row in csv.DictReader(fh):
-            if row["symbol"] in existing:
-                continue
-            db.add(
-                Security(
-                    symbol=row["symbol"],
-                    name_en=row["name_en"],
-                    name_he=row["name_he"],
-                    tase_number=row["tase_number"] or None,
-                    asset_type=row["asset_type"],
-                    market=row["market"],
-                    currency=row["currency"],
-                    sector=row["sector"] or "Unknown",
-                    country=row["country"] or "Unknown",
-                    dual_listing_group=row["dual_listing_group"] or None,
-                )
-            )
-            inserted += 1
+    for sec in read_seed_securities(path, settings):
+        if sec.symbol in existing:
+            continue
+        db.add(sec)
+        inserted += 1
     db.commit()
     return inserted
 

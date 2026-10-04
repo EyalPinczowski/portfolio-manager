@@ -1,4 +1,4 @@
-"""CLI: `python -m app.cli migrate` / `create-invite` / `create-admin`."""
+"""CLI: `python -m app.cli migrate` / `create-invite` / `create-admin` / `fetch-history` / `backtest`."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import getpass
 import secrets
 import sys
 from datetime import timedelta
+from typing import Any
 
 from sqlmodel import select
 
@@ -99,6 +100,33 @@ def main(argv: list[str] | None = None) -> int:
     adm = sub.add_parser("create-admin", help="Create an admin user")
     adm.add_argument("--email", required=True)
     adm.add_argument("--password", help="Prompted if omitted")
+    fh = sub.add_parser(
+        "fetch-history",
+        help="Download daily history once into the backtest store (needs network; never run in tests)",
+    )
+    fh.add_argument("--symbols-from", choices=["universe"], default=None)
+    fh.add_argument("--symbols", help="Comma separated symbols instead of --symbols-from")
+    fh.add_argument("--years", type=int, default=8)
+    fh.add_argument("--history-dir", default=None)
+    bt = sub.add_parser("backtest", help="Walk-forward backtest on the stored history")
+    bt.add_argument("--profiles", default="conservative,balanced,balanced_aggressive,aggressive")
+    bt.add_argument("--window-months", type=int, default=None)
+    bt.add_argument("--step-months", type=int, default=None)
+    bt.add_argument("--mode", choices=["random", "top"], default="random")
+    bt.add_argument("--runs", type=int, default=5, help="Seeded runs per window (random mode)")
+    bt.add_argument("--seed", type=int, default=1)
+    bt.add_argument("--train-until", default=None, help="YYYY-MM-DD; later windows are held out")
+    bt.add_argument("--benchmark", default=None)
+    bt.add_argument("--history-dir", default=None)
+    bt.add_argument(
+        "--out", default=None, help="Report path (default docs/reviews/backtest-<date>.md)"
+    )
+    bt.add_argument("--workers", type=int, default=1)
+    bt.add_argument(
+        "--record",
+        action="store_true",
+        help="Record a PASS to the launch gate, only if every guard holds (see the report)",
+    )
     args = parser.parse_args(argv)
     if args.cmd == "migrate":
         run_migrations(get_engine())
@@ -109,6 +137,35 @@ def main(argv: list[str] | None = None) -> int:
         for key, value in report.items():
             print(f"{key}: {value}")
         return 1 if any(v.startswith("PROBLEM") for v in report.values()) else 0
+    if args.cmd == "fetch-history":
+        from app.backtest.commands import run_fetch_history
+
+        return run_fetch_history(
+            get_settings(), args.symbols_from, args.symbols, args.years, args.history_dir
+        )
+    if args.cmd == "backtest":
+        from app.backtest.commands import run_backtest
+
+        s = get_settings()
+        common: dict[str, Any] = {
+            "profiles": args.profiles,
+            "window_months": args.window_months or s.backtest_window_months,
+            "step_months": args.step_months or s.backtest_step_months,
+            "mode": args.mode,
+            "runs": args.runs,
+            "seed": args.seed,
+            "train_until": args.train_until,
+            "history_dir": args.history_dir,
+            "out": args.out,
+            "workers": args.workers,
+            "record": args.record,
+            "benchmark": args.benchmark,
+        }
+        if not args.record:
+            return run_backtest(s, **common)
+        prepare_database(get_engine())
+        with new_session() as db:
+            return run_backtest(s, db=db, **common)
     if args.cmd == "create-invite":
         print(create_invite(args.days))
         return 0
