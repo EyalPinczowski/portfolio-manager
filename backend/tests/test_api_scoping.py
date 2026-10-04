@@ -8,7 +8,7 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 from app.db import new_session
-from app.models import Notification, PriceQuote
+from app.models import Notification, PriceQuote, User
 from app.timeutil import utcnow
 from tests.conftest import FakeQuotes, png_bytes
 
@@ -181,6 +181,10 @@ def test_unauthenticated_requests_are_rejected(client: TestClient) -> None:
         "/api/imports/1",
         "/api/search-history",
         "/api/watchlist",
+        "/api/settings",
+        "/api/telegram/status",
+        "/api/admin/invites",
+        "/api/admin/users",
     ]:
         assert client.get(path).status_code == 401, path
     for method, path, body in [
@@ -189,6 +193,12 @@ def test_unauthenticated_requests_are_rejected(client: TestClient) -> None:
         ("DELETE", "/api/auth/sessions/1", None),
         ("POST", "/api/auth/sessions/revoke-all", None),
         ("POST", "/api/portfolios/1/imports/rows", {"rows": []}),
+        ("PATCH", "/api/settings", {"theme": "dark"}),
+        ("POST", "/api/telegram/link-code", None),
+        ("DELETE", "/api/telegram/link", None),
+        ("POST", "/api/admin/invites", {}),
+        ("POST", "/api/admin/invites/revoke", {"code": "x"}),
+        ("POST", "/api/admin/users/1/disable", None),
     ]:
         assert client.request(method, path, json=body).status_code == 401, (method, path)
     # the raw-body upload is turned away at the door, before its (small) body is read
@@ -196,3 +206,24 @@ def test_unauthenticated_requests_are_rejected(client: TestClient) -> None:
         "/api/portfolios/1/imports", content=b"x", headers={"Content-Type": "image/png"}
     )
     assert r.status_code == 401
+
+
+def test_settings_and_telegram_link_are_per_user_and_admin_is_closed(signup: SignupFn) -> None:
+    a = signup("a@mail.com")
+    b = signup("b@mail.com")
+    a.patch("/api/settings", json={"theme": "dark", "main_currency": "USD"})
+    assert b.get("/api/settings").json()["theme"] == "system"
+    with new_session() as db:
+        a_user = db.get(User, 1)
+        assert a_user is not None
+        a_user.telegram_chat_id = "555"
+        db.add(a_user)
+        db.commit()
+    assert a.get("/api/telegram/status").json()["linked"] is True
+    assert b.get("/api/telegram/status").json()["linked"] is False
+    assert b.delete("/api/telegram/link").status_code == 204  # only ever touches B's own link
+    assert a.get("/api/telegram/status").json()["linked"] is True
+    # a member never reaches the admin area, and cannot read or disable another user
+    assert b.get("/api/admin/users").status_code == 403
+    assert b.post("/api/admin/users/1/disable").status_code == 403
+    assert a.get("/api/portfolios").status_code == 200

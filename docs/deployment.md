@@ -104,6 +104,8 @@ Render's free plan probably has no shell, so do this locally against Supabase *(
 | `PROXY_SHARED_SECRET` | the same random 16+ character value on Render **and** in the Pages project; the API trusts `X-Client-IP` only when `X-Proxy-Auth` matches it, and refuses to start if the header is trusted without it | `python -c "import secrets;print(secrets.token_urlsafe(32))"` | **yes** |
 | `TURNSTILE_ENABLED`, `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | free Cloudflare human check after 3 failed logins (create a Turnstile widget in the Cloudflare dashboard, no card) | `true`, site key, secret key | secret key **yes** |
 | `TELEGRAM_BOT_TOKEN` | alerts (optional) | | **yes** |
+| `TELEGRAM_WEBHOOK_SECRET` | webhook for `/start <code>` linking; the route refuses everything while empty (call `setWebhook` with the same `secret_token`) | | **yes** |
+| `TELEGRAM_BOT_USERNAME` | only for the t.me deep link | | no |
 | `SCHEDULER_IN_PROCESS`, `MALLOC_ARENA_MAX`, `PORT` | already set by the image / Render | | no |
 
    Leave `GEMINI_API_KEY` unset: the slim image has no Tesseract, and the app refuses to send an image to a third party without server-side redaction. Leave `CORS_ORIGINS` empty (same-origin proxy).

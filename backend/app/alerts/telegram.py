@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Protocol
 
 import httpx
 
@@ -32,3 +33,52 @@ def send_telegram(chat_id: str | None, text: str, settings: Settings | None = No
         log.warning("telegram send failed: %s", type(exc).__name__)
         return False
     return True
+
+
+# ---------------------------------------------------------------- the sender interface
+class TelegramSender(Protocol):
+    """What the app needs from Telegram: send one text to one chat, True when it was delivered.
+
+    Every implementation applies the outbound gate (`release_text`); the chat id is never logged.
+    """
+
+    def send(self, chat_id: str | None, text: str) -> bool: ...
+
+
+class HttpTelegramSender:
+    """The real sender (Bot API over HTTPS, token from the environment)."""
+
+    def __init__(self, settings: Settings | None = None) -> None:
+        self._settings = settings
+
+    def send(self, chat_id: str | None, text: str) -> bool:
+        return send_telegram(chat_id, text, self._settings)
+
+
+class FakeTelegramSender:
+    """For tests: records what would be sent and does no network call. It still applies the gate."""
+
+    def __init__(self, ok: bool = True, settings: Settings | None = None) -> None:
+        self.ok = ok
+        self.sent: list[tuple[str, str]] = []
+        self._settings = settings
+
+    def send(self, chat_id: str | None, text: str) -> bool:
+        text = release_text(text, settings=self._settings)
+        if not chat_id or not self.ok:
+            return False
+        self.sent.append((chat_id, text))
+        return True
+
+
+_sender: TelegramSender | None = None
+
+
+def set_sender(sender: TelegramSender | None) -> None:
+    """Install a sender (tests); None restores the real one."""
+    global _sender
+    _sender = sender
+
+
+def get_sender(settings: Settings | None = None) -> TelegramSender:
+    return _sender or HttpTelegramSender(settings)

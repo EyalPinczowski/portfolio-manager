@@ -14,6 +14,8 @@ from app.timeutil import utcnow
 
 class User(SQLModel, table=True):
     __tablename__ = "user"
+    # One Telegram chat belongs to one account (NULLs do not collide).
+    __table_args__ = (Index("uq_user_telegram_chat_id", "telegram_chat_id", unique=True),)
     id: int | None = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)
     password_hash: str
@@ -22,6 +24,8 @@ class User(SQLModel, table=True):
     ocr_consent_at: NaiveDatetime | None = None
     telegram_chat_id: str | None = None
     is_admin: bool = False
+    # Set by an admin: the user cannot log in and every session is refused. Null = active.
+    disabled_at: NaiveDatetime | None = None
     # Random per user; the known-device cookie carries it. Rotated on logout, so a copied cookie (or
     # a reused SQLite id) stops being a known device. Null (legacy rows) means "no device is known".
     device_nonce: str | None = None
@@ -214,6 +218,53 @@ class WatchlistItem(SQLModel, table=True):
     market: str | None = None
     name: str | None = None
     added_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
+class UserSettings(SQLModel, table=True):
+    """Per-user settings, one row per user (see docs/settings-spec.md). A user without a row has the
+    defaults from `Settings`. `idea_alerts` is NULL until the user saves the filter: nothing is
+    pushed before that. The language lives on `User.locale`."""
+
+    __tablename__ = "user_settings"
+    user_id: int = Field(primary_key=True, foreign_key="user.id", ondelete="CASCADE")
+    theme: str = "system"  # system|light|dark
+    main_currency: str = "ILS"  # ILS|USD
+    number_format: str = "full"  # full|compact
+    week_start_day: str = "sunday"  # sunday|monday
+    price_alerts_enabled: bool = True
+    weekly_review_enabled: bool = True
+    weekly_review_day: str = "sunday"
+    weekly_review_time: str = "20:00"  # HH:MM in Asia/Jerusalem
+    quiet_hours: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    idea_alerts: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    # Start date of the week (the user's week) whose review was last sent: one per week.
+    last_weekly_review_week: date | None = None
+    updated_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
+class TelegramLinkCode(SQLModel, table=True):
+    """A one-time code to bind a Telegram chat. Only the HMAC of the code is stored."""
+
+    __tablename__ = "telegram_link_code"
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True, ondelete="CASCADE")
+    code_hash: str = Field(index=True, unique=True)
+    expires_at: NaiveDatetime
+    used_at: NaiveDatetime | None = None
+    created_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
+class AuditLog(SQLModel, table=True):
+    """Admin actions, without personal data: who (a user id, set to NULL when that account is
+    deleted), what (a fixed action name) and which user id it touched. Never an email, an invite
+    code, a chat id or free text."""
+
+    __tablename__ = "audit_log"
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: NaiveDatetime = Field(default_factory=utcnow, index=True)
+    actor_user_id: int | None = Field(default=None, foreign_key="user.id", ondelete="SET NULL")
+    action: str
+    target_user_id: int | None = None
 
 
 class Notification(SQLModel, table=True):

@@ -9,7 +9,7 @@ Token-saving rule for Claude sessions: do not read whole docs. Grep for a headin
 | Money, gate, foundations spec | `docs/phase-2.0-spec.md` |
 | Investment Committee, backtest gate | `docs/analysis-committee.md` |
 | RAG design (app) | `docs/rag-spec.md` |
-| Settings, Telegram, admin | `docs/settings-spec.md` |
+| Settings, Telegram, admin | `docs/settings-spec.md`; code: `backend/app/usersettings.py`, `api/settings.py`, `api/telegram.py` + `telegram_link.py` + `alerts/telegram.py` (sender interface), `api/admin.py`, `alerts/weekly_review.py` (job `weekly_review`) |
 | UI decisions | `docs/ui-decisions.md` |
 | Security | `docs/security.md` |
 | Deployment, migrations | `docs/deployment.md`, `docs/migrations.md` |

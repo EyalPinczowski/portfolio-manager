@@ -176,6 +176,8 @@ def login(
         for k in (f"ip:{ip}", pair_key, email_key):
             login_limiter.record_failure(k, window)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Incorrect email or password")
+    if user.disabled_at is not None:  # only after the password matched: no account enumeration
+        raise ApiError(status.HTTP_403_FORBIDDEN, "account_disabled", "This account is disabled.")
     # A valid login clears this pair and the email key, but never the IP's count.
     login_limiter.reset(pair_key)
     login_limiter.reset(email_key)

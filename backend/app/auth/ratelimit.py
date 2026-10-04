@@ -142,6 +142,9 @@ signup_limiter = CountLimiter()
 upload_limiter = CountLimiter()
 import_edit_limiter = CountLimiter()
 holding_add_limiter = CountLimiter()
+telegram_code_limiter = CountLimiter()  # per user: new link codes
+telegram_link_limiter = CountLimiter()  # per Telegram chat: /start attempts
+admin_invite_limiter = CountLimiter()  # per admin: new invites
 
 
 def clear_all_limiters() -> None:
@@ -150,6 +153,9 @@ def clear_all_limiters() -> None:
     upload_limiter.clear()
     import_edit_limiter.clear()
     holding_add_limiter.clear()
+    telegram_code_limiter.clear()
+    telegram_link_limiter.clear()
+    admin_invite_limiter.clear()
 
 
 def too_many(retry_after: int, what: str = "Too many requests. Try again later.") -> HTTPException:

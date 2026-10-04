@@ -1,5 +1,6 @@
 from app.models import guards as guards
 from app.models.tables import (
+    AuditLog,
     AuthSession,
     BacktestRun,
     Holding,
@@ -18,12 +19,15 @@ from app.models.tables import (
     SearchHistory,
     Security,
     SignalCache,
+    TelegramLinkCode,
     Transaction,
     User,
+    UserSettings,
     WatchlistItem,
 )
 
 __all__ = [
+    "AuditLog",
     "AuthSession",
     "BacktestRun",
     "Holding",
@@ -42,7 +46,9 @@ __all__ = [
     "SearchHistory",
     "Security",
     "SignalCache",
+    "TelegramLinkCode",
     "Transaction",
     "User",
+    "UserSettings",
     "WatchlistItem",
 ]

@@ -275,6 +275,8 @@ class Settings(BaseSettings):
     max_search_history_per_user: int = Field(default=50, ge=1)  # oldest rows are pruned
     max_watchlist_per_user: int = Field(default=100, ge=1)  # adding past it is a 422
     invite_ttl_days: int = 14
+    admin_max_invite_days: int = Field(default=90, ge=1)  # longest invite an admin can create
+    admin_invites_per_hour: int = Field(default=30, ge=1)  # per admin
 
     # --- market data ---
     benchmark_sp500: str = "^GSPC"
@@ -651,8 +653,24 @@ class Settings(BaseSettings):
     # launch gate is closed (and refuses any free text: only `TemplateText` may leave then). The
     # disclaimer is ignored. Price-rule words (stop, target) are deliberately absent.
     outbound_verdict_words: list[str] = Field(default_factory=lambda: list(VERDICT_WORDS))
-    telegram_bot_token: str | None = None
+    telegram_bot_token: str | None = None  # env only; never logged or returned
     telegram_timeout_seconds: float = 10.0
+    # The secret Telegram echoes in `X-Telegram-Bot-Api-Secret-Token` on every webhook call (set it
+    # with `setWebhook secret_token=`). Without it the webhook route refuses everything.
+    telegram_webhook_secret: str | None = None
+    telegram_bot_username: str | None = None  # for the t.me deep link only
+    telegram_link_code_ttl_minutes: int = Field(default=15, ge=1, le=60)
+    telegram_link_code_length: int = Field(default=8, ge=6, le=16)
+    telegram_link_codes_per_hour: int = Field(default=5, ge=1)  # per user
+    telegram_link_attempts_per_hour: int = Field(default=10, ge=1)  # per Telegram chat
+    # Weekly review (settings-spec section 3). Per-user values override these; the schedule is
+    # evaluated in `scheduler_timezone` (Asia/Jerusalem) and checked every few minutes.
+    weekly_review_default_enabled: bool = True
+    weekly_review_default_day: Literal[
+        "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"
+    ] = "sunday"
+    weekly_review_default_time: str = Field(default="20:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    weekly_review_check_interval_minutes: int = Field(default=15, ge=1, le=60)
     seed_csv_path: str | None = None
 
     @field_validator("horizon_table")

@@ -28,7 +28,7 @@ def get_auth(request: Request, db: DbDep, settings: SettingsDep) -> AuthContext:
     if session is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
     user = db.get(User, session.user_id)
-    if user is None:
+    if user is None or user.disabled_at is not None:  # a disabled account has no valid session
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
     if not csrf_ok(request, session):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Missing or invalid CSRF token")
@@ -43,3 +43,13 @@ def get_current_user(auth: AuthDep) -> User:
 
 
 UserDep = Annotated[User, Depends(get_current_user)]
+
+
+def get_admin(auth: AuthDep) -> User:
+    """The signed-in user, only when an admin. Anyone else gets 403 (never 404: the route exists)."""
+    if not auth.user.is_admin:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin only")
+    return auth.user
+
+
+AdminDep = Annotated[User, Depends(get_admin)]

@@ -22,6 +22,7 @@ from app.outbound import (
     render,
 )
 from app.timeutil import utcnow
+from app.usersettings import effective
 
 log = logging.getLogger(__name__)
 Sender = Callable[[str | None, str], bool]
@@ -89,7 +90,8 @@ def check_price_alerts(
             log.exception("price alert %s could not be created; marked as triggered", alert_id)
             continue
         user = db.get(User, alert.user_id)
-        if user is not None:
+        # The in-app notification is always created; the Telegram push respects the user's switch.
+        if user is not None and effective(db, user, s).price_alerts_enabled:
             try:
                 send(user.telegram_chat_id, join_lines(title, body))
             except Exception as exc:

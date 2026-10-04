@@ -2096,6 +2096,395 @@
         }
       }
     },
+    "/api/settings": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Get Settings Route",
+        "operationId": "get_settings_route_api_settings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Patch Settings",
+        "operationId": "patch_settings_api_settings_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/telegram/link-code": {
+      "post": {
+        "tags": [
+          "telegram"
+        ],
+        "summary": "Create Link Code",
+        "operationId": "create_link_code_api_telegram_link_code_post",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkCodeOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/telegram/status": {
+      "get": {
+        "tags": [
+          "telegram"
+        ],
+        "summary": "Telegram Status",
+        "operationId": "telegram_status_api_telegram_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramStatusOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/telegram/link": {
+      "delete": {
+        "tags": [
+          "telegram"
+        ],
+        "summary": "Delete Link",
+        "operationId": "delete_link_api_telegram_link_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/telegram/webhook": {
+      "post": {
+        "tags": [
+          "telegram"
+        ],
+        "summary": "Webhook",
+        "operationId": "webhook_api_telegram_webhook_post",
+        "parameters": [
+          {
+            "name": "x-telegram-bot-api-secret-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Telegram-Bot-Api-Secret-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Update"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Webhook Api Telegram Webhook Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/invites": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Invites",
+        "operationId": "list_invites_api_admin_invites_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InviteOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Invites Api Admin Invites Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create Invite",
+        "operationId": "create_invite_api_admin_invites_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/invites/revoke": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Revoke Invite",
+        "operationId": "revoke_invite_api_admin_invites_revoke_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteRevoke"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List Users",
+        "operationId": "list_users_api_admin_users_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminUserOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Users Api Admin Users Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}/disable": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Disable User",
+        "description": "Deactivate: no login, every session revoked, remembered devices forgotten. Reversible.",
+        "operationId": "disable_user_api_admin_users__user_id__disable_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}/enable": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Enable User",
+        "operationId": "enable_user_api_admin_users__user_id__enable_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -2120,6 +2509,58 @@
   },
   "components": {
     "schemas": {
+      "AdminUserOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "is_admin": {
+            "type": "boolean",
+            "title": "Is Admin"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "telegram_linked": {
+            "type": "boolean",
+            "title": "Telegram Linked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "created_at",
+          "last_seen_at",
+          "is_admin",
+          "active",
+          "telegram_linked"
+        ],
+        "title": "AdminUserOut"
+      },
       "AlertCreate": {
         "properties": {
           "symbol": {
@@ -4678,6 +5119,126 @@
         ],
         "title": "Horizon"
       },
+      "IdeaAlertsFilter": {
+        "properties": {
+          "min_confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Min Confidence"
+          },
+          "horizon": {
+            "type": "string",
+            "enum": [
+              "1w",
+              "1m",
+              "3m",
+              "6m",
+              "1y"
+            ],
+            "title": "Horizon"
+          },
+          "risk_preset": {
+            "type": "string",
+            "enum": [
+              "very_conservative",
+              "conservative",
+              "balanced",
+              "balanced_aggressive",
+              "aggressive",
+              "very_aggressive"
+            ],
+            "title": "Risk Preset"
+          },
+          "markets": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "US",
+                "TASE",
+                "CRYPTO"
+              ]
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Markets"
+          },
+          "asset_types": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "stock",
+                "etf",
+                "crypto",
+                "fund",
+                "bond",
+                "cash"
+              ]
+            },
+            "type": "array",
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Asset Types"
+          },
+          "max_per_day": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Max Per Day"
+          },
+          "quiet_hours": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuietHours"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "min_confidence",
+          "horizon",
+          "risk_preset",
+          "markets",
+          "asset_types",
+          "max_per_day",
+          "quiet_hours"
+        ],
+        "title": "IdeaAlertsFilter",
+        "description": "The filter a candidate must match before a push. Every field is required: no defaults."
+      },
+      "IdeaAlertsOut": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "not_set",
+              "set"
+            ],
+            "title": "State"
+          },
+          "filter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdeaAlertsFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "state"
+        ],
+        "title": "IdeaAlertsOut"
+      },
       "ImportDraftOut": {
         "properties": {
           "id": {
@@ -4999,6 +5560,81 @@
         "title": "ImportRowsBody",
         "description": "On-device OCR: the browser parsed the screenshot, only the stock rows are sent."
       },
+      "InviteCreate": {
+        "properties": {
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "InviteCreate"
+      },
+      "InviteOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unused",
+              "used",
+              "expired"
+            ],
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "created_by_me": {
+            "type": "boolean",
+            "title": "Created By Me"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "status",
+          "created_at",
+          "expires_at",
+          "created_by_me"
+        ],
+        "title": "InviteOut"
+      },
+      "InviteRevoke": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "InviteRevoke"
+      },
       "LaunchGateOut": {
         "properties": {
           "open": {
@@ -5051,6 +5687,46 @@
           "touches"
         ],
         "title": "Level"
+      },
+      "LinkCodeOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "command": {
+            "type": "string",
+            "title": "Command"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "ttl_minutes": {
+            "type": "integer",
+            "title": "Ttl Minutes"
+          },
+          "deep_link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deep Link"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "command",
+          "expires_at",
+          "ttl_minutes"
+        ],
+        "title": "LinkCodeOut"
       },
       "LoginIn": {
         "properties": {
@@ -6174,6 +6850,28 @@
           "currency"
         ],
         "title": "ProposedChange"
+      },
+      "QuietHours": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "End"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "QuietHours",
+        "description": "No pushes between `start` and `end` (Asia/Jerusalem). The window may wrap midnight."
       },
       "ReviewRow": {
         "properties": {
@@ -7460,6 +8158,226 @@
         ],
         "title": "SessionOut"
       },
+      "SettingsOut": {
+        "properties": {
+          "language": {
+            "type": "string",
+            "enum": [
+              "he",
+              "en"
+            ],
+            "title": "Language"
+          },
+          "theme": {
+            "type": "string",
+            "enum": [
+              "system",
+              "light",
+              "dark"
+            ],
+            "title": "Theme"
+          },
+          "main_currency": {
+            "type": "string",
+            "enum": [
+              "ILS",
+              "USD"
+            ],
+            "title": "Main Currency"
+          },
+          "number_format": {
+            "type": "string",
+            "enum": [
+              "full",
+              "compact"
+            ],
+            "title": "Number Format"
+          },
+          "week_start_day": {
+            "type": "string",
+            "enum": [
+              "sunday",
+              "monday"
+            ],
+            "title": "Week Start Day"
+          },
+          "price_alerts_enabled": {
+            "type": "boolean",
+            "title": "Price Alerts Enabled"
+          },
+          "weekly_review": {
+            "$ref": "#/components/schemas/WeeklyReviewOut"
+          },
+          "quiet_hours": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuietHours"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idea_alerts": {
+            "$ref": "#/components/schemas/IdeaAlertsOut"
+          },
+          "telegram_linked": {
+            "type": "boolean",
+            "title": "Telegram Linked"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "language",
+          "theme",
+          "main_currency",
+          "number_format",
+          "week_start_day",
+          "price_alerts_enabled",
+          "weekly_review",
+          "quiet_hours",
+          "idea_alerts",
+          "telegram_linked",
+          "updated_at"
+        ],
+        "title": "SettingsOut"
+      },
+      "SettingsPatch": {
+        "properties": {
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "he",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "system",
+                  "light",
+                  "dark"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          },
+          "main_currency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ILS",
+                  "USD"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Currency"
+          },
+          "number_format": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "full",
+                  "compact"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number Format"
+          },
+          "week_start_day": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sunday",
+                  "monday"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week Start Day"
+          },
+          "price_alerts_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Alerts Enabled"
+          },
+          "weekly_review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeeklyReviewPatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quiet_hours": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuietHours"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idea_alerts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdeaAlertsFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SettingsPatch"
+      },
       "SignalBreakdownOut": {
         "properties": {
           "name": {
@@ -8081,6 +8999,40 @@
         ],
         "title": "SummaryOut"
       },
+      "TelegramStatusOut": {
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "title": "Configured"
+          },
+          "webhook_ready": {
+            "type": "boolean",
+            "title": "Webhook Ready"
+          },
+          "linked": {
+            "type": "boolean",
+            "title": "Linked"
+          },
+          "bot_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bot Username"
+          }
+        },
+        "type": "object",
+        "required": [
+          "configured",
+          "webhook_ready",
+          "linked"
+        ],
+        "title": "TelegramStatusOut"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -8211,6 +9163,93 @@
           "pct"
         ],
         "title": "WeeklyBar"
+      },
+      "WeeklyReviewOut": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "day": {
+            "type": "string",
+            "enum": [
+              "sunday",
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday"
+            ],
+            "title": "Day"
+          },
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "day",
+          "time",
+          "timezone"
+        ],
+        "title": "WeeklyReviewOut"
+      },
+      "WeeklyReviewPatch": {
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "sunday",
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday",
+                  "saturday"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "WeeklyReviewPatch"
       },
       "XrayOut": {
         "properties": {

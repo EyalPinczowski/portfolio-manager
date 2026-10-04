@@ -125,3 +125,12 @@ def run_session_purge(db: Session) -> int:
     from app.auth.sessions import purge_expired_sessions
 
     return purge_expired_sessions(db)
+
+
+def run_weekly_review_job(
+    db: Session, history: HistoryProvider | None = None, settings: Settings | None = None
+) -> int:
+    """Send the weekly reviews that are due (per-user day, time, quiet hours; one per week)."""
+    from app.alerts.weekly_review import run_weekly_review
+
+    return run_weekly_review(db, history, settings)

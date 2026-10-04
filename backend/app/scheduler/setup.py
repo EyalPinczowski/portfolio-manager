@@ -55,6 +55,11 @@ def _purge_sessions() -> None:
         log.info("purged %d expired sessions", jobs.run_session_purge(db))
 
 
+def _weekly_review() -> None:
+    with new_session() as db:
+        log.info("weekly reviews sent: %d", jobs.run_weekly_review_job(db, get_providers().history))
+
+
 def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> None:
     """Add the recurring jobs (shared by `python -m app.scheduler` and the in-process scheduler)."""
     s = settings or get_settings()
@@ -108,6 +113,14 @@ def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> Non
         coalesce=True,
         misfire_grace_time=s.scheduler_misfire_grace_seconds,
     )
+    sched.add_job(
+        _weekly_review,
+        IntervalTrigger(minutes=s.weekly_review_check_interval_minutes),
+        id="weekly_review",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=s.scheduler_misfire_grace_seconds,
+    )
 
 
 JOB_IDS = (
@@ -117,6 +130,7 @@ JOB_IDS = (
     "universe_scores",
     "purge_drafts",
     "purge_sessions",
+    "weekly_review",
 )
 
 

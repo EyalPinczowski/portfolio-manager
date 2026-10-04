@@ -25,7 +25,7 @@ from app.db import (
     make_engine,
     run_migrations,
 )
-from app.models import AuthSession, Holding, User
+from app.models import AuthSession, Holding
 
 REBUILD_USER = '''"""test-only: rebuild `user` through a batch migration (DROP TABLE + rename)."""
 
@@ -79,23 +79,28 @@ def _config_with_test_revision(tmp_path: Path, body: str, engine: Engine) -> Ale
 def _seed(engine: Engine) -> None:
     now = datetime(2026, 1, 1, tzinfo=UTC).replace(tzinfo=None)
     with Session(engine) as db:
-        user = User(email="a@x.co", password_hash="h")
-        db.add(user)
-        db.flush()
-        assert user.id is not None
+        # raw SQL: older schemas (before 0012) have no `user.disabled_at` column
+        db.exec(  # type: ignore[call-overload]
+            text(
+                'INSERT INTO "user" (email, password_hash, locale, is_admin, created_at) '
+                "VALUES ('a@x.co', 'h', 'he', 0, :c)"
+            ).bindparams(c=now)
+        )
+        uid = db.exec(text('SELECT id FROM "user"')).scalar()  # type: ignore[call-overload]
+        assert uid is not None
         # raw SQL: older schemas (before 0011) have no `expected_return_*` columns
         db.exec(  # type: ignore[call-overload]
             text(
                 "INSERT INTO portfolio (owner_id, name, base_currency, risk_filter, "
                 "tracking_started_at, created_at) VALUES (:o, 'P', 'ILS', '{}', '2026-01-01', :c)"
-            ).bindparams(o=user.id, c=now)
+            ).bindparams(o=uid, c=now)
         )
         pid = db.exec(text("SELECT id FROM portfolio")).scalar()  # type: ignore[call-overload]
         assert pid is not None
         db.add(Holding(portfolio_id=pid, symbol="AAPL", quantity=3))
         db.add(
             AuthSession(
-                user_id=user.id,
+                user_id=uid,
                 token_hash="t" * 64,
                 csrf_token="c",
                 created_at=now,
@@ -225,4 +230,61 @@ def test_0011_adds_nullable_expectation_columns_without_touching_existing_data(
             )
         )
         assert conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
+    engine.dispose()
+
+
+def test_0012_adds_settings_tables_without_touching_existing_data(tmp_path: Path) -> None:
+    engine = make_engine(f"sqlite:///{tmp_path / 'm.db'}")
+    run_migrations(engine)
+    downgrade_migrations(engine, "0011_portfolio_expected_return")
+    with engine.connect() as conn:
+        assert {"user_settings", "telegram_link_code", "audit_log"}.isdisjoint(
+            r[0] for r in conn.exec_driver_sql("SELECT name FROM sqlite_master")
+        )
+        assert "disabled_at" not in {
+            r[1] for r in conn.exec_driver_sql('PRAGMA table_info("user")')
+        }
+    _seed(engine)
+    run_migrations(engine)  # expand-only: 0011 -> 0012 with data present
+    assert _counts(engine) == {"user": 1, "portfolio": 1, "session": 1, "holding": 1}
+    with engine.begin() as conn:
+        # existing users stay active and unlinked; they get no settings row (config defaults apply)
+        assert tuple(
+            conn.execute(text('SELECT disabled_at, telegram_chat_id FROM "user"')).one()
+        ) == (
+            None,
+            None,
+        )
+        assert conn.execute(text("SELECT count(*) FROM user_settings")).scalar() == 0
+        conn.execute(
+            text(
+                "INSERT INTO user_settings (user_id, theme, main_currency, number_format, "
+                "week_start_day, price_alerts_enabled, weekly_review_enabled, weekly_review_day, "
+                "weekly_review_time, updated_at) VALUES (1, 'system', 'ILS', 'full', 'sunday', 1, "
+                "1, 'sunday', '20:00', '2026-01-01')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO telegram_link_code (user_id, code_hash, expires_at, created_at) "
+                "VALUES (1, 'h', '2026-01-01', '2026-01-01')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO audit_log (created_at, actor_user_id, action, target_user_id) "
+                "VALUES ('2026-01-01', 1, 'user.disable', 1)"
+            )
+        )
+        assert conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
+    with engine.begin() as conn:  # the cascade works on the migrated schema
+        conn.execute(text('DELETE FROM "user"'))
+    with engine.connect() as conn:
+        for t in ("user_settings", "telegram_link_code"):
+            assert conn.execute(text(f"SELECT count(*) FROM {t}")).scalar() == 0
+        # the audit row stays, without the actor (no personal data kept)
+        assert tuple(conn.execute(text("SELECT actor_user_id, action FROM audit_log")).one()) == (
+            None,
+            "user.disable",
+        )
     engine.dispose()
