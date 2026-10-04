@@ -58,18 +58,26 @@ function CloseButton({ onClose }: { onClose: () => void }) {
 }
 
 const SOON = [
-  { key: "review", icon: ReviewIcon },
   { key: "suggest", icon: SuggestIcon },
   { key: "analyze", icon: AnalyzeIcon },
 ] as const;
 
-/** The single "+" menu. Review / Suggest / Analyze stay disabled until their backends exist. */
+/** The single "+" menu. Review is live; Suggest / Analyze stay disabled until their backends exist. */
 export function ActionsSheet({ onClose }: { onClose: () => void }) {
   const t = useTranslations("actions");
   const row = "flex min-h-14 w-full items-center gap-3 rounded-2xl border border-line px-3 py-2 text-start";
   return (
     <Sheet title={t("menuTitle")} onClose={onClose}>
       <ul className="space-y-2">
+        <li>
+          <Link href="/review" onClick={onClose} className={`${row} bg-brand-soft hover:bg-surface-2`}>
+            <span className="text-brand-text"><ReviewIcon /></span>
+            <span className="flex-1">
+              <span className="block font-semibold text-brand-text">{t("review")}</span>
+              <span className="block text-caption text-muted">{t("reviewNote")}</span>
+            </span>
+          </Link>
+        </li>
         {SOON.map(({ key, icon: Icon }) => (
           <li key={key}>
             <button type="button" disabled className={`${row} cursor-not-allowed opacity-75`}>

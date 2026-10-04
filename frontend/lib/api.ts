@@ -39,6 +39,18 @@ export type ChartAnnotation = S["ChartAnnotation"];
 export type ExplanationSource = S["ExplanationSource"];
 export type SignalBreakdown = S["SignalBreakdownOut"];
 export type ScoreCardDetail = Narrow<S["ScoreCardDetail"], { signals: SignalBreakdown[] }>;
+export type ExitLevel = S["ExitLevel"];
+export type ExitLevelsResult = S["ExitLevelsResult"];
+export type ExitStatus = ExitLevelsResult["status"];
+export type ExitReasonCode = NonNullable<ExitLevelsResult["reason_code"]>;
+export type ScaleOutStep = S["ScaleOutStep"];
+export type SizeGuidance = S["SizeGuidance"];
+export type StopCandidate = S["StopCandidate"];
+export type ReviewRow = S["ReviewRow"];
+export type ReviewTotals = S["ReviewTotals"];
+export type ExitReviewOut = S["ExitReviewOut"];
+export type ExitReviewIn = S["ExitReviewIn"];
+export type RiskPresetName = NonNullable<ExitReviewIn["risk"]>;
 export type Health = S["HealthOut"];
 export type ChallengeRequired = S["ChallengeRequiredOut"];
 
@@ -176,6 +188,16 @@ export const api = {
   searchSecurities: (q: string) => get<SecurityHit[]>(`/securities/search?q=${encodeURIComponent(q)}`),
 
   scorecard: (hid: number) => get<ScoreCardDetail>(`/holdings/${hid}/scorecard`),
+  /** `horizon` overrides the holding's own as a what-if (not saved). No horizon at all -> status `needs_horizon`. */
+  exitLevels: (hid: number, q: { horizon?: Horizon | null; risk?: RiskPresetName | null } = {}) => {
+    const qs = new URLSearchParams();
+    if (q.horizon) qs.set("horizon", q.horizon);
+    if (q.risk) qs.set("risk", q.risk);
+    const str = qs.toString();
+    return get<ExitLevelsResult>(`/holdings/${hid}/exit-levels${str ? `?${str}` : ""}`);
+  },
+  /** A what-if review: `horizon` / `risk` override every holding's own for this call only. */
+  exitReview: (pid: number, b: ExitReviewIn = {}) => post<ExitReviewOut>(`/portfolios/${pid}/exit-review`, b),
   alerts: () => get<PriceAlert[]>("/alerts"),
   createAlert: (b: { symbol: string; op: "above" | "below"; price: number }) => post<PriceAlert>("/alerts", b),
   deleteAlert: (id: number) => del(`/alerts/${id}`),

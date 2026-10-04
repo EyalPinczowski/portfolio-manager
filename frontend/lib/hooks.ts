@@ -1,6 +1,6 @@
 "use client";
 import useSWR, { type SWRConfiguration } from "swr";
-import { api, type Holding, type Portfolio } from "./api";
+import { api, type ExitReviewIn, type Holding, type Horizon, type Portfolio, type RiskPresetName } from "./api";
 import { PORTFOLIO_CHOICE_KEY } from "./session";
 
 /** Polling interval for live data (spec: SWR polling every 60 s). */
@@ -30,6 +30,11 @@ export function useHoldings(id: PortfolioRef | null, portfolios: Portfolio[] | u
   );
 }
 export const useScorecard = (hid: number) => useSWR(["scorecard", hid], () => api.scorecard(hid), cfg);
+/** `horizon` set = a what-if override; null = the holding's own (the server answers needs_horizon if it has none). */
+export const useExitLevels = (hid: number, horizon: Horizon | null, risk: RiskPresetName | null = null) =>
+  useSWR(["exit-levels", hid, horizon, risk], () => api.exitLevels(hid, { horizon, risk }), cfg);
+export const useExitReview = (pid: number | null, body: ExitReviewIn = {}) =>
+  useSWR(pid === null ? null : ["exit-review", pid, body.horizon ?? null, body.risk ?? null], () => api.exitReview(pid as number, body), cfg);
 export const useAlerts = () => useSWR("alerts", () => api.alerts(), cfg);
 export const useXray = (pid: number | null) => useSWR(pid === null ? null : ["xray", pid], () => api.xray(pid as number), cfg);
 export const useHeatmap = (pid: number | null) => useSWR(pid === null ? null : ["heatmap", pid], () => api.heatmap(pid as number), cfg);

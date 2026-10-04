@@ -57,4 +57,12 @@ describe("holding page", () => {
     for (const raw of ["fundamentals", "analysts", "geo_news", "sentiment"]) expect(screen.queryByText(raw)).toBeNull();
     expect(screen.getByText("Analyst consensus")).toBeInTheDocument();
   });
+
+  it("shows the exit levels on the holding page (levels) and asks for a period when there is none (needs_horizon)", async () => {
+    const a = render1(1);
+    expect(await screen.findByTestId("level-stop")).toBeInTheDocument();
+    a.unmount();
+    render1(2); // LUMI.TA has no holding period
+    expect(await screen.findByText("Choose a holding period first")).toBeInTheDocument();
+  });
 });

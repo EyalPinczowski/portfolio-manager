@@ -53,10 +53,11 @@ describe.each(["en", "he"] as const)("tab bar (%s)", (locale) => {
 });
 
 describe("actions sheet", () => {
-  it("disables the unbuilt actions and links the import page", () => {
+  it("links the review and import pages and disables the unbuilt actions", () => {
     const onClose = vi.fn();
     wrap("en", <ActionsSheet onClose={onClose} />);
-    for (const name of [en.actions.review, en.actions.suggest, en.actions.analyze]) {
+    expect(screen.getByRole("link", { name: new RegExp(en.actions.review) })).toHaveAttribute("href", "/review");
+    for (const name of [en.actions.suggest, en.actions.analyze]) {
       expect(screen.getByRole("button", { name: new RegExp(name) })).toBeDisabled();
     }
     const link = screen.getByRole("link", { name: new RegExp(en.actions.update) });
@@ -70,7 +71,7 @@ describe("actions sheet", () => {
     wrap("he", <ActionsSheet onClose={onClose} />);
     const dialog = screen.getByRole("dialog", { name: he.actions.menuTitle });
     const close = within(dialog).getByRole("button", { name: he.common.close });
-    const link = within(dialog).getByRole("link");
+    const link = within(dialog).getAllByRole("link").at(-1)!;
     link.focus();
     fireEvent.keyDown(document, { key: "Tab" });
     expect(close).toHaveFocus(); // wraps from the last focusable to the first

@@ -536,6 +536,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/holdings/{holding_id}/exit-levels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Holding Exit Levels
+         * @description Stop / take-profit levels. `horizon` overrides the holding's own (a what-if, not saved); a
+         *     holding with no horizon and no override answers `needs_horizon`. `risk` is a preset name.
+         */
+        get: operations["holding_exit_levels_api_holdings__holding_id__exit_levels_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portfolios/{portfolio_id}/exit-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exit Review
+         * @description Levels for every holding plus portfolio totals: the total risk to the stops, the biggest
+         *     contributors, the positions with no stop and stops that look too tight or too wide.
+         */
+        post: operations["exit_review_api_portfolios__portfolio_id__exit_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -587,6 +629,13 @@ export interface components {
             /** Triggered At */
             triggered_at?: string | null;
         };
+        /** AnalystTargetsIn */
+        AnalystTargetsIn: {
+            /** Mean */
+            mean?: number | null;
+            /** High */
+            high?: number | null;
+        };
         /** Breach */
         Breach: {
             /** Rule */
@@ -631,6 +680,126 @@ export interface components {
             price?: number | null;
             /** As Of */
             as_of?: string | null;
+        };
+        /** ExitLevel */
+        ExitLevel: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "stop" | "trailing_stop" | "breakeven" | "take_profit";
+            /** Label */
+            label: string;
+            /** Price */
+            price: number;
+            /** Distance Pct */
+            distance_pct: number;
+            /** Vs Price Ils */
+            vs_price_ils: number;
+            /** Vs Price Usd */
+            vs_price_usd: number;
+            /** Pnl Native */
+            pnl_native?: number | null;
+            /** Pnl Ils */
+            pnl_ils?: number | null;
+            /** Pnl Usd */
+            pnl_usd?: number | null;
+            /** Rr */
+            rr?: number | null;
+            /**
+             * Reached
+             * @default false
+             */
+            reached: boolean;
+            /** Source */
+            source: string;
+            /** Reason */
+            reason: string;
+            explanation: components["schemas"]["Explanation"];
+        };
+        /** ExitLevelsResult */
+        ExitLevelsResult: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "levels" | "needs_horizon" | "no_levels";
+            /** Reason Code */
+            reason_code?: ("needs_horizon" | "stale_price" | "no_history" | "insufficient_history" | "history_price_mismatch") | null;
+            /** Reason */
+            reason: string;
+            /** Symbol */
+            symbol: string;
+            horizon?: components["schemas"]["Horizon"] | null;
+            /** Horizon Label */
+            horizon_label?: string | null;
+            /** Risk Preset */
+            risk_preset?: string | null;
+            /** Currency */
+            currency?: string | null;
+            /** Price */
+            price?: number | null;
+            /** Price As Of */
+            price_as_of?: string | null;
+            /** Atr */
+            atr?: number | null;
+            /** Atr Timeframe */
+            atr_timeframe?: string | null;
+            stop?: components["schemas"]["ExitLevel"] | null;
+            trailing_stop?: components["schemas"]["ExitLevel"] | null;
+            breakeven?: components["schemas"]["ExitLevel"] | null;
+            /** Take Profits */
+            take_profits?: components["schemas"]["ExitLevel"][];
+            /** Scale Out */
+            scale_out?: components["schemas"]["ScaleOutStep"][];
+            size_guidance?: components["schemas"]["SizeGuidance"] | null;
+            risk_to_stop?: components["schemas"]["RiskToStop"] | null;
+            /** Stop Fit */
+            stop_fit?: ("ok" | "too_tight" | "too_wide") | null;
+            /** Candidates */
+            candidates?: components["schemas"]["StopCandidate"][];
+            /** Skipped */
+            skipped?: components["schemas"]["SkippedSource"][];
+            state?: components["schemas"]["StopState"] | null;
+            explanation: components["schemas"]["Explanation"];
+            /**
+             * Disclaimer
+             * @default Not financial advice.
+             */
+            disclaimer: string;
+        };
+        /**
+         * ExitReviewIn
+         * @description A what-if: `horizon` / `risk` override every holding's own for this review only.
+         */
+        ExitReviewIn: {
+            /** Horizon */
+            horizon?: ("1w" | "1m" | "3m" | "6m" | "1y") | null;
+            /** Risk */
+            risk?: ("very_conservative" | "conservative" | "balanced" | "balanced_aggressive" | "aggressive" | "very_aggressive") | null;
+            /** Prior Stops */
+            prior_stops?: {
+                [key: string]: number;
+            };
+            /** Analyst Targets */
+            analyst_targets?: {
+                [key: string]: components["schemas"]["AnalystTargetsIn"];
+            };
+        };
+        /** ExitReviewOut */
+        ExitReviewOut: {
+            /** Portfolio Id */
+            portfolio_id: number;
+            /** Portfolio Value Ils */
+            portfolio_value_ils: number;
+            /** Rows */
+            rows: components["schemas"]["ReviewRow"][];
+            totals: components["schemas"]["ReviewTotals"];
+            /**
+             * Disclaimer
+             * @default Not financial advice.
+             */
+            disclaimer: string;
         };
         /**
          * Explanation
@@ -782,6 +951,23 @@ export interface components {
              * @default false
              */
             price_stale: boolean;
+            /** Price Source */
+            price_source?: string | null;
+            /**
+             * Price Basis
+             * @default live
+             * @enum {string}
+             */
+            price_basis: "live" | "last_close";
+            /** Price As Of */
+            price_as_of?: string | null;
+            /**
+             * Price Is Fresh
+             * @default false
+             */
+            price_is_fresh: boolean;
+            /** Price Flag */
+            price_flag?: string | null;
         };
         /** HoldingPatch */
         HoldingPatch: {
@@ -795,6 +981,11 @@ export interface components {
             horizon?: ("1w" | "1m" | "3m" | "6m" | "1y") | null;
             risk_override?: components["schemas"]["RiskOverride"] | null;
         };
+        /**
+         * Horizon
+         * @enum {string}
+         */
+        Horizon: "1w" | "1m" | "3m" | "6m" | "1y";
         /** ImportDraftOut */
         ImportDraftOut: {
             /** Id */
@@ -948,6 +1139,15 @@ export interface components {
             /** Csrf Token */
             csrf_token: string;
         };
+        /** MissingStop */
+        MissingStop: {
+            /** Symbol */
+            symbol: string;
+            /** Reason Code */
+            reason_code?: ("needs_horizon" | "stale_price" | "no_history" | "insufficient_history" | "history_price_mismatch") | null;
+            /** Reason */
+            reason: string;
+        };
         /** Money */
         Money: {
             /** Ils */
@@ -1063,6 +1263,94 @@ export interface components {
              */
             currency: "ILS" | "USD";
         };
+        /** ReviewRow */
+        ReviewRow: {
+            /** Holding Id */
+            holding_id: number;
+            /** Symbol */
+            symbol: string;
+            /** Name En */
+            name_en: string;
+            /** Name He */
+            name_he: string;
+            /** Quantity */
+            quantity: number;
+            /** Currency */
+            currency: string;
+            /** Avg Cost */
+            avg_cost?: number | null;
+            /** Horizon */
+            horizon?: ("1w" | "1m" | "3m" | "6m" | "1y") | null;
+            /** Horizon Source */
+            horizon_source?: ("holding" | "override") | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "levels" | "needs_horizon" | "no_levels";
+            /** Reason Code */
+            reason_code?: ("needs_horizon" | "stale_price" | "no_history" | "insufficient_history" | "history_price_mismatch") | null;
+            /** Price */
+            price?: number | null;
+            /** Stop Price */
+            stop_price?: number | null;
+            /** Stop Distance Pct */
+            stop_distance_pct?: number | null;
+            /** Take Profit Prices */
+            take_profit_prices?: number[];
+            /** Risk Ils */
+            risk_ils?: number | null;
+            /** Risk Usd */
+            risk_usd?: number | null;
+            /** Risk Pct Of Portfolio */
+            risk_pct_of_portfolio?: number | null;
+            /**
+             * Smaller Size Needed
+             * @default false
+             */
+            smaller_size_needed: boolean;
+            /** Keep Fraction */
+            keep_fraction?: number | null;
+            /** Stop Fit */
+            stop_fit?: ("ok" | "too_tight" | "too_wide") | null;
+            levels: components["schemas"]["ExitLevelsResult"];
+        };
+        /** ReviewTotals */
+        ReviewTotals: {
+            /** Total Risk Ils */
+            total_risk_ils: number;
+            /** Total Risk Usd */
+            total_risk_usd: number;
+            /** Total Risk Pct Of Portfolio */
+            total_risk_pct_of_portfolio: number;
+            /** Limit Pct */
+            limit_pct: number;
+            /** Over Limit */
+            over_limit: boolean;
+            /** Positions With Stop */
+            positions_with_stop: number;
+            /** Top Contributors */
+            top_contributors: components["schemas"]["RiskContributor"][];
+            /** Positions Without Stop */
+            positions_without_stop: components["schemas"]["MissingStop"][];
+            /** Stops Too Tight */
+            stops_too_tight: string[];
+            /** Stops Too Wide */
+            stops_too_wide: string[];
+            /** Smaller Size Needed */
+            smaller_size_needed: string[];
+        };
+        /** RiskContributor */
+        RiskContributor: {
+            /** Symbol */
+            symbol: string;
+            /** Risk Ils */
+            risk_ils: number;
+            /** Risk Pct Of Portfolio */
+            risk_pct_of_portfolio: number;
+            /** Share Of Total Risk Pct */
+            share_of_total_risk_pct: number;
+        };
         /**
          * RiskFilterIn
          * @description A risk filter as the client may send it: every field optional and bounded.
@@ -1171,6 +1459,19 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** RiskToStop */
+        RiskToStop: {
+            /** Native */
+            native: number;
+            /** Ils */
+            ils: number;
+            /** Usd */
+            usd: number;
+            /** Pct Of Position */
+            pct_of_position: number;
+            /** Pct Of Portfolio */
+            pct_of_portfolio?: number | null;
+        };
         /**
          * RowConflict
          * @description The numbers of the copy that lost when the same card is in two screenshots with different
@@ -1183,6 +1484,22 @@ export interface components {
             value?: number | null;
             /** Quantity */
             quantity?: number | null;
+        };
+        /** ScaleOutStep */
+        ScaleOutStep: {
+            /**
+             * Step
+             * @enum {string}
+             */
+            step: "take_profit" | "trail_rest";
+            /** Label */
+            label: string;
+            /** Price */
+            price?: number | null;
+            /** Fraction */
+            fraction: number;
+            /** Quantity */
+            quantity: number;
         };
         /** ScoreCardDetail */
         ScoreCardDetail: {
@@ -1321,6 +1638,60 @@ export interface components {
              */
             locale: "he" | "en";
         };
+        /**
+         * SizeGuidance
+         * @description The stop stays where the chart puts it; this is how many shares fit the risk filter.
+         */
+        SizeGuidance: {
+            /** Needed */
+            needed: boolean;
+            /** Keep Fraction */
+            keep_fraction: number;
+            /** Current Quantity */
+            current_quantity: number;
+            /** Suggested Quantity */
+            suggested_quantity: number;
+            /** Rules */
+            rules: string[];
+            /** Reason */
+            reason: string;
+        };
+        /** SkippedSource */
+        SkippedSource: {
+            /** Source */
+            source: string;
+            /** Reason */
+            reason: string;
+        };
+        /** StopCandidate */
+        StopCandidate: {
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "atr" | "structure" | "moving_average" | "max_loss" | "saved_stop" | "trailing";
+            /** Price */
+            price: number;
+            /** Distance Pct */
+            distance_pct: number;
+            /**
+             * Chosen
+             * @default false
+             */
+            chosen: boolean;
+            /** Note */
+            note: string;
+        };
+        /**
+         * StopState
+         * @description What a trailing stop remembers between runs: the highest high seen and the stop so far.
+         */
+        StopState: {
+            /** Highest High */
+            highest_high?: number | null;
+            /** Stop */
+            stop?: number | null;
+        };
         /** SummaryOut */
         SummaryOut: {
             value: components["schemas"]["Money"];
@@ -1344,6 +1715,21 @@ export interface components {
             week_start: string;
             /** Fx Stale */
             fx_stale: boolean;
+            /** Fx Source */
+            fx_source?: string | null;
+            /**
+             * Fx Basis
+             * @default live
+             * @enum {string}
+             */
+            fx_basis: "live" | "last_close";
+            /** Fx As Of */
+            fx_as_of?: string | null;
+            /**
+             * Price Sources
+             * @default []
+             */
+            price_sources: string[];
             /** Weekly Bars */
             weekly_bars: components["schemas"]["WeeklyBar"][];
             /** Monthly Bars */
@@ -2461,6 +2847,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    holding_exit_levels_api_holdings__holding_id__exit_levels_get: {
+        parameters: {
+            query?: {
+                horizon?: ("1w" | "1m" | "3m" | "6m" | "1y") | null;
+                risk?: ("very_conservative" | "conservative" | "balanced" | "balanced_aggressive" | "aggressive" | "very_aggressive") | null;
+                prior_stop?: number | null;
+                analyst_mean?: number | null;
+                analyst_high?: number | null;
+            };
+            header?: never;
+            path: {
+                holding_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExitLevelsResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exit_review_api_portfolios__portfolio_id__exit_review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                portfolio_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExitReviewIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExitReviewOut"];
                 };
             };
             /** @description Validation Error */

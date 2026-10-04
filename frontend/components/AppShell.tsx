@@ -11,7 +11,7 @@ import { AnalyzeIcon, BellIcon, HomeIcon, PlusIcon, PortfolioIcon, SettingsIcon 
 export type TabKey = "home" | "portfolio" | "analyze" | "alerts" | "settings";
 export const TABS: { key: TabKey; href: string; icon: ComponentType<{ className?: string }>; match: string[] }[] = [
   { key: "home", href: "/", icon: HomeIcon, match: [] },
-  { key: "portfolio", href: "/xray", icon: PortfolioIcon, match: ["/xray", "/import", "/holding"] },
+  { key: "portfolio", href: "/xray", icon: PortfolioIcon, match: ["/xray", "/import", "/holding", "/review"] },
   { key: "analyze", href: "/analyze", icon: AnalyzeIcon, match: ["/analyze"] },
   { key: "alerts", href: "/alerts", icon: BellIcon, match: ["/alerts"] },
   { key: "settings", href: "/settings", icon: SettingsIcon, match: ["/settings"] },

@@ -1,11 +1,13 @@
 "use client";
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useSWRConfig } from "swr";
 import { api, type Horizon } from "@/lib/api";
 import { DASH, formatMoney, formatWeight } from "@/lib/format";
 import { useAlerts, useScorecard } from "@/lib/hooks";
 import { Link } from "@/i18n/navigation";
 import { AppShell } from "./AppShell";
+import { ExitLevelsPanel } from "./ExitLevelsPanel";
 import { ExplanationView } from "./ExplanationView";
 
 const HORIZONS: Horizon[] = ["1w", "1m", "3m", "6m", "1y"];
@@ -15,6 +17,7 @@ function Body({ hid }: { hid: number }) {
   const c = useTranslations("common");
   const locale = useLocale();
   const sc = useScorecard(hid);
+  const { mutate: globalMutate } = useSWRConfig();
   const alerts = useAlerts();
   const [open, setOpen] = useState(false);
   const [op, setOp] = useState<"above" | "below">("above");
@@ -31,7 +34,7 @@ function Body({ hid }: { hid: number }) {
 
   const setHorizon = async (h: Horizon) => {
     await api.patchHolding(d.portfolio_id, d.holding_id, { horizon: h });
-    await sc.mutate();
+    await Promise.all([sc.mutate(), globalMutate((k) => Array.isArray(k) && k[0] === "exit-levels")]);
   };
   const addAlert = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,10 +161,7 @@ function Body({ hid }: { hid: number }) {
         {err && <p role="alert" className="text-sm text-loss">{c("errorLoad")}</p>}
       </section>
 
-      <section className="card space-y-1 border-dashed" aria-label={t("exitTitle")}>
-        <h2 className="text-lg font-bold">{t("exitTitle")}</h2>
-        <p className="text-sm text-muted">{t("exitSoon")}</p>
-      </section>
+      <ExitLevelsPanel holdingId={hid} portfolioId={d.portfolio_id} onHorizonSaved={() => sc.mutate()} />
     </>
   );
 }

@@ -27,11 +27,11 @@ const zero = { ils: 0, usd: 0, pct: 0 };
 const holding = (over: Partial<Holding>): Holding => ({
   id: 1, symbol: "ARNA.TA", name_en: "Arena Fund", name_he: "קרן ארנה", asset_type: "fund", market: "TASE", quantity: 120,
   price: 31.4, currency: "ILS", day_change_pct: 0.2, value_ils: 3768, pnl: null, weight_pct: 4.2, horizon: null,
-  stop_tp_status: "needs_horizon", score_card: { total: 0, technical: 0, patterns: 0, confidence: 0 }, price_stale: true, ...over,
+  stop_tp_status: "needs_horizon", score_card: { total: 0, technical: 0, patterns: 0, confidence: 0 }, price_stale: true, price_basis: "last_close", price_is_fresh: false, ...over,
 });
 const summary = (over: Partial<Summary> = {}): Summary => ({
   value: { ils: 1000, usd: 270 }, day_pnl: zero, week_pnl: zero, month_pnl: zero, since_start_pnl: zero,
-  since_start_date: null, week_start: "2026-09-27", fx_stale: false,
+  since_start_date: null, week_start: "2026-09-27", fx_stale: false, fx_basis: "live", price_sources: [],
   weekly_bars: [], monthly_bars: [],
   since_start_series: [
     { date: "2026-10-01", pct: 1.5, sp500_pct: null, ta125_pct: null },

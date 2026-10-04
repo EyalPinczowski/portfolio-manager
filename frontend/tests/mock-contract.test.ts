@@ -62,6 +62,13 @@ const CASES: Case[] = [
   { method: "GET", path: "/securities/search?q=teva", api: "/securities/search" },
   { method: "GET", path: "/holdings/1/scorecard", api: "/holdings/{holding_id}/scorecard" },
   { method: "GET", path: "/holdings/11/scorecard", api: "/holdings/{holding_id}/scorecard" },
+  { method: "GET", path: "/holdings/1/exit-levels", api: "/holdings/{holding_id}/exit-levels" }, // levels
+  { method: "GET", path: "/holdings/2/exit-levels", api: "/holdings/{holding_id}/exit-levels" }, // needs_horizon
+  { method: "GET", path: "/holdings/2/exit-levels?horizon=1m&risk=balanced", api: "/holdings/{holding_id}/exit-levels" }, // what-if
+  { method: "GET", path: "/holdings/10/exit-levels", api: "/holdings/{holding_id}/exit-levels" }, // levels, USD
+  { method: "GET", path: "/holdings/11/exit-levels?horizon=3m", api: "/holdings/{holding_id}/exit-levels" }, // no_levels (stale)
+  { method: "POST", path: "/portfolios/1/exit-review", api: "/portfolios/{portfolio_id}/exit-review", body: {} },
+  { method: "POST", path: "/portfolios/2/exit-review", api: "/portfolios/{portfolio_id}/exit-review", body: { horizon: "1w", risk: "balanced" } },
   { method: "GET", path: "/alerts", api: "/alerts" },
   { method: "POST", path: "/alerts", api: "/alerts", body: { symbol: "TEVA.TA", op: "above", price: 70 } },
   { method: "GET", path: "/notifications", api: "/notifications" },
@@ -121,6 +128,15 @@ describe("mock fixtures match backend/openapi.json", () => {
     body("ImportPatch", { scope: "partial", rows: [], proposed_changes: [{ row_index: -1, symbol: "A", type: "keep", quantity: 1, amount: null, currency: "ILS" }] });
     body("HoldingCreate", { symbol: "AAPL", quantity: 1.5, avg_cost: null, cost_currency: null, horizon: null });
     expect(() => body("ImportRowsBody", { scope: "everything", rows: [] })).toThrow(); // the validator really rejects a wrong scope
+  });
+
+  it("exit levels: the mock covers all three statuses, and the review request validates", () => {
+    const st = (id: number, q = "") => (mockRequest("GET", `/holdings/${id}/exit-levels${q}`) as { status: string }).status;
+    expect(st(1)).toBe("levels");
+    expect(st(2)).toBe("needs_horizon");
+    expect(st(11, "?horizon=3m")).toBe("no_levels");
+    expect(st(2, "?horizon=1y")).toBe("levels"); // what-if override
+    validate({ $ref: "openapi#/components/schemas/ExitReviewIn" }, { horizon: "1y", risk: "balanced", prior_stops: { "TEVA.TA": 50 } }, "ExitReviewIn");
   });
 
   it("manual create: duplicate -> 409, bad symbol -> 422", () => {

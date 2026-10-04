@@ -6,6 +6,9 @@ import type {
 import type { LaunchGate, SessionInfo } from "./api";
 import { ApiError } from "./errors";
 import type { Health } from "./api";
+import { mockExitLevels, mockExitReview, type ExitSeed } from "./mock-exit";
+
+const exitSeed = (s: { id: number; symbol: string; en: string; he: string; cur: string; qty: number; price: number; cost: number | null; horizon: Horizon | null; stale?: boolean; noData?: boolean }): ExitSeed => s;
 
 const FX = 3.7; // USD/ILS
 const AS_OF = "2026-10-03T08:55:00Z";
@@ -75,6 +78,7 @@ function holdingsFor(pid: number): Holding[] {
       quantity: s.qty, price: s.price, currency: s.cur, day_change_pct: s.chg, value_ils: v,
       pnl: cost === null ? null : { ils: v - cost, usd: (v - cost) / FX, pct: ((v - cost) / cost) * 100 },
       price_stale: !!s.stale,
+      price_basis: s.stale ? "last_close" : "live", price_is_fresh: !s.stale,
       weight_pct: (v / total) * 100, horizon: s.horizon,
       stop_tp_status: s.horizon ? "missing" : "needs_horizon",
       score_card: {
@@ -120,7 +124,7 @@ function summaryFor(pid: number | "combined"): Summary {
     since_start_pnl: mk(fresh ? 0 : (series[series.length - 1]?.pct ?? 0)),
     since_start_date: fresh ? null : start,
     week_start: WEEK_START,
-    fx_stale: false,
+    fx_stale: false, fx_basis: "live", price_sources: ["Yahoo Finance"],
     weekly_bars: weekly.map((pct, i) => ({ week_start: addDays(FIRST_SUNDAY, i * 7), pnl_ils: Math.round((valueI * pct) / 100), pct })),
     monthly_bars: monthly.map((pct, i) => ({ month: `2026-${String(i + 5).padStart(2, "0")}`, pnl_ils: Math.round((valueI * pct) / 100), pct })),
     since_start_series: series,
@@ -406,6 +410,17 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
   }
   if (p === "/securities/search") return [{ symbol: "TEVA.TA", name_en: "Teva", name_he: "טבע", market: "TASE" }];
   if ((m = p.match(/^\/holdings\/(\d+)\/scorecard$/))) return scorecard(Number(m[1]));
+  if ((m = p.match(/^\/holdings\/(\d+)\/exit-levels$/))) {
+    const seed = SEEDS.find((x) => x.id === Number(m![1]));
+    if (!seed) throw new ApiError(404, "Not found");
+    const qs = new URLSearchParams(path.split("?")[1] ?? "");
+    const total = SEEDS.filter((x) => x.pid === seed.pid).reduce((a, x) => a + valueIls(x), 0);
+    return mockExitLevels(exitSeed(seed), { horizon: (qs.get("horizon") as Horizon | null) ?? null, risk: qs.get("risk") }, total);
+  }
+  if ((m = p.match(/^\/portfolios\/(\d+)\/exit-review$/)) && method === "POST") {
+    const pid = Number(m[1]);
+    return mockExitReview(pid, SEEDS.filter((x) => x.pid === pid).map(exitSeed), { horizon: (b.horizon as Horizon | null) ?? null, risk: (b.risk as string | null) ?? null });
+  }
   if (p === "/alerts") {
     if (method === "POST") { const a: PriceAlert = { id: nextAlert++, symbol: String(b.symbol), op: b.op as "above", price: Number(b.price), active: true, triggered_at: null }; alerts = [...alerts, a]; return a; }
     return alerts;
