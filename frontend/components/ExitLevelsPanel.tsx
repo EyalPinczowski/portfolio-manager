@@ -5,6 +5,7 @@ import { api, type ExitLevel, type ScaleOutPlan, type ExitLevelsResult, type Hor
 import { DASH, mainFirst, formatMoney, formatNumber, formatPct, formatTime, formatWeight } from "@/lib/format";
 import { useExitLevels } from "@/lib/hooks";
 import { horizonFromLabel, isPlanNote, matchStopReason, sourceKey } from "@/lib/server-text";
+import { ServerText } from "./ServerText";
 import { ExplanationView } from "./ExplanationView";
 import { PnlText } from "./Pnl";
 
@@ -73,7 +74,7 @@ function LevelReason({ lv }: { lv: ExitLevel }) {
   const src = sk ? t(`sources.${sk.key}` as "sources.atr", { n: sk.n ?? "" }) : lv.source;
   return (
     <div className="text-sm text-muted">
-      <p dir="auto">{m ? t(`reasonText.${m.key}` as "reasonText.atr", m.values) : <bdi dir="auto">{lv.reason}</bdi>}</p>
+      <p dir="auto">{lv.reason_text || !m ? <ServerText code={lv.reason_text} text={lv.reason} /> : t(`reasonText.${m.key}` as "reasonText.atr", m.values)}</p>
       <p className="text-caption">{t("source", { source: src })}</p>
     </div>
   );
@@ -209,8 +210,8 @@ export function Levels({ r, uid }: { r: ExitLevelsResult; uid: string }) {
               ? t("sizeSmaller", { suggested: formatNumber(sg.suggested_quantity, locale, 4), current: formatNumber(sg.current_quantity, locale, 4), pct: formatWeight(sg.keep_fraction * 100, locale, 0) })
               : t("sizeOk")}
           </p>
-          {sg.reason && <p className="text-sm text-muted" dir="auto"><bdi dir="auto">{sg.reason}</bdi></p>}
-          {sg.rules.length > 0 && <ul className="list-disc ps-5 text-sm text-muted">{sg.rules.map((x, i) => <li key={i} dir="auto"><bdi dir="auto">{x}</bdi></li>)}</ul>}
+          {sg.reason && <p className="text-sm text-muted" dir="auto"><ServerText code={sg.reason_text} text={sg.reason} /></p>}
+          {sg.rules.length > 0 && <ul className="list-disc ps-5 text-sm text-muted">{sg.rules.map((x, i) => <li key={i} dir="auto"><ServerText code={sg.rules_text?.[i]} text={x} /></li>)}</ul>}
         </section>
       )}
       {rs && (

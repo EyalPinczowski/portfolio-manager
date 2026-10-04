@@ -216,6 +216,11 @@ def test_exposure_before_and_after_and_the_cap_that_breaks(world: World) -> None
     assert any("limit" in x or "max_position_pct" in x for x in size["limited_by"])
     assert fit["max_position_size"]["binding_rule"] == "max_position_pct"
     assert fit["max_position_size"]["max_additional_ils"] > 0
+    assert fit["max_position_size"]["reason_text"]["code"] == "max_size_binding"
+    assert pos["reason_text"]["code"] == "exposure_breaks"
+    assert {"before_pct", "after_pct", "limit_pct", "dimension"} <= set(
+        pos["reason_text"]["params"]
+    )
     sector = next(e for e in fit["exposures"] if e["dimension"] == "sector")
     assert sector["before_pct"] == 0 and sector["name"] == "Financials"
 
@@ -229,6 +234,7 @@ def test_a_full_sector_does_not_fit_and_says_which_rule(world: World) -> None:
     assert "max_sector_pct" in fit["caps_broken_at_requested_amount"]
     assert fit["status"] == "does_not_fit" and fit["suggested_size"] is None
     assert fit["max_position_size"]["max_additional_ils"] == 0
+    assert sector["reason_text"]["code"] == "exposure_breaks"
     assert any(r["status"] == "fail" for r in fit["rules"])
     assert out["candidate_info"]["fit_passes"] is False
 

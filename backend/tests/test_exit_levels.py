@@ -500,3 +500,61 @@ def test_a_wider_profile_trails_further_below_the_high() -> None:
 def test_no_levels_results_carry_no_scale_out_plan() -> None:
     r = run(horizon=None)
     assert r.status == "needs_horizon" and r.scale_out_plan is None and r.scale_out == []
+
+
+# ---------------------------------------------------------------- machine codes beside the text
+def test_text_codes_for_stop_take_profit_and_trailing() -> None:
+    df = frame()
+    r = run(df, "1m")
+    assert r.stop is not None and r.stop.reason_text is not None
+    assert r.stop.reason_text.code in {"stop_atr", "stop_beyond_atr", "stop_chart_no_atr"}
+    assert r.stop.reason  # the English text stays
+    if r.stop.reason_text.code == "stop_atr":
+        assert {"mult", "period", "timeframe", "pct"} <= set(r.stop.reason_text.params)
+    assert r.take_profits and r.take_profits[0].reason_text is not None
+    tp = r.take_profits[0].reason_text
+    assert tp.code == "take_profit" and tp.params["index"] == 1 and "rr" in tp.params
+    assert r.trailing_stop is not None and r.trailing_stop.reason_text is not None
+    assert r.trailing_stop.reason_text.code in {"trailing_moved", "trailing_start"}
+
+
+def test_text_code_for_a_saved_stop() -> None:
+    df = frame()
+    first = run(df, "1m")
+    assert first.stop is not None
+    r = run(df, "1m", state=StopState(stop=first.stop.price + 3.0))
+    assert r.stop is not None and r.stop.reason_text is not None
+    assert r.stop.reason_text.code == "stop_saved"
+    assert r.stop.reason_text.params["level"] == pytest.approx(first.stop.price + 3.0, rel=1e-3)
+
+
+def test_text_code_for_breakeven() -> None:
+    df = frame()
+    price = float(df["Close"].iloc[-1])
+    fixed = BALANCED.model_copy(update={"stop_type": "fixed"})
+    r = run(df, risk=fixed, v=valued(price, avg_cost=price - 2.5))
+    assert r.breakeven is not None and r.breakeven.reason_text is not None
+    assert r.breakeven.reason_text.code == "breakeven"
+    assert {"gain_atr", "cost", "profile", "from_atr"} <= set(r.breakeven.reason_text.params)
+
+
+def test_size_guidance_codes_fit_reduce_and_rules() -> None:
+    df = frame()
+    price = float(df["Close"].iloc[-1])
+    holding = valued(price, quantity=100.0)
+    loose = BALANCED.model_copy(update={"max_loss_per_position_pct": 100.0})
+    fits = run(df, "3m", loose, v=holding)
+    assert fits.size_guidance is not None and fits.size_guidance.reason_text is not None
+    assert fits.size_guidance.reason_text.code == "size_fits"
+    assert fits.size_guidance.rules_text == []
+    tight = BALANCED.model_copy(update={"max_loss_per_position_pct": 3.0})
+    b = run(df, "3m", tight, v=holding)
+    sg = b.size_guidance
+    assert sg is not None and sg.reason_text is not None and sg.reason_text.code == "size_reduce"
+    assert {"stop", "keep_pct", "suggested", "current"} <= set(sg.reason_text.params)
+    assert [x.code for x in sg.rules_text] == ["size_rule_max_loss"]
+    assert len(sg.rules_text) == len(sg.rules)
+    capped = run(df, "1m", loose, v=holding, portfolio_value_ils=price * 100.0 * 3.6)
+    assert capped.size_guidance is not None
+    assert [x.code for x in capped.size_guidance.rules_text] == ["size_rule_portfolio_risk"]
+    assert len(capped.size_guidance.rules_text) == len(capped.size_guidance.rules)

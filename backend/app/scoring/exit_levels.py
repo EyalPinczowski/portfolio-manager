@@ -46,6 +46,21 @@ from app.timeutil import as_utc
 Reason = Annotated[str, StringConstraints(max_length=500)]
 FINITE = ConfigDict(allow_inf_nan=False)
 
+TextParams = dict[str, str | float]
+
+
+class TextCode(BaseModel):
+    """A stable machine code plus its numbers, so the UI can write the sentence in its own language.
+
+    It sits beside the English text and never replaces it; `params` holds only numbers and short codes.
+    """
+
+    model_config = FINITE
+
+    code: str
+    params: TextParams = Field(default_factory=dict)
+
+
 LevelKind = Literal["stop", "trailing_stop", "breakeven", "take_profit"]
 StopSource = Literal["atr", "structure", "moving_average", "max_loss", "saved_stop", "trailing"]
 ResultStatus = Literal["levels", "needs_horizon", "no_levels"]
@@ -120,6 +135,7 @@ class ExitLevel(BaseModel):
     reached: bool = False  # the price is already at or through this level
     source: str
     reason: Reason
+    reason_text: TextCode | None = None  # the same reason as a code with params (additive)
     explanation: Explanation
 
 
@@ -178,6 +194,8 @@ class SizeGuidance(BaseModel):
     suggested_quantity: float
     rules: list[Reason]
     reason: Reason
+    reason_text: TextCode | None = None  # the same reason as a code with params (additive)
+    rules_text: list[TextCode] = Field(default_factory=list)  # one per entry of `rules`
 
 
 class RiskToStop(BaseModel):
@@ -317,6 +335,7 @@ def _make_level(
     price: float,
     source: str,
     reason: str,
+    reason_text: TextCode | None = None,
     rr: float | None = None,
     annotation: ChartAnnotation | None = None,
     inputs: dict[str, float | str | None] | None = None,
@@ -357,6 +376,7 @@ def _make_level(
         reached=(price <= ctx.price) if kind == "take_profit" else (price >= ctx.price),
         source=source,
         reason=reason,
+        reason_text=reason_text,
         explanation=explanation,
     )
 
@@ -433,8 +453,10 @@ def _support_candidates(
 
 def _choose_stop(
     ctx: _Ctx,
-) -> tuple[float, StopSource, str, list[StopCandidate], list[SkippedSource], float | None]:
-    """Returns (stop, source, reason, candidates, skipped, atr_multiple_used)."""
+) -> tuple[
+    float, StopSource, str, TextCode, list[StopCandidate], list[SkippedSource], float | None
+]:
+    """Returns (stop, source, reason, reason_text, candidates, skipped, atr_multiple_used)."""
     s = ctx.settings
     mult = _atr_multiple(ctx)
     supports, skipped = _support_candidates(ctx)
@@ -479,6 +501,7 @@ def _choose_stop(
     chart = [c for c in cands if c.source in ("structure", "moving_average")]
     chosen: StopCandidate | None = None
     reason = ""
+    text = TextCode(code="stop_max_loss_only")
     if atr_stop is not None:
         reach = (ctx.atr or 0.0) * s.exit_levels_structure_reach_atr
         behind = [c for c in chart if atr_stop - reach <= c.price <= atr_stop]
@@ -491,14 +514,34 @@ def _choose_stop(
                 f"Stop {chosen.note}, which sits beyond the {mult:.2f} x ATR distance "
                 f"so normal noise does not reach it."
             )
+            text = TextCode(
+                code="stop_beyond_atr",
+                params={
+                    "source": chosen.source,
+                    "level": chosen.price,
+                    "mult": round(mult or 0, 2),
+                },
+            )
         else:
             chosen = next(c for c in cands if c.source == "atr")
             reason = f"Stop at {chosen.note} below the price ({chosen.distance_pct:.1f}%)."
+            text = TextCode(
+                code="stop_atr",
+                params={
+                    "mult": round(mult or 0, 2),
+                    "period": ctx.spec.atr_period,
+                    "timeframe": ctx.atr_timeframe,
+                    "pct": round(chosen.distance_pct, 1),
+                },
+            )
     elif chart:
         floor = (ctx.atr or 0.0) * s.exit_levels_min_stop_atr
         ok = [c for c in chart if ctx.price - c.price >= floor]
         chosen = max(ok, key=lambda c: c.price) if ok else min(chart, key=lambda c: c.price)
         reason = f"Stop {chosen.note} (no ATR range for this horizon)."
+        text = TextCode(
+            code="stop_chart_no_atr", params={"source": chosen.source, "level": chosen.price}
+        )
     else:
         mx = next((c for c in cands if c.source == "max_loss"), None)
         if mx is not None:
@@ -507,10 +550,14 @@ def _choose_stop(
                 "No chart level or ATR was available, so the stop is your own "
                 f"{ctx.risk.max_loss_per_position_pct:g}% max loss per position."
             )
+            text = TextCode(
+                code="stop_max_loss_only",
+                params={"max_loss_pct": ctx.risk.max_loss_per_position_pct},
+            )
     if chosen is None:  # pragma: no cover - max_loss is always below the price
         raise ValueError("no stop candidate")
     chosen.chosen = True
-    return chosen.price, chosen.source, reason, cands, skipped, mult
+    return chosen.price, chosen.source, reason, text, cands, skipped, mult
 
 
 def _size_guidance(ctx: _Ctx, stop: float) -> SizeGuidance:
@@ -518,6 +565,7 @@ def _size_guidance(ctx: _Ctx, stop: float) -> SizeGuidance:
     dist_pct = (ctx.price - stop) / ctx.price * 100.0
     keep = 1.0
     rules: list[str] = []
+    rules_text: list[TextCode] = []
     limit = ctx.risk.max_loss_per_position_pct
     if dist_pct > limit + 1e-9:
         frac = limit / dist_pct
@@ -525,6 +573,16 @@ def _size_guidance(ctx: _Ctx, stop: float) -> SizeGuidance:
         rules.append(
             f"max loss per position {limit:g}%: the stop is {dist_pct:.1f}% away, so about "
             f"{frac * 100:.0f}% of the shares fit"
+        )
+        rules_text.append(
+            TextCode(
+                code="size_rule_max_loss",
+                params={
+                    "limit_pct": limit,
+                    "distance_pct": round(dist_pct, 1),
+                    "fit_pct": round(frac * 100),
+                },
+            )
         )
     if ctx.portfolio_value_ils and ctx.portfolio_value_ils > 0:
         risk_ils = to_ils((ctx.price - stop) * qty, ctx.currency, ctx.v.usd_ils)
@@ -537,14 +595,35 @@ def _size_guidance(ctx: _Ctx, stop: float) -> SizeGuidance:
                 f"losing {risk_ils:,.0f} ILS at the stop is more than {allowed:,.0f} ILS, so about "
                 f"{frac * 100:.0f}% of the shares fit"
             )
+            rules_text.append(
+                TextCode(
+                    code="size_rule_portfolio_risk",
+                    params={
+                        "limit_pct": ctx.risk.max_portfolio_risk_per_trade_pct,
+                        "loss_ils": round(risk_ils),
+                        "allowed_ils": round(allowed),
+                        "fit_pct": round(frac * 100),
+                    },
+                )
+            )
     needed = keep < 1.0 - 1e-9
     if needed:
+        text = TextCode(
+            code="size_reduce",
+            params={
+                "stop": float(f"{stop:.4g}"),
+                "keep_pct": round(keep * 100),
+                "suggested": float(f"{qty * keep:.4g}"),
+                "current": float(f"{qty:.4g}"),
+            },
+        )
         reason = (
             f"The stop stays at {stop:.4g}; it is not moved closer to fit your limits. "
             f"To fit them, keep about {keep * 100:.0f}% of the current shares "
             f"({qty * keep:.4g} of {qty:.4g})."
         )
     else:
+        text = TextCode(code="size_fits")
         reason = "The stop and the position size fit your risk limits."
     return SizeGuidance(
         needed=needed,
@@ -553,6 +632,8 @@ def _size_guidance(ctx: _Ctx, stop: float) -> SizeGuidance:
         suggested_quantity=round(qty * keep, 6),
         rules=rules,
         reason=reason,
+        reason_text=text,
+        rules_text=rules_text,
     )
 
 
@@ -721,6 +802,15 @@ def _take_profits(
                 price=price,
                 source=src3,
                 reason=f"TP{i} at {price:.4g}: {why}; R:R {rr:.2f}.",
+                reason_text=TextCode(
+                    code="take_profit",
+                    params={
+                        "index": i,
+                        "level": float(f"{price:.4g}"),
+                        "source": src3,
+                        "rr": round(rr, 2),
+                    },
+                ),
                 rr=rr,
                 annotation=ann,
                 inputs={"rr": rr, "risk_per_unit": risk},
@@ -942,7 +1032,7 @@ def compute_exit_levels(
     )  # fmt: skip
 
     plan_name, plan_fb, plan = _plan_for(risk, s)
-    stop_price, src, why, cands, skipped, mult = _choose_stop(ctx)
+    stop_price, src, why, why_text, cands, skipped, mult = _choose_stop(ctx)
     prior = state or StopState()
     rules = [f"horizon {hz.value}: {spec.label}", f"preset {risk.preset or 'custom'}"]
     risk_rules = [
@@ -951,11 +1041,12 @@ def compute_exit_levels(
     ]
     if prior.stop is not None and prior.stop > stop_price:
         stop_price, src = prior.stop, "saved_stop"
+        why_text = TextCode(code="stop_saved", params={"level": float(f"{prior.stop:.4g}")})
         why = (
             f"Kept your saved stop at {prior.stop:.4g}: a stop is only ever raised, never lowered."
         )
     stop_level = _make_level(
-        ctx, kind="stop", label="Stop", price=stop_price, source=src, reason=why,
+        ctx, kind="stop", label="Stop", price=stop_price, source=src, reason=why, reason_text=why_text,
         inputs={"atr_multiple": mult, "max_loss_pct": risk.max_loss_per_position_pct},
         rules=rules, risk_rules=risk_rules,
         annotation=ChartAnnotation(kind="support", label="Stop", price=_round(stop_price), as_of=as_of),
@@ -1000,9 +1091,22 @@ def compute_exit_levels(
                 if moved
                 else f"Trailing stop starts at the stop {ratcheted:.4g} and rises as the price makes new highs."
             )
+            t_text = (
+                TextCode(
+                    code="trailing_moved",
+                    params={
+                        "level": float(f"{ratcheted:.4g}"),
+                        "highest": float(f"{hh:.4g}"),
+                        "mult": round(t_mult, 2),
+                        "profile": plan_name,
+                    },
+                )
+                if moved
+                else TextCode(code="trailing_start", params={"level": float(f"{ratcheted:.4g}")})
+            )
             trailing = _make_level(
                 ctx, kind="trailing_stop", label="Trailing stop", price=ratcheted, source="trailing",
-                reason=t_why,
+                reason=t_why, reason_text=t_text,
                 inputs={"highest_high": hh, "atr_multiple": t_mult, "in_profit": "yes" if in_profit else "no"},
                 rules=[*rules, "a trailing stop only moves up"], risk_rules=risk_rules,
                 annotation=ChartAnnotation(kind="support", label="Trailing stop", price=_round(ratcheted), as_of=as_of),
@@ -1021,6 +1125,15 @@ def compute_exit_levels(
                     f"The price is {gain_atr:.1f} ATR above your cost {cost:.4g} "
                     f"({_profile_name(plan_name)} profile suggests this from "
                     f"{plan.breakeven_atr_multiple:g} ATR): moving the stop up to your cost means this position can no longer lose money."
+                ),
+                reason_text=TextCode(
+                    code="breakeven",
+                    params={
+                        "gain_atr": round(gain_atr, 1),
+                        "cost": float(f"{cost:.4g}"),
+                        "profile": plan_name,
+                        "from_atr": plan.breakeven_atr_multiple,
+                    },
                 ),
                 inputs={"gain_in_atr": gain_atr}, rules=rules, risk_rules=risk_rules,
                 annotation=ChartAnnotation(kind="support", label="Breakeven", price=_round(cost), as_of=as_of),

@@ -32,7 +32,7 @@ from app.models import Portfolio, PriceQuote, Security
 from app.portfolio.valuation import PortfolioValuation
 from app.portfolio.xray import _position_override
 from app.providers.fx_provider import SUPPORTED_CURRENCIES, to_ils
-from app.scoring.exit_levels import ExitLevelsResult, compute_exit_levels
+from app.scoring.exit_levels import ExitLevelsResult, TextCode, compute_exit_levels
 from app.scoring.risk import RiskFilter
 from app.scoring.screener import (
     SizeOut,
@@ -87,16 +87,26 @@ def _exposure(
         "sector": f"{name} sector",
         "country": f"{name} exposure",
     }[dimension]
+    base = {
+        "dimension": dimension,
+        "name": name,
+        "before_pct": round(before, 1),
+        "limit_pct": limit,
+    }
+    text: TextCode | None = None
     if not applies:
         reason = why_not
     elif after is None:
+        text = TextCode(code="exposure_now", params=base)
         reason = f"{label.capitalize()} is {before:.1f}% of the portfolio now (limit {limit:g}%)."
     elif breaks:
+        text = TextCode(code="exposure_breaks", params={**base, "after_pct": round(after, 1)})
         reason = (
             f"{label.capitalize()} would go from {before:.1f}% to {after:.1f}%, "
             f"above your {limit:g}% limit."
         )
     else:
+        text = TextCode(code="exposure_fits", params={**base, "after_pct": round(after, 1)})
         reason = (
             f"{label.capitalize()} would go from {before:.1f}% to {after:.1f}% (limit {limit:g}%)."
         )
@@ -112,6 +122,7 @@ def _exposure(
         breaks=breaks,
         headroom_ils=headroom,
         reason=reason,
+        reason_text=text,
     )
 
 
@@ -216,12 +227,20 @@ def compute_fit(
             and (binding is None or e.headroom_ils < binding[0])
         ):
             binding = (e.headroom_ils, e.rule)
+    if binding:
+        size_text = TextCode(
+            code="max_size_binding",
+            params={"max_additional_ils": round(binding[0]), "rule": binding[1]},
+        )
+    else:
+        size_text = TextCode(code="max_size_no_limit" if have_book else "max_size_empty_book")
     max_size = MaxPositionSize(
         position_limit_pct=pos_cap,
         limit_source=pos_source,
         max_additional_ils=binding[0] if binding else None,
         max_additional_usd=round(binding[0] / usd_ils, 2) if binding and usd_ils else None,
         binding_rule=binding[1] if binding else None,
+        reason_text=size_text,
         reason=(
             f"At most {binding[0]:,.0f} ILS more fits under your limits; {binding[1]} binds."
             if binding

@@ -40,7 +40,7 @@ function scaleOutPlan(risk: string | null | undefined, horizonLabel: string): Sc
 
 export interface ExitQuery { horizon?: Horizon | null; risk?: string | null }
 
-function level(s: ExitSeed, kind: ExitLevel["kind"], label: string, price: number, rr: number | null, source: string, reason: string, stopPrice: number): ExitLevel {
+function level(s: ExitSeed, kind: ExitLevel["kind"], label: string, price: number, rr: number | null, source: string, reason: string, stopPrice: number, reasonText: ExitLevel["reason_text"] = null): ExitLevel {
   const move = (price - s.price) * s.qty;
   const pnl = s.cost === null ? null : (price - s.cost) * s.qty;
   return {
@@ -49,7 +49,7 @@ function level(s: ExitSeed, kind: ExitLevel["kind"], label: string, price: numbe
     pnl_native: pnl === null ? null : r2(pnl),
     pnl_ils: pnl === null ? null : r2(toIls(pnl, s.cur)),
     pnl_usd: pnl === null ? null : r2(s.cur === "USD" ? pnl : pnl / FX),
-    rr, reached: kind === "take_profit" ? s.price >= price : s.price <= price, source, reason,
+    rr, reached: kind === "take_profit" ? s.price >= price : s.price <= price, source, reason, reason_text: reasonText,
     explanation: {
       version: 1, as_of: AS_OF, summary: reason,
       inputs: { price: s.price, "stop price": r2(stopPrice), source },
@@ -91,8 +91,10 @@ export function mockExitLevels(s: ExitSeed, q: ExitQuery = {}, portfolioValueIls
   const atr = r2(s.price * 0.025);
   const stopP = s.price - ATR_MULT[horizon] * atr;
   const risk1 = s.price - stopP;
-  const stop = level(s, "stop", "Stop", stopP, null, "atr", `${ATR_MULT[horizon]} x ATR(14) below the price for a ${LABEL[horizon]} holding period.`, stopP);
-  const trail = level(s, "trailing_stop", "Trailing stop", stopP * 1.01, null, "trailing", "Follows the highest high; it only moves up.", stopP);
+  const stop = level(s, "stop", "Stop", stopP, null, "atr", `${ATR_MULT[horizon]} x ATR(14) below the price for a ${LABEL[horizon]} holding period.`, stopP,
+    { code: "stop_atr", params: { mult: ATR_MULT[horizon], period: 14, timeframe: "daily", pct: r2(-(risk1 / s.price) * 100) } });
+  const trail = level(s, "trailing_stop", "Trailing stop", stopP * 1.01, null, "trailing", "Follows the highest high; it only moves up.", stopP,
+    { code: "trailing_moved", params: { level: r2(stopP * 1.01), highest: r2(s.price * 1.02), mult: ATR_MULT[horizon], profile: "balanced" } });
   const tp1 = level(s, "take_profit", "Take-profit 1", s.price + 1.5 * risk1, 1.5, "resistance", "Nearest resistance from the chart.", stopP);
   const tp2 = level(s, "take_profit", "Take-profit 2", s.price + 2.5 * risk1, 2.5, "analyst", "Analyst mean target.", stopP);
   const riskNative = risk1 * s.qty;
@@ -118,6 +120,8 @@ export function mockExitLevels(s: ExitSeed, q: ExitQuery = {}, portfolioValueIls
     size_guidance: {
       needed, keep_fraction: r2(keep), current_quantity: s.qty, suggested_quantity: r2(s.qty * keep),
       rules: needed ? [`Max risk per trade is 0.75% of the portfolio; this position risks ${r2(pctPortfolio)}%.`] : [],
+      reason_text: needed ? { code: "size_reduce", params: { stop: r2(stopP), keep_pct: Math.round(keep * 100), suggested: r2(s.qty * keep), current: s.qty } } : { code: "size_fits", params: {} },
+      rules_text: needed ? [{ code: "size_rule_portfolio_risk", params: { limit_pct: 0.75, loss_ils: Math.round(riskIls), allowed_ils: Math.round(portfolioValueIls * 0.0075), fit_pct: Math.round(keep * 100) } }] : [],
       reason: needed ? "A smaller position keeps the risk within your limit. The stop stays where the chart puts it." : "The position size fits your risk limit.",
     },
     risk_to_stop: { native: r2(riskNative), ils: r2(riskIls), usd: r2(riskIls / FX), pct_of_position: r2((risk1 / s.price) * 100), pct_of_portfolio: r2(pctPortfolio) },

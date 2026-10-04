@@ -157,6 +157,7 @@ export function mockAnalyze(rawSymbol: string, q: AnalyzeQ, ctx: AnalyzeCtx, rec
     return {
       dimension, name, rule, applies: true, limit_pct: limit, limit_source: ctx.riskFilter?.preset ?? "balanced_aggressive", before_pct: r2((cur / V) * 100), after_pct: r2(after),
       breaks: after > limit + 1e-9, headroom_ils: r2(headroom),
+      reason_text: { code: after > limit ? "exposure_breaks" : "exposure_fits", params: { dimension, name, before_pct: r2((cur / V) * 100), after_pct: r2(after), limit_pct: limit } },
       reason: after > limit ? `${name} would be ${r2(after)}%, above the ${limit}% cap.` : `${name} stays within the ${limit}% cap.`,
     };
   });
@@ -183,7 +184,9 @@ export function mockAnalyze(rawSymbol: string, q: AnalyzeQ, ctx: AnalyzeCtx, rec
     amount: q.amount, currency: q.currency, amount_ils: r2(amtIls), portfolio_value_ils: r2(V),
     max_position_size: {
       position_limit_pct: exposures[0].limit_pct, limit_source: exposures[0].limit_source, max_additional_ils: r2(Math.max(0, maxAdd)), max_additional_usd: r2(Math.max(0, maxAdd) / FX),
-      binding_rule: broken.length ? binding.rule : null, reason: broken.length ? `${binding.name} is the tightest cap (${binding.limit_pct}%).` : "Your requested amount is inside every cap.",
+      binding_rule: broken.length ? binding.rule : null,
+      reason_text: broken.length ? { code: "max_size_binding", params: { max_additional_ils: r2(Math.max(0, maxAdd)), rule: binding.rule } } : { code: "max_size_no_limit", params: {} },
+      reason: broken.length ? `${binding.name} is the tightest cap (${binding.limit_pct}%).` : "Your requested amount is inside every cap.",
     },
     exposures, caps_broken_at_requested_amount: broken.map((e) => e.rule),
     rules: [{ rule: "min_rr", status: hasLevels ? "pass" : "not_evaluated", value: hasLevels ? 1.5 : null, limit: rf?.min_rr ?? 1.5, reason: hasLevels ? "First take-profit meets the minimum reward-to-risk." : "No levels, so reward-to-risk was not evaluated." }],

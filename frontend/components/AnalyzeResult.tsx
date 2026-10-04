@@ -6,6 +6,7 @@ import { DASH, formatMoney, formatNumber, formatPct, formatTime, formatWeight } 
 import { useAnalyze, usePortfolios, useWatchlist } from "@/lib/hooks";
 import { Link } from "@/i18n/navigation";
 import { isFitIncompleteSummary } from "@/lib/server-text";
+import { ServerText } from "./ServerText";
 import { ExplanationView } from "./ExplanationView";
 import { HorizonPicker, Levels, NoLevels, WhyToggle } from "./ExitLevelsPanel";
 import { PnlText } from "./Pnl";
@@ -143,7 +144,7 @@ function FitBody({ f, cur }: { f: PortfolioFit; cur: string }) {
           </p>
         ) : <p className="font-medium text-warn-fg" data-testid="max-size">{t("maxSizeNone")}</p>}
         {finite(f.amount) && f.currency && <p className="text-sm text-muted">{t("requested", { amount: formatMoney(f.amount, f.currency, locale) })}</p>}
-        {ms && <p className="text-sm text-muted" dir="auto"><Txt>{ms.reason}</Txt>{ms.binding_rule && <> {t("maxSizeNote", { rule: t.has(`rule.${ms.binding_rule}`) ? t(`rule.${ms.binding_rule as "max_sector_pct"}`) : ms.binding_rule })}</>}</p>}
+        {ms && <p className="text-sm text-muted" dir="auto"><ServerText code={ms.reason_text} text={ms.reason} />{ms.binding_rule && <> {t("maxSizeNote", { rule: t.has(`rule.${ms.binding_rule}`) ? t(`rule.${ms.binding_rule as "max_sector_pct"}`) : ms.binding_rule })}</>}</p>}
       </div>
 
       <section aria-label={t("exposureTitle")} className="space-y-2">

@@ -4022,6 +4022,16 @@
             "maxLength": 500,
             "title": "Reason"
           },
+          "reason_text": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TextCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "explanation": {
             "$ref": "#/components/schemas/Explanation"
           }
@@ -4669,6 +4679,16 @@
           "reason": {
             "type": "string",
             "title": "Reason"
+          },
+          "reason_text": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TextCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -6963,6 +6983,16 @@
           "reason": {
             "type": "string",
             "title": "Reason"
+          },
+          "reason_text": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TextCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -9798,6 +9828,23 @@
             "type": "string",
             "maxLength": 500,
             "title": "Reason"
+          },
+          "reason_text": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TextCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rules_text": {
+            "items": {
+              "$ref": "#/components/schemas/TextCode"
+            },
+            "type": "array",
+            "title": "Rules Text"
           }
         },
         "type": "object",
@@ -10289,6 +10336,34 @@
           "linked"
         ],
         "title": "TelegramStatusOut"
+      },
+      "TextCode": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Params"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "TextCode",
+        "description": "A stable machine code plus its numbers, so the UI can write the sentence in its own language.\n\nIt sits beside the English text and never replaces it; `params` holds only numbers and short codes."
       },
       "TrackCallRow": {
         "properties": {

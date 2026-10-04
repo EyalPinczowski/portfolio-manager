@@ -13,7 +13,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.config import DISCLAIMER
-from app.scoring.exit_levels import ExitLevelsResult
+from app.scoring.exit_levels import ExitLevelsResult, TextCode
 from app.scoring.screener import SizeOut
 from app.signals.base import ChartAnnotation, Explanation
 
@@ -126,6 +126,7 @@ class ExposureCheck(BaseModel):
     breaks: bool | None = None
     headroom_ils: float | None = None  # most ILS that fits under this cap (null: no cap applies)
     reason: str
+    reason_text: TextCode | None = None  # the same reason as a code with params (additive)
 
 
 class RuleResult(BaseModel):
@@ -147,6 +148,7 @@ class MaxPositionSize(BaseModel):
     max_additional_usd: float | None = None
     binding_rule: str | None = None
     reason: str
+    reason_text: TextCode | None = None  # the same reason as a code with params (additive)
 
 
 class HeldPosition(BaseModel):

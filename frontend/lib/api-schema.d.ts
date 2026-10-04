@@ -1504,6 +1504,7 @@ export interface components {
             source: string;
             /** Reason */
             reason: string;
+            reason_text?: components["schemas"]["TextCode"] | null;
             explanation: components["schemas"]["Explanation"];
         };
         /** ExitLevelsResult */
@@ -1686,6 +1687,7 @@ export interface components {
             headroom_ils?: number | null;
             /** Reason */
             reason: string;
+            reason_text?: components["schemas"]["TextCode"] | null;
         };
         /** ExposureItem */
         ExposureItem: {
@@ -2413,6 +2415,7 @@ export interface components {
             binding_rule?: string | null;
             /** Reason */
             reason: string;
+            reason_text?: components["schemas"]["TextCode"] | null;
         };
         /** MeOut */
         MeOut: {
@@ -3288,6 +3291,9 @@ export interface components {
             rules: string[];
             /** Reason */
             reason: string;
+            reason_text?: components["schemas"]["TextCode"] | null;
+            /** Rules Text */
+            rules_text?: components["schemas"]["TextCode"][];
         };
         /** SizeOut */
         SizeOut: {
@@ -3450,6 +3456,20 @@ export interface components {
             linked: boolean;
             /** Bot Username */
             bot_username?: string | null;
+        };
+        /**
+         * TextCode
+         * @description A stable machine code plus its numbers, so the UI can write the sentence in its own language.
+         *
+         *     It sits beside the English text and never replaces it; `params` holds only numbers and short codes.
+         */
+        TextCode: {
+            /** Code */
+            code: string;
+            /** Params */
+            params?: {
+                [key: string]: string | number;
+            };
         };
         /** TrackCallRow */
         TrackCallRow: {

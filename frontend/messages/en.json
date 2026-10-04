@@ -1431,5 +1431,29 @@
     "personalUse": "Personal, non-commercial use only.",
     "perShareLabel": "Per share",
     "forHoldingLabel": "For your holding"
+  },
+  "serverText": {
+    "stop_atr": "Stop at {mult} x ATR({period}, {timeframe}) below the price ({pct}%).",
+    "stop_beyond_atr": "Stop at the {source} {level}, which sits beyond the {mult} x ATR distance so normal noise does not reach it.",
+    "stop_chart_no_atr": "Stop at the {source} {level} (no ATR range for this horizon).",
+    "stop_max_loss_only": "No chart level or ATR was available, so the stop is your own {max_loss_pct}% max loss per position.",
+    "stop_saved": "Kept your saved stop at {level}: a stop is only ever raised, never lowered.",
+    "trailing_moved": "Trailing stop {level}: highest high {highest} minus {mult} x ATR ({profile} profile trail); it only moves up.",
+    "trailing_start": "Trailing stop starts at the stop {level} and rises as the price makes new highs.",
+    "breakeven": "The price is {gain_atr} ATR above your cost {cost} ({profile} profile suggests this from {from_atr} ATR): moving the stop up to your cost means this position can no longer lose money.",
+    "take_profit": "TP{index} at {level}: {source}; R:R {rr}.",
+    "size_fits": "The stop and the position size fit your risk limits.",
+    "size_reduce": "The stop stays at {stop}; it is not moved closer to fit your limits. To fit them, keep about {keep_pct}% of the current shares ({suggested} of {current}).",
+    "size_rule_max_loss": "Max loss per position {limit_pct}%: the stop is {distance_pct}% away, so about {fit_pct}% of the shares fit.",
+    "size_rule_portfolio_risk": "Risk per trade {limit_pct}% of the portfolio: losing {loss_ils} ILS at the stop is more than {allowed_ils} ILS, so about {fit_pct}% of the shares fit.",
+    "exposure_now": "{label} is {before_pct}% of the portfolio now (limit {limit_pct}%).",
+    "exposure_breaks": "{label} would go from {before_pct}% to {after_pct}%, above your {limit_pct}% limit.",
+    "exposure_fits": "{label} would go from {before_pct}% to {after_pct}% (limit {limit_pct}%).",
+    "max_size_binding": "At most {max_additional_ils} ILS more fits under your limits.",
+    "max_size_no_limit": "No concentration limit binds.",
+    "max_size_empty_book": "The portfolio is empty, so concentration limits cannot be measured yet.",
+    "labelPosition": "This position",
+    "labelSector": "{name} sector",
+    "labelCountry": "{name} exposure"
   }
 }

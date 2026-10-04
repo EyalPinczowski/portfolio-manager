@@ -1431,5 +1431,29 @@
     "personalUse": "לשימוש אישי ולא מסחרי בלבד.",
     "perShareLabel": "למניה",
     "forHoldingLabel": "להחזקה שלכם"
+  },
+  "serverText": {
+    "stop_atr": "סטופ בפי {mult} ATR({period}, {timeframe}) מתחת למחיר ({pct}%).",
+    "stop_beyond_atr": "סטופ ב{source} {level}, מעבר למרחק של פי {mult} ATR, כך שרעש רגיל לא מגיע אליו.",
+    "stop_chart_no_atr": "סטופ ב{source} {level} (אין טווח ATR לטווח זה).",
+    "stop_max_loss_only": "לא היה זמין רמת גרף או ATR, ולכן הסטופ הוא ההפסד המרבי שהגדרת: {max_loss_pct}% לפוזיציה.",
+    "stop_saved": "הסטופ השמור שלך ב-{level} נשמר: סטופ רק עולה, אף פעם לא יורד.",
+    "trailing_moved": "סטופ נגרר {level}: השיא {highest} פחות פי {mult} ATR (גרירה של פרופיל {profile}); הוא נע רק כלפי מעלה.",
+    "trailing_start": "הסטופ הנגרר מתחיל בסטופ {level} ועולה כשהמחיר עושה שיאים חדשים.",
+    "breakeven": "המחיר גבוה ב-{gain_atr} ATR מהעלות שלך {cost} (פרופיל {profile} מציע זאת מ-{from_atr} ATR): העלאת הסטופ לעלות אומרת שהפוזיציה כבר לא יכולה להפסיד.",
+    "take_profit": "יעד {index} ב-{level}: {source}; סיכוי-סיכון {rr}.",
+    "size_fits": "הסטופ וגודל הפוזיציה מתאימים למגבלות הסיכון שלך.",
+    "size_reduce": "הסטופ נשאר ב-{stop} ואינו מוזז קרוב יותר כדי להתאים למגבלות. כדי להתאים להן, השאר כ-{keep_pct}% מהמניות הנוכחיות ({suggested} מתוך {current}).",
+    "size_rule_max_loss": "הפסד מרבי לפוזיציה {limit_pct}%: הסטופ במרחק {distance_pct}%, ולכן מתאימות כ-{fit_pct}% מהמניות.",
+    "size_rule_portfolio_risk": "סיכון לעסקה {limit_pct}% מהתיק: הפסד של {loss_ils} ש\"ח בסטופ גבוה מ-{allowed_ils} ש\"ח, ולכן מתאימות כ-{fit_pct}% מהמניות.",
+    "exposure_now": "{label} הם {before_pct}% מהתיק כעת (מגבלה {limit_pct}%).",
+    "exposure_breaks": "{label} יעברו מ-{before_pct}% ל-{after_pct}%, מעל המגבלה שלך ({limit_pct}%).",
+    "exposure_fits": "{label} יעברו מ-{before_pct}% ל-{after_pct}% (מגבלה {limit_pct}%).",
+    "max_size_binding": "עד {max_additional_ils} ש\"ח נוספים מתאימים למגבלות שלך.",
+    "max_size_no_limit": "אף מגבלת ריכוז אינה מחייבת.",
+    "max_size_empty_book": "התיק ריק, ולכן עוד אי אפשר למדוד מגבלות ריכוז.",
+    "labelPosition": "הפוזיציה הזו",
+    "labelSector": "מגזר {name}",
+    "labelCountry": "חשיפה ל{name}"
   }
 }

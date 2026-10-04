@@ -36,3 +36,15 @@ export function matchStopReason(text: string): ReasonMatch | null {
   if (/^Follows the highest high; it only moves up\.?$/i.test(text.trim())) return { key: "trailing", values: {} };
   return null;
 }
+
+/** A stable machine code plus numbers, sent by the backend beside its English sentence (`TextCode`). */
+export type TextCodeIn = { code: string; params?: Record<string, string | number> | null };
+
+/** Codes with a message under `serverText`. A code the UI does not know falls back to the English text. */
+export const SERVER_TEXT_CODES = [
+  "stop_atr", "stop_beyond_atr", "stop_chart_no_atr", "stop_max_loss_only", "stop_saved", "trailing_moved", "trailing_start",
+  "breakeven", "take_profit", "size_fits", "size_reduce", "size_rule_max_loss", "size_rule_portfolio_risk",
+  "exposure_now", "exposure_breaks", "exposure_fits", "max_size_binding", "max_size_no_limit", "max_size_empty_book",
+] as const;
+const CODE_SET = new Set<string>(SERVER_TEXT_CODES);
+export const isKnownTextCode = (tc: TextCodeIn | null | undefined): tc is TextCodeIn => !!tc && CODE_SET.has(tc.code);
