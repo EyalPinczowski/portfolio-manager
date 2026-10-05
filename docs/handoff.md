@@ -38,11 +38,8 @@ Queue item 3 is done. Next is queue item 4 (Postgres run, Opus review, reminders
    - Hebrew answers in Ask/committee templates (they are English-only now);
    - default portfolio (`default_portfolio_id`), screenshot reminder days (`screenshot_reminder_days`) and the backend app version in `/api/health` (these need new backend fields).
 
-## Awaiting the user's approval (do not treat as approved)
-- Paper-resolver config: `paper_resolve_interval_minutes`=60, `paper_resolve_batch_size`=200, `paper_resolve_max_gap_days`=5.
-- Committee and ask config: `committee_role_k`, `committee_cio_max_adjustment` (15), `committee_max_claims` (8), `ask_max_tools_per_question`, `ask_max_holdings_rows`, `ask_history_retention_days` (90), `ask_max_question_chars` (500), `ask_max_conversations_per_user` (100), `ask_rate_limit_per_hour` (60), `committee_rate_limit_per_hour` (20). Explained to the user on 2026-10-05; no answer yet.
-
 ## Approved decisions (keep)
+- Approved 2026-10-05 ("Approve", reply to the explained list): paper resolver 60 min / 200 per run / 5 days gap; committee `committee_role_k`, CIO cap 15, max 8 claims, 20 runs/hour; Ask 4 tools per question, 30 holdings rows, 500 chars, 100 conversations, 60 questions/hour, 90-day history. Same message: keep the free-tier API and token use low (cache-stable prompts, usage view).
 - RAG: chunk 300 tokens with 40 overlap, `rag_max_k` 12.
 - Role budgets: company_profile 2500, news 2000, bear 1500, cio 2000, ask_portfolio 2000.
 - TTLs: news 14d, transcript 120d, filing 400d, profile 365d.
