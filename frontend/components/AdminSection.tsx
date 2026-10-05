@@ -111,9 +111,10 @@ function AiUsage() {
         <li key={p.provider} className="px-4 py-3 text-sm" data-testid="ai-usage-row">
           <p className="font-semibold" dir="ltr">{p.provider}</p>
           <p className="text-caption text-muted">{t("row", { requests: n(p.requests), budget: n(data.daily_budget), tokens: n(p.tokens), fallbacks: n(p.fallbacks) })}</p>
+          {data.tokens_in_out_recorded && <p className="text-caption text-muted">{t("detail", { input: n(p.tokens_in), output: n(p.tokens_out), cached: n(p.tokens_cached), hits: n(p.cache_hits) })}</p>}
         </li>
       ))}
-      <li className="px-4 py-3 text-caption text-muted">{t("notRecorded")}</li>
+      {!(data.tokens_in_out_recorded && data.cache_hits_recorded) && <li className="px-4 py-3 text-caption text-muted">{t("notRecorded")}</li>}
     </SettingsGroup>
   );
 }

@@ -174,3 +174,8 @@ Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after a
 - Committee caps: 5 runs an hour and 10 a day per user; every tap counts; the screen shows runs left today and a reset message. Config: `committee_rate_limit_per_hour`, `committee_runs_per_user_per_day`.
 - Verified: ruff, mypy, pytest, frontend lint/tsc/vitest/build, mock e2e (light and dark), real-backend e2e. `docs/analysis-committee.md` "Cost and limits" updated with the real numbers.
 - Next: queue item 4 (Postgres run, Opus review, deploy host).
+
+## 2026-10-05 (token-saving build)
+- Backend (e9c2629): real token use recorded (in/out/cached, cache hits; migration 0017), unchanged news reused up to 7 days, cross-provider cache reads, per-role output caps, strict Groq JSON, Groq tokens-per-minute guard, optional per-role model routing (`llm_role_models`, empty = off), fewer passages (CIO gets reports only), Groq fallback list fixed.
+- Frontend: admin "AI usage today" card shows the token split and cache hits.
+- Caveat: evals use a mock LLM, so real recall of cited facts is not measured; check the admin card after live use, and Gemini free limits stay unverified (see docs/reviews/token-saving-2026-10-05.md).

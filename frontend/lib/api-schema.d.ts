@@ -2634,6 +2634,14 @@ export interface components {
             tokens: number;
             /** Fallbacks */
             fallbacks: number;
+            /** Tokens In */
+            tokens_in: number;
+            /** Tokens Out */
+            tokens_out: number;
+            /** Tokens Cached */
+            tokens_cached: number;
+            /** Cache Hits */
+            cache_hits: number;
         };
         /** LlmProviderUsage */
         LlmProviderUsage: {
@@ -2645,6 +2653,14 @@ export interface components {
             tokens: number;
             /** Fallbacks */
             fallbacks: number;
+            /** Tokens In */
+            tokens_in: number;
+            /** Tokens Out */
+            tokens_out: number;
+            /** Tokens Cached */
+            tokens_cached: number;
+            /** Cache Hits */
+            cache_hits: number;
             /** Models */
             models: components["schemas"]["LlmModelUsage"][];
         };

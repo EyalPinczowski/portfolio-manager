@@ -1162,7 +1162,8 @@
         "none": "No AI requests today.",
         "row": "{requests} of {budget} requests · {tokens} tokens · {fallbacks} fallbacks",
         "notRecorded": "Input and output tokens and cache hits are not recorded.",
-        "loadError": "Could not load AI usage."
+        "loadError": "Could not load AI usage.",
+        "detail": "Input {input} · output {output} · cached {cached} tokens · {hits} answers from saved results"
       }
     },
     "hub": {

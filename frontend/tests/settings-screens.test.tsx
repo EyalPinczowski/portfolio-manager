@@ -326,12 +326,13 @@ describe("admin", () => {
     expect(screen.queryByText("dana@example.com")).toBeNull();
   });
 
-  it("admins see today's AI usage totals and that tokens and cache hits are not recorded", async () => {
+  it("admins see today's AI usage totals and the token split and cache hits", async () => {
     wrap("en", <AdminScreen />);
     const row = await screen.findByTestId("ai-usage-row");
     expect(row).toHaveTextContent("gemini");
     expect(row).toHaveTextContent("120 of 900 requests");
-    expect(screen.getByText(en.prefs.admin.aiUsage.notRecorded)).toBeInTheDocument();
+    expect(row).toHaveTextContent("Input 70,000 · output 14,000 · cached 9,000 tokens · 45 answers from saved results");
+    expect(screen.queryByText(en.prefs.admin.aiUsage.notRecorded)).toBeNull();
   });
 
   it("admins create, copy and revoke invites, and disable then enable a user, without any portfolio data", async () => {
