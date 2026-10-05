@@ -3,6 +3,7 @@ the last tests, which use one when TEST_POSTGRES_URL / DATABASE_URL points at Po
 
 from __future__ import annotations
 
+import importlib.util
 from typing import Any
 
 import pytest
@@ -11,6 +12,11 @@ from sqlalchemy import text
 from app.config import Settings
 from app.db import make_engine
 from tests.pgfixtures import pg_url  # noqa: F401  (fixture)
+
+# The SQLite CI job installs only the dev extra; the Postgres job (and prod image) has the driver.
+needs_psycopg = pytest.mark.skipif(
+    importlib.util.find_spec("psycopg") is None, reason="psycopg (postgres extra) not installed"
+)
 
 
 def _s(**kw: Any) -> Settings:
@@ -25,6 +31,7 @@ def test_pool_defaults_fit_a_512mb_host() -> None:
     assert s.database_prepare_threshold == 5
 
 
+@needs_psycopg
 def test_postgres_engine_uses_the_configured_pool() -> None:
     eng = make_engine(
         "postgresql+psycopg://u:p@h:5432/d",
@@ -53,6 +60,7 @@ def _connect_kwargs(engine: Any, monkeypatch: pytest.MonkeyPatch) -> dict[str, A
     return seen
 
 
+@needs_psycopg
 def test_prepared_statements_can_be_disabled_for_the_transaction_pooler(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -65,6 +73,7 @@ def test_prepared_statements_can_be_disabled_for_the_transaction_pooler(
     assert eng.url.drivername == "postgresql+psycopg"  # bare `postgresql://` gets the right driver
 
 
+@needs_psycopg
 def test_prepare_threshold_default_keeps_psycopg_behaviour(monkeypatch: pytest.MonkeyPatch) -> None:
     eng = make_engine("postgresql+psycopg://u:p@h/d", _s())
     kwargs = _connect_kwargs(eng, monkeypatch)
