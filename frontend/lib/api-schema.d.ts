@@ -1410,6 +1410,19 @@ export interface components {
             /** Is Fresh */
             is_fresh: boolean;
         };
+        /** Calibration */
+        Calibration: {
+            /** Count */
+            count: number;
+            /** Brier */
+            brier: number;
+            /** Base Rate */
+            base_rate: number;
+            /** Brier Baseline */
+            brier_baseline: number;
+            /** Bins */
+            bins: components["schemas"]["ReliabilityBin"][];
+        };
         /** Candidate */
         Candidate: {
             /** Rank */
@@ -3136,6 +3149,19 @@ export interface components {
             /** End */
             end: string;
         };
+        /** ReliabilityBin */
+        ReliabilityBin: {
+            /** Low */
+            low: number;
+            /** High */
+            high: number;
+            /** Count */
+            count: number;
+            /** Mean Predicted */
+            mean_predicted: number;
+            /** Observed Rate */
+            observed_rate: number;
+        };
         /** ReviewRow */
         ReviewRow: {
             /** Holding Id */
@@ -4080,6 +4106,7 @@ export interface components {
             /** Benchmarks */
             benchmarks: components["schemas"]["BenchmarkAggregate"][];
             gate: components["schemas"]["GateProgress"];
+            calibration?: components["schemas"]["Calibration"] | null;
             /** Methodology */
             methodology: string[];
             /** Rows */

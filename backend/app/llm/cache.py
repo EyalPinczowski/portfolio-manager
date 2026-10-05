@@ -111,12 +111,13 @@ def put_cached(
     response: str,
     now: datetime | None = None,
     session_factory: SessionFactory | None = None,
+    scope: str | None = None,
 ) -> None:
     with (session_factory or _default_factory)() as db:
         db.merge(
             LlmCache(
                 key=key, role=role, provider=provider, model=model, response=response,
-                created_at=now or utcnow(),
+                scope=scope, created_at=now or utcnow(),
             )
         )  # fmt: skip
         try:

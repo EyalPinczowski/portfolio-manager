@@ -117,6 +117,12 @@ describe("Meitav Trade layout, behaviours", () => {
     expect(meta[0].quantity_uncertain).toBe(true);
   });
 
+  it.each(["–", "—", "‐", "‑", "−"])("a %s glued to the P&L percent is a minus (cost = price / (1 - 8.37%))", (dash) => {
+    const { rows, meta } = parseScreenshotText(card(["NASDAQ • ACME", "257.49", "Acme Corp", "-0.55%", `${dash}8.37% ↓ $3,089.88`]));
+    expect(meta[0].pnl_pct).toBe(-8.37);
+    expect(rows[0].cost).toBeCloseTo(257.49 / (1 - 0.0837), 3);
+  });
+
   it("flags a fractional quantity instead of rounding it silently", () => {
     const { rows, meta } = parseScreenshotText(card(["NASDAQ • ACME 100.00", "Acme Corp", "-0.5%", "-1.0% ↓ $250.00"]));
     expect(rows[0].quantity).toBe(2.5);

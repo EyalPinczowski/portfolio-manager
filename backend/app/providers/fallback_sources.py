@@ -29,6 +29,7 @@ import pandas as pd
 from app.config import QuoteSourceLimits, Settings, get_settings
 from app.providers.base import Market, Quote, market_of_symbol
 from app.providers.cache import TTLCache
+from app.scheduler.calendars import session_close_utc_naive
 
 log = logging.getLogger(__name__)
 
@@ -293,6 +294,12 @@ def parse_daily_csv(text: str) -> pd.DataFrame | None:
     return None if df.empty else df[["Open", "High", "Low", "Close", "Volume"]]
 
 
+def _close_utc_naive(market: str, day: date) -> datetime:
+    """The session close of `day` as naive UTC (calendar-based, DST-aware). A closed day (the
+    source reported a bar anyway) falls back to the end of that date."""
+    return session_close_utc_naive(market, day) or datetime.combine(day, dtime(23, 59))
+
+
 def _last_close_quote(symbol: str, df: pd.DataFrame, source: str) -> Quote | None:
     close = _positive(df["Close"].iloc[-1])
     if close is None:
@@ -304,7 +311,7 @@ def _last_close_quote(symbol: str, df: pd.DataFrame, source: str) -> Quote | Non
         price=close,
         currency="USD",
         change_pct=(close / prev - 1.0) * 100.0 if prev else None,
-        as_of=datetime.combine(day, dtime(21, 0)),  # US close, UTC-naive (date is what matters)
+        as_of=_close_utc_naive("US", day),
         source=source,
         basis="last_close",
     )
@@ -435,7 +442,7 @@ class _FxSource(FallbackSource):
             symbol=self.settings.fx_symbol,
             price=price,
             currency="ILS",
-            as_of=datetime.combine(day, dtime(15, 0)),
+            as_of=_close_utc_naive("US", day),  # FX reference: the US session close
             source=self.name,
             basis="last_close",
         )

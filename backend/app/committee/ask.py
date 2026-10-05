@@ -151,7 +151,12 @@ class PortfolioTools:
         ps = self._portfolios(portfolio_id)
         if not ps:
             return {"empty": True, "note": "no portfolio yet"}
-        full = build_summary(self._db, ps, self._history, self._s)
+        from app.models import User
+        from app.usersettings import effective
+
+        user = self._db.get(User, self._uid)
+        wsd = effective(self._db, user, self._s).week_start_day if user else None
+        full = build_summary(self._db, ps, self._history, self._s, week_start_day=wsd)
         keep = ("value", "day_pnl", "week_pnl", "month_pnl", "since_start_pnl", "as_of")
         out: dict[str, Any] = json.loads(json.dumps({k: full[k] for k in keep}, default=str))
         return out

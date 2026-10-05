@@ -7,6 +7,7 @@
   "assets": {
     "directory": "./out",
     "binding": "ASSETS",
+    "not_found_handling": "404-page", // serve out/404.html for unknown paths (the Worker would return an empty 404)
     "run_worker_first": ["/api/*"]
   }
 }

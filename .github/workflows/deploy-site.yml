@@ -22,9 +22,6 @@ jobs:
   deploy:
     name: Build and deploy to Cloudflare
     runs-on: ubuntu-latest
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     defaults:
       run:
         working-directory: frontend
@@ -32,6 +29,10 @@ jobs:
       - name: Check secrets
         id: gate
         working-directory: .
+        # Secrets are exposed only to the steps that need them (this gate and the deploy), never to npm scripts.
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "Cloudflare secrets are not set; skipping deploy."
@@ -49,9 +50,16 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      # No lifecycle scripts from dependencies; the OCR assets are copied by the explicit step below (build repeats it).
+      - run: npm ci --ignore-scripts
+        if: steps.gate.outputs.go == 'true'
+      - run: npm run assets:ocr
         if: steps.gate.outputs.go == 'true'
       - run: npm run build
         if: steps.gate.outputs.go == 'true'
-      - run: npx wrangler deploy
+      # wrangler is a pinned devDependency (frontend/package.json); npx uses the local copy, never a download.
+      - run: npx --no-install wrangler deploy
         if: steps.gate.outputs.go == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

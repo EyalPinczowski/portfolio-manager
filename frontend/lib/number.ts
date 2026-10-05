@@ -11,12 +11,15 @@
  * Returns null for empty or unparseable input (never NaN).
  */
 export function parseLocaleNumber(input: string): number | null {
-  let s = input.trim().replace(/[\s  ₪$€%]/g, "");
+  // Bidi marks (LRM/RLM/ALM, embeddings, isolates) come with text pasted from Hebrew broker pages.
+  let s = input.replace(/[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/g, "").trim().replace(/[\s  ₪$€%]/g, "");
   if (s === "") return null;
   let neg = false;
   if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
   if (s.startsWith("-") || s.startsWith("−")) { neg = !neg; s = s.slice(1); }
   else if (s.startsWith("+")) s = s.slice(1);
+  else if (/[-−]$/.test(s)) { neg = !neg; s = s.slice(0, -1); } // one trailing minus: "1,234.50-"
+  else if (/[-−]$/.test(s)) { neg = !neg; s = s.slice(0, -1); } // trailing minus: "1,234.50-"
   if (!/^[\d.,]+$/.test(s) || !/\d/.test(s)) return null;
 
   const commas = (s.match(/,/g) ?? []).length;

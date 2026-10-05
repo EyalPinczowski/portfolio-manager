@@ -316,6 +316,45 @@ describe("import page", () => {
     };
     const confirmBtn = () => screen.getByRole("button", { name: "Confirm import" });
 
+    it("currency_changed blocks confirm until the user ticks 'Currency checked'; the flag is removed from the patched row", async () => {
+      await load([base(0, "ACME", { flags: ["currency_changed"] })]);
+      expect(confirmBtn()).toBeDisabled();
+      expect(screen.getByText(/tick "Currency checked"/)).toBeInTheDocument();
+      const patch = vi.spyOn(api, "patchImport");
+      fireEvent.click(screen.getByRole("checkbox", { name: /Currency checked 1/ }));
+      expect(confirmBtn()).toBeEnabled();
+      fireEvent.click(confirmBtn());
+      await waitFor(() => expect(patch).toHaveBeenCalled());
+      const sent = patch.mock.calls[0][1] as { rows: ImportRow[] };
+      expect(sent.rows[0].flags).not.toContain("currency_changed");
+    });
+
+    it("the per-row unit select changes unit and currency together", async () => {
+      await load([base(0, "ACME")]);
+      fireEvent.change(screen.getByLabelText("Currency 1"), { target: { value: "agorot" } });
+      const patch = vi.spyOn(api, "patchImport");
+      fireEvent.click(confirmBtn());
+      await waitFor(() => expect(patch).toHaveBeenCalled());
+      expect((patch.mock.calls[0][1] as { rows: ImportRow[] }).rows[0]).toMatchObject({ unit: "agorot", currency: "ILS" });
+    });
+
+    it("the cost column is editable; editing drops cost_inferred", async () => {
+      await load([base(0, "ACME", { cost: 120, flags: ["cost_inferred"] })]);
+      expect(screen.getByLabelText("Avg cost 1")).toHaveValue("120");
+      fireEvent.change(screen.getByLabelText("Avg cost 1"), { target: { value: "95.5" } });
+      const patch = vi.spyOn(api, "patchImport");
+      fireEvent.click(confirmBtn());
+      await waitFor(() => expect(patch).toHaveBeenCalled());
+      expect((patch.mock.calls[0][1] as { rows: ImportRow[] }).rows[0]).toMatchObject({ cost: 95.5, flags: [] });
+    });
+
+    it("confirm 422 about the currency gets its own message, not 'not matched'", async () => {
+      await load([base(0, "ACME")]);
+      vi.spyOn(api, "confirmImport").mockRejectedValueOnce(new ApiError(422, "Row 1 ('ACME') is shown in a different currency than the security's own"));
+      fireEvent.click(confirmBtn());
+      expect(await screen.findByRole("alert")).toHaveTextContent(/different currency/);
+    });
+
     it("quantity_uncertain (server flag only, no client meta) blocks confirm until a quantity is typed", async () => {
       await load([base(0, "ACME"), base(1, "ZZZW", { quantity: null, flags: ["quantity_uncertain", "missing_fields"] })]);
       expect(screen.getByTestId("note-quantity-uncertain")).toBeInTheDocument();

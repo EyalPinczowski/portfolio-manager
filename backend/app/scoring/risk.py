@@ -166,8 +166,10 @@ def merge_dual_listings(positions: list[Position]) -> list[Position]:
         else:
             existing.value_ils += p.value_ils
             existing.symbol = f"{existing.symbol}+{p.symbol}"
-            if existing.max_position_pct is None:
-                existing.max_position_pct = p.max_position_pct
+            overrides = [
+                v for v in (existing.max_position_pct, p.max_position_pct) if v is not None
+            ]
+            existing.max_position_pct = min(overrides) if overrides else None  # strictest wins
     return out
 
 

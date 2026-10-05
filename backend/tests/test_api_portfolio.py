@@ -409,7 +409,11 @@ def test_import_end_to_end_with_tracking_and_diff(
     assert draft["proposed_changes"] == []  # first import is the baseline
     rows = draft["rows"]
     assert [r["symbol"] for r in rows] == ["TEVA.TA", "LUMI.TA"]
-    assert rows[0]["unit"] == "agorot" and rows[0]["flags"] == [] and rows[0]["matched_name"]
+    assert (
+        rows[0]["unit"] == "agorot"
+        and rows[0]["flags"] == ["cost_inferred"]
+        and rows[0]["matched_name"]
+    )
     assert set(rows[0]) >= {
         "index",
         "name",

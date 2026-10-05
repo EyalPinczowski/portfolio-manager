@@ -113,10 +113,14 @@ class _Block:
     lines: list[str] = field(default_factory=list)
 
 
+# OCR often prints a minus as an en/em dash or a Unicode hyphen: a dash glued to a digit or % is a minus.
+_MINUS_RE = re.compile(r"(?<!\d)[−–—‐‑](?=[\d%])")
+
+
 def _to_blocks(text: str) -> list[_Block]:
     blocks: list[_Block] = []
     for raw in _lines(text):
-        line = raw.replace("−", "-").strip()
+        line = _MINUS_RE.sub("-", raw.replace("−", "-")).strip()
         if not line:
             continue
         anchors = find_anchors(line)

@@ -311,6 +311,7 @@ def structured_call[T: BaseModel](
                 value.model_dump_json(),
                 now,
                 session_factory,
+                scope=cache_scope,
             )
             return StructuredResult(
                 value=value,

@@ -6,7 +6,7 @@
  *  - `\w` is Unicode-aware in Python 3 (Hebrew letters count); JS `\w` is ASCII, so `[\p{L}\p{N}_]` is used.
  *  - lines that mention an account ("חשבון", "account") are dropped and 9+ digit runs are removed (scrubIdentifiers).
  */
-import { IMPORT_VALUE_TOLERANCE, OCR_DROP_DIGITS_MIN, OCR_ID_DIGITS_MIN } from "../config";
+import { COST_PLAUSIBLE_MAX, COST_PLAUSIBLE_MIN, IMPORT_VALUE_TOLERANCE, OCR_DROP_DIGITS_MIN, OCR_ID_DIGITS_MIN } from "../config";
 import type { ImportRow } from "../api";
 
 type Unit = ImportRow["unit"];
@@ -109,6 +109,15 @@ export function parseLine(line: string, agorotGlobal: boolean, tol: number = IMP
     if (used.has(i)) continue;
     if (isIdLike(rawTokens[i]) && row.tase_number === null) row.tase_number = rawTokens[i].trim();
     else if (row.cost === null && nums[i] > 0) row.cost = nums[i];
+  }
+  // A leftover number is only a guess (it may be a P&L or a total-cost column): keep it as a per-unit cost
+  // only when it is plausible next to the price, and say it was inferred so the server never overwrites a
+  // holding's existing average cost with it.
+  if (row.cost !== null && row.cost !== undefined) {
+    const { price, cost } = row;
+    const ok = typeof price === "number" && price > 0 && cost >= COST_PLAUSIBLE_MIN * price && cost <= COST_PLAUSIBLE_MAX * price;
+    if (ok) row.flags = [...row.flags, "cost_inferred"];
+    else row.cost = null;
   }
   let clean = line.replace(numberRe(), " ").replace(/[₪$%|]/g, " ");
   for (const m of AGOROT_MARKERS) clean = clean.replace(new RegExp(escapeRe(m), "gi"), " ");

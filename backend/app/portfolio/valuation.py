@@ -459,6 +459,16 @@ def take_snapshot(
     return snap
 
 
+def _snapshot_flow_stale(db: Session, portfolio_id: int, snap: PortfolioSnapshot) -> bool:
+    prev = db.exec(
+        select(PortfolioSnapshot)
+        .where(PortfolioSnapshot.portfolio_id == portfolio_id, PortfolioSnapshot.date < snap.date)
+        .order_by(col(PortfolioSnapshot.date).desc())
+    ).first()
+    after = prev.date if prev is not None else snap.date - timedelta(days=1)
+    return abs(net_flow_between(db, portfolio_id, after, snap.date) - snap.net_flow_ils) > 1e-9
+
+
 def take_catchup_snapshots(
     db: Session, today: date | None = None, settings: Settings | None = None
 ) -> int:
@@ -472,12 +482,17 @@ def take_catchup_snapshots(
     for p in db.exec(select(Portfolio)).all():
         if p.id is None or p.tracking_started_at is None or day < p.tracking_started_at:
             continue
-        exists = db.exec(
-            select(PortfolioSnapshot).where(
-                PortfolioSnapshot.portfolio_id == p.id, PortfolioSnapshot.date >= day
-            )
+        newest = db.exec(
+            select(PortfolioSnapshot)
+            .where(PortfolioSnapshot.portfolio_id == p.id)
+            .order_by(col(PortfolioSnapshot.date).desc())
         ).first()
-        if exists is None and take_snapshot(db, p, day, settings) is not None:
+        # A baseline row dated `day` (the tracking start day) is also redone when flows were booked
+        # on that day after it was taken and the 23:59 job was missed.
+        redo = newest is not None and newest.date == day and _snapshot_flow_stale(db, p.id, newest)
+        if (newest is None or newest.date < day or redo) and (
+            take_snapshot(db, p, day, settings) is not None
+        ):
             n += 1
     return n
 

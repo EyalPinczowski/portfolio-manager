@@ -62,8 +62,10 @@ def build_summary(
     history: HistoryProvider | None,
     settings: Settings | None = None,
     now: datetime | None = None,
+    week_start_day: str | None = None,
 ) -> dict[str, Any]:
     s = settings or get_settings()
+    wsd: str = s.week_start_day if week_start_day is None else week_start_day
     now_dt = now or utcnow()
     today = local_today(now_dt)
     valuations = [value_portfolio(db, p, s) for p in portfolios]
@@ -79,7 +81,7 @@ def build_summary(
         if len(portfolios) > 1
         else (per_portfolio[0] if per_portfolio else [])
     )
-    this_week = week_start(today, s.week_start_day)
+    this_week = week_start(today, wsd)
     week = period_result(points, this_week)
     month = period_result(points, month_start(today))
     since = period_result(points, None)
@@ -113,7 +115,7 @@ def build_summary(
         "screenshot_update_stale": any(update_is_stale(p, s, now_dt) for p in portfolios),
         "weekly_bars": [
             {"week_start": k, "pnl_ils": round(r.pnl_ils, 2), "pct": round(r.pct, 4)}
-            for k, r in grouped_bars(points, lambda d: week_start(d, s.week_start_day), 12)
+            for k, r in grouped_bars(points, lambda d: week_start(d, wsd), 12)
         ],
         "monthly_bars": [
             {"month": k.strftime("%Y-%m"), "pnl_ils": round(r.pnl_ils, 2), "pct": round(r.pct, 4)}

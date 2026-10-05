@@ -6,10 +6,14 @@ import { formatDate, mainFirst } from "@/lib/format";
 import { palette, PnlBarChart, SinceStartChart } from "./charts";
 import { Link } from "@/i18n/navigation";
 import { PnlText } from "./Pnl";
+import { useSettings } from "@/lib/hooks";
 
 export function PnlStrip({ s }: { s: Summary }) {
   const t = useTranslations("pnl");
+  const days = useTranslations("prefs.portfolio.days");
   const locale = useLocale();
+  const { data: settings } = useSettings();
+  const day = days(settings?.week_start_day === "monday" ? "monday" : "sunday");
   const weekly = useMemo(() => s.weekly_bars.map((b) => ({ time: b.week_start, value: b.pct })), [s.weekly_bars]);
   const monthly = useMemo(() => s.monthly_bars.map((b) => ({ time: `${b.month}-01`, value: b.pct })), [s.monthly_bars]);
   const series = useMemo(() => s.since_start_series.map((p) => ({ time: p.date, you: p.pct, sp500: p.sp500_pct, ta125: p.ta125_pct })), [s.since_start_series]);
@@ -17,7 +21,7 @@ export function PnlStrip({ s }: { s: Summary }) {
   const sinceLabel = s.since_start_date ? t("sinceStartChart", { date: formatDate(s.since_start_date) }) : t("sinceStartChartNoDate");
   const hasSp = s.since_start_series.some((p) => typeof p.sp500_pct === "number");
   const hasTa = s.since_start_series.some((p) => typeof p.ta125_pct === "number");
-  const weekLabel = s.week_start ? t("weekFrom", { date: formatDate(s.week_start) }) : t("weekSundayStart");
+  const weekLabel = s.week_start ? t("weekFrom", { day, date: formatDate(s.week_start) }) : t("weekStartsOn", { day });
   const pal = palette();
   const tile = (label: string, p: Summary["week_pnl"], sub?: string) => (
     <div className="card">
@@ -36,7 +40,7 @@ export function PnlStrip({ s }: { s: Summary }) {
       <div className="grid gap-3 md:grid-cols-2">
         <div className="card">
           <h3 className="mb-2 text-sm font-semibold">{t("weekly")}</h3>
-          <p className="mb-2 text-caption text-muted">{t("weeksStartSunday")}</p>
+          <p className="mb-2 text-caption text-muted">{t("weeksStartOn", { day })}</p>
           <PnlBarChart data={weekly} label={t("weekly")} />
         </div>
         <div className="card">

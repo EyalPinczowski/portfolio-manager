@@ -236,7 +236,13 @@ def client_ip(request: Request, settings: Settings) -> str:
             parsed = _first_ip(request.headers.get(header))
             if parsed:
                 return parsed
-    if settings.fallback_ip_header:
+    # The fallback header is a plain client-controlled header unless the host overwrites it, so it
+    # is trusted only when the TCP peer is inside an explicitly configured proxy network.
+    if (
+        settings.fallback_ip_header
+        and settings.trusted_proxy_cidrs
+        and _peer_allowed(raw_peer, settings)
+    ):
         parsed = _first_ip(request.headers.get(settings.fallback_ip_header))
         if parsed:
             return parsed

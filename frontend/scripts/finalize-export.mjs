@@ -1,5 +1,6 @@
 // Post-build sanity check for the static export (`out/`). Fails the build if something a static host needs is missing.
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 
 const out = new URL("../out/", import.meta.url).pathname;
@@ -25,4 +26,17 @@ if (big.length) { console.error(`files over the Cloudflare Pages 25 MiB limit: $
 const html = readFileSync(join(out, "he/index.html"), "utf8");
 const remote = [...html.matchAll(/(?:src|href)="(https?:\/\/[^"]+)"/g)].map((m) => m[1]);
 if (remote.length) { console.error(`he/index.html loads remote resources: ${remote.join(", ")}`); process.exit(1); }
+// Version the service worker cache per build: a hash of the hashed chunk names under _next/static.
+const names = [];
+(function walk(d) {
+  for (const n of readdirSync(d)) {
+    const p = join(d, n);
+    if (statSync(p).isDirectory()) walk(p);
+    else names.push(p.slice(out.length));
+  }
+})(join(out, "_next/static"));
+const build = createHash("sha256").update(names.sort().join("\n")).digest("hex").slice(0, 10);
+const sw = readFileSync(join(out, "sw.js"), "utf8");
+if (!sw.includes("__BUILD__")) { console.error("sw.js has no __BUILD__ placeholder"); process.exit(1); }
+writeFileSync(join(out, "sw.js"), sw.replaceAll("__BUILD__", build));
 console.log("static export OK");

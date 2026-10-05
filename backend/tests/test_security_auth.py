@@ -235,6 +235,7 @@ def test_untrusted_request_falls_back_to_the_host_header_then_the_peer() -> None
         trusted_proxy_header="X-Client-IP",
         proxy_shared_secret=SECRET,
         fallback_ip_header="CF-Connecting-IP",
+        trusted_proxy_cidrs=["10.0.0.0/8"],
     )
     req = fake_request("10.0.0.5", {"X-Client-IP": "6.6.6.6", "CF-Connecting-IP": "2a06:98c0::103"})
     # Render's own header, never the spoofed one; IPv6 is bucketed to its /64 (2.0-F item 4)

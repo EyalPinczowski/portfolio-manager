@@ -9,6 +9,7 @@ import sys
 from datetime import timedelta
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 
 from app.auth.passwords import hash_password
@@ -62,10 +63,16 @@ def bootstrap_admin(settings: Settings) -> str:
         return "not configured"
     try:
         create_admin(email, password)
+    except IntegrityError:  # a second instance booting at the same moment created it first
+        return "already exists"
     except ValueError as exc:
         if "already exists" in str(exc):
             return "already exists"
-        return "error: password too short"
+        if "at least" in str(exc):
+            return "error: password too short"
+        return "error: invalid settings"
+    except Exception as exc:  # never include the message: it could carry values
+        return f"error: {type(exc).__name__}"
     return "created"
 
 
@@ -154,8 +161,9 @@ def main(argv: list[str] | None = None) -> int:
         print("database schema is up to date")
         return 0
     if args.cmd == "bootstrap-admin":
-        print(f"bootstrap-admin: {bootstrap_admin(get_settings())}")
-        return 0
+        status = bootstrap_admin(get_settings())
+        print(f"bootstrap-admin: {status}")
+        return 1 if status.startswith("error") else 0
     if args.cmd == "check-config":
         report = check_config(get_settings(), probe=args.probe_models)
         for key, value in report.items():

@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { mutate } from "swr";
 import { api, ApiError, type ChangeType, type ImportDraft, type ImportRow, type ImportScope, type ProposedChange, type ProposedChangeType } from "@/lib/api";
 import { MAX_IMPORT_IMAGES, MAX_UPLOAD_BYTES } from "@/lib/config";
-import { conflictOf, effectiveFlags, needsConflictAck, needsQuantity, rowProblems, type RowProblem } from "@/lib/import-rows";
+import { conflictOf, currencyForUnit, effectiveFlags, needsConflictAck, needsQuantity, rowProblems, type RowProblem } from "@/lib/import-rows";
 import { formatDate, formatMoney, formatTime, formatWeight } from "@/lib/format";
 import { useHoldings, useMe, usePortfolios, useSummary } from "@/lib/hooks";
 import { groupRows, notInScreenshots, updateTotals, type RowGroup } from "@/lib/import-groups";
@@ -18,7 +18,7 @@ import { Modal } from "./Modal";
 import { NumberCell } from "./NumberCell";
 
 const TYPES: ChangeType[] = ["buy", "sell", "deposit", "withdrawal"];
-type ErrorKind = "generic" | "noRows" | "ocr" | "tooLarge" | "type" | "rate" | "confirm" | "serverOcr" | "unmatched" | "rows";
+type ErrorKind = "generic" | "noRows" | "ocr" | "tooLarge" | "type" | "rate" | "confirm" | "serverOcr" | "unmatched" | "currencyChanged" | "rows";
 
 function Body() {
   const t = useTranslations("import");
@@ -74,7 +74,7 @@ function Body() {
       if (e.status === 429) return setError({ kind: "rate", wait: e.retryAfter });
       // 503: the server has no OCR engine (and no cloud vision key). Point back at the on-device reader.
       if (e.status === 503) return setError({ kind: "serverOcr" });
-      if (e.status === 422 && fallback === "confirm") return setError({ kind: "unmatched" });
+      if (e.status === 422 && fallback === "confirm") return setError({ kind: /currency/i.test(e.message) ? "currencyChanged" : "unmatched" });
     }
     setError({ kind: fallback });
   };
@@ -146,6 +146,12 @@ function Body() {
       synced.current = d.rows; setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set());
     } catch (err) { fail(err, "confirm", next); }
   };
+  const setUnit = (i: number, unit: ImportRow["unit"]) => editRow(i, { unit, currency: currencyForUnit(unit) });
+  /** The user has looked at the currency/unit: drop the flag the server raised (it blocks confirming until then). */
+  const setCurrencyChecked = (i: number, checked: boolean) =>
+    setRows((rs) => rs.map((r) => (r.index !== i ? r : {
+      ...r, flags: checked ? r.flags.filter((f) => f !== "currency_changed") : r.flags.includes("currency_changed") ? r.flags : [...r.flags, "currency_changed"],
+    })));
   const symbolOf = (list: ImportRow[], i: number) => list.find((r) => r.index === i)?.symbol ?? null;
   const pickSymbol = (i: number, symbol: string) => void resync(rows.map((r) => (r.index === i ? { ...r, symbol } : r)));
   /** On leaving the symbol field: re-match only if it differs from what the server last saw. */
@@ -169,6 +175,7 @@ function Body() {
   const vanished = scope === "full" ? notInScreenshots(changes) : [];
   const missingSymbol = rows.some((r) => !r.symbol);
   const missingQuantity = rows.some((r) => needsQuantity(r, metaByIndex[r.index]));
+  const unconfirmedCurrency = rows.some((r) => r.flags.includes("currency_changed"));
   const unackedConflict = rows.some((r) => needsConflictAck(r, metaByIndex[r.index]) && !acked.has(r.index));
   const problemList = error?.kind === "rows" && problems.length > 0 && (
     <ul className="list-disc ps-5 text-sm text-loss">
@@ -188,10 +195,10 @@ function Body() {
 
   const renderTable = (draft: ImportDraft, list: ImportRow[]) => (
           <div className="relative overflow-x-auto">
-            <table className="w-full min-w-[56rem] text-sm">
+            <table className="w-full min-w-[64rem] text-sm">
               <thead className="bg-surface-2">
                 <tr>
-                  {(["name", "symbol", "quantity", "price", "value", "currency", "change", "changeAmount"] as const).map((k) => (
+                  {(["name", "symbol", "quantity", "price", "value", "cost", "currency", "change", "changeAmount"] as const).map((k) => (
                     <th key={k} scope="col" className="px-2 py-2 text-start font-semibold">{t(`col.${k}`)}</th>
                   ))}
                   <th scope="col" className="px-2 py-2"><span className="sr-only">{t("col.remove")}</span></th>
@@ -272,7 +279,20 @@ function Body() {
                       <td className="px-2 py-2"><NumberCell key={k("q")} label={`${t("col.quantity")} ${r.index + 1}`} className="w-24" required={mustEnterQty} value={r.quantity} onValue={(n, ok) => { editRow(r.index, { quantity: n }); cell(k("q"))(ok); }} /></td>
                       <td className="px-2 py-2"><NumberCell key={k("p")} label={`${t("col.price")} ${r.index + 1}`} className="w-24" value={r.price} onValue={(n, ok) => { editRow(r.index, { price: n }); cell(k("p"))(ok); }} /></td>
                       <td className="px-2 py-2"><NumberCell key={k("v")} label={`${t("col.value")} ${r.index + 1}`} className="w-28" value={r.value} onValue={(n, ok) => { editRow(r.index, { value: n }); cell(k("v"))(ok); }} /></td>
-                      <td className="px-2 py-2 tabular-nums" dir="ltr">{r.currency}{r.unit === "agorot" ? " (ag.)" : ""}</td>
+                      <td className="px-2 py-2"><NumberCell key={k("k")} label={`${t("col.cost")} ${r.index + 1}`} className="w-24" value={r.cost} onValue={(n, ok) => { setRows((rs) => rs.map((x) => (x.index === r.index ? { ...x, cost: n, flags: x.flags.filter((f) => f !== "cost_inferred") } : x))); cell(k("k"))(ok); }} /></td>
+                      <td className="px-2 py-2">
+                        <select aria-label={`${t("col.currency")} ${r.index + 1}`} className="input w-28" dir="ltr" value={r.unit} onChange={(e) => setUnit(r.index, e.target.value as ImportRow["unit"])}>
+                          <option value="ILS">{t("unit.ILS")}</option>
+                          <option value="agorot">{t("unit.agorot")}</option>
+                          <option value="USD">{t("unit.USD")}</option>
+                        </select>
+                        {r.flags.includes("currency_changed") && (
+                          <label className="mt-1 flex items-center gap-2 text-xs font-semibold">
+                            <input type="checkbox" checked={false} aria-label={`${t("currencyChecked")} ${r.index + 1}`} onChange={(e) => setCurrencyChecked(r.index, e.target.checked)} />
+                            {t("currencyChecked")}
+                          </label>
+                        )}
+                      </td>
                       <td className="px-2 py-2">
                         {ch && (
                           <select aria-label={`${t("col.change")} ${r.index + 1}`} className="input w-32" value={rowType ?? "buy"} onChange={(e) => editChange((x) => x.row_index === r.index, { type: e.target.value as ChangeType })}>
@@ -438,13 +458,14 @@ function Body() {
             </div>
           )}
           {missingQuantity && <p role="status" className="text-sm text-amber-900 dark:text-amber-200">{t("notes.quantityRequiredHint")}</p>}
+          {unconfirmedCurrency && <p role="status" className="text-sm text-amber-900 dark:text-amber-200">{t("notes.currencyRequiredHint")}</p>}
           {unackedConflict && <p role="status" className="text-sm text-amber-900 dark:text-amber-200">{t("notes.conflictRequiredHint")}</p>}
           {missingSymbol && <p role="status" className="text-sm text-amber-900 dark:text-amber-200">{t("error.unmatchedHint")}</p>}
           {bad.size > 0 && <p role="alert" className="text-sm text-loss">{t("error.badNumber")}</p>}
           {error && <p role="alert" className="text-sm text-loss">{errorText}</p>}
           {problemList}
           <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-primary" onClick={confirm} disabled={busy === "confirm" || bad.size > 0 || missingSymbol || missingQuantity || unackedConflict || rows.length === 0}>
+            <button type="button" className="btn-primary" onClick={confirm} disabled={busy === "confirm" || bad.size > 0 || missingSymbol || missingQuantity || unackedConflict || unconfirmedCurrency || rows.length === 0}>
               {busy === "confirm" ? t("confirming") : t("confirm")}
             </button>
             <button type="button" className="btn-secondary" onClick={() => { setDraft(null); setRows([]); setChanges([]); setError(null); }}>{c("cancel")}</button>

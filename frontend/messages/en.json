@@ -66,9 +66,9 @@
     "ta125": "TA-125",
     "up": "Gain",
     "down": "Loss",
-    "weekFrom": "Week starting Sunday {date}",
-    "weekSundayStart": "Weeks start on Sunday",
-    "weeksStartSunday": "Each bar is a week that starts on Sunday.",
+    "weekFrom": "Week starting {day} {date}",
+    "weekStartsOn": "Weeks start on {day}",
+    "weeksStartOn": "Each bar is a week that starts on {day}.",
     "sinceStartChartNoDate": "Since you started using the app",
     "noHistory": "History starts after your first import. Nothing to chart yet.",
     "postmortemLink": "Why is my return different from what I expected?"
@@ -237,6 +237,12 @@
       "unmatched": "Could not match this security",
       "unit_mismatch": "Price unit looks wrong (shekels or agorot?)"
     },
+    "unit": {
+      "ILS": "ILS (₪)",
+      "agorot": "Agorot (ag.)",
+      "USD": "USD ($)"
+    },
+    "currencyChecked": "Currency checked",
     "col": {
       "name": "Name",
       "symbol": "Symbol",
@@ -246,6 +252,7 @@
       "currency": "Currency",
       "change": "Change type",
       "changeAmount": "Change qty / amount",
+      "cost": "Avg cost",
       "remove": "Remove"
     },
     "changeType": {
@@ -281,6 +288,7 @@
       "confirm": "Could not save the import. Try again.",
       "badNumber": "Some numbers cannot be read. Fix the red fields before saving.",
       "serverOcr": "The server cannot read screenshots right now. Use \"Read on this device\" instead.",
+      "currencyChanged": "Some rows are shown in a different currency than the security's own. Check the currency or unit and tick \"Currency checked\" for each flagged row.",
       "unmatched": "Some rows are not matched to a security. Pick a symbol for the highlighted rows or remove them.",
       "unmatchedHint": "Pick a symbol for every highlighted row, or remove the row, to continue."
     },
@@ -326,7 +334,8 @@
       "conflict": "This card is in several screenshots with different numbers. The later screenshot was kept; the other one said value {value}, price {price}. Check which is right.",
       "costInferredNoPct": "Cost was estimated from the broker's P&L %, so it is approximate. Edit it if you know the real cost.",
       "conflictAck": "I checked these numbers",
-      "conflictRequiredHint": "Check the numbers of the rows that differ between screenshots and tick \"I checked these numbers\" before you confirm."
+      "conflictRequiredHint": "Check the numbers of the rows that differ between screenshots and tick \"I checked these numbers\" before you confirm.",
+      "currencyRequiredHint": "Check the currency of the highlighted rows and tick \"Currency checked\" before you confirm."
     },
     "scope": {
       "whole": "These screenshots show my whole portfolio",

@@ -294,3 +294,16 @@ def test_redaction_without_tesseract_still_blurs_header(monkeypatch: pytest.Monk
         report.header_blurred and report.word_boxes_available is False and report.boxes_blurred == 0
     )
     assert Image.open(io.BytesIO(out)).size == (300, 400)
+
+
+def test_generic_cost_is_kept_only_when_plausible_per_unit() -> None:
+    from app.config import get_settings
+    from app.importer.parse import parse_line
+
+    s = get_settings()
+    pnl = parse_line("AAPL 10 150.00 1,500.00 2.30", False, s)
+    assert pnl is not None and pnl.cost is None and "cost_inferred" not in pnl.flags
+    total = parse_line("AAPL 10 150.00 1,500.00 12,000.00", False, s)
+    assert total is not None and total.cost is None
+    ok = parse_line("AAPL 10 150.00 1,500.00 120.00", False, s)
+    assert ok is not None and ok.cost == 120 and "cost_inferred" in ok.flags

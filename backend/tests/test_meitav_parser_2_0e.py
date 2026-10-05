@@ -207,3 +207,9 @@ def test_the_server_ocr_path_uses_the_meitav_layout(signup: Any, ocr_text: dict[
     assert [x["tase_number"] for x in rows[4:]] == ["1234567", "7654321"]
     assert rows[0]["quantity"] == 12 and rows[0]["exchange"] == "NASDAQ"
     assert rows[2]["quantity"] is None and "quantity_uncertain" in rows[2]["flags"]
+
+
+@pytest.mark.parametrize("dash", ["–", "—", "‐", "‑", "−"])
+def test_dash_variants_glued_to_the_pnl_percent_are_a_minus(dash: str) -> None:
+    r = one(card("NASDAQ • ACME", "257.49", "Acme Corp", "-0.55%", f"{dash}8.37% ↓ $3,089.88"))
+    assert r.cost == pytest.approx(257.49 / (1 - 0.0837), abs=1e-3)

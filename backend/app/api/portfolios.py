@@ -59,6 +59,7 @@ from app.scoring.scorecard import get_cached_scorecard, is_fresh, refresh_scorec
 from app.securities import get_or_create_security
 from app.strictjson import StrictJsonRoute
 from app.timeutil import as_utc, local_today, utcnow
+from app.usersettings import effective
 
 router = APIRouter(tags=["portfolios"], route_class=StrictJsonRoute)
 
@@ -221,7 +222,13 @@ def create_portfolio(
 @router.get("/portfolios/combined/summary", response_model=SummaryOut)
 def combined_summary(user: UserDep, db: DbDep, settings: SettingsDep) -> dict[str, Any]:
     assert user.id is not None
-    return build_summary(db, list_portfolios(db, user.id), get_providers().history, settings)
+    return build_summary(
+        db,
+        list_portfolios(db, user.id),
+        get_providers().history,
+        settings,
+        week_start_day=effective(db, user, settings).week_start_day,
+    )
 
 
 @router.get("/portfolios/{portfolio_id}", response_model=PortfolioOut)
@@ -268,7 +275,13 @@ def delete_portfolio(portfolio_id: int, user: UserDep, db: DbDep) -> Response:
 def summary(portfolio_id: int, user: UserDep, db: DbDep, settings: SettingsDep) -> dict[str, Any]:
     assert user.id is not None
     p = get_portfolio(db, user.id, portfolio_id)
-    return build_summary(db, [p], get_providers().history, settings)
+    return build_summary(
+        db,
+        [p],
+        get_providers().history,
+        settings,
+        week_start_day=effective(db, user, settings).week_start_day,
+    )
 
 
 @router.get("/portfolios/{portfolio_id}/holdings", response_model=list[HoldingOut])

@@ -3733,6 +3733,42 @@
         ],
         "title": "CachedQuoteOut"
       },
+      "Calibration": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "brier": {
+            "type": "number",
+            "title": "Brier"
+          },
+          "base_rate": {
+            "type": "number",
+            "title": "Base Rate"
+          },
+          "brier_baseline": {
+            "type": "number",
+            "title": "Brier Baseline"
+          },
+          "bins": {
+            "items": {
+              "$ref": "#/components/schemas/ReliabilityBin"
+            },
+            "type": "array",
+            "title": "Bins"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "brier",
+          "base_rate",
+          "brier_baseline",
+          "bins"
+        ],
+        "title": "Calibration"
+      },
       "Candidate": {
         "properties": {
           "rank": {
@@ -8988,6 +9024,39 @@
         "title": "QuietHours",
         "description": "No pushes between `start` and `end` (Asia/Jerusalem). The window may wrap midnight."
       },
+      "ReliabilityBin": {
+        "properties": {
+          "low": {
+            "type": "number",
+            "title": "Low"
+          },
+          "high": {
+            "type": "number",
+            "title": "High"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "mean_predicted": {
+            "type": "number",
+            "title": "Mean Predicted"
+          },
+          "observed_rate": {
+            "type": "number",
+            "title": "Observed Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "low",
+          "high",
+          "count",
+          "mean_predicted",
+          "observed_rate"
+        ],
+        "title": "ReliabilityBin"
+      },
       "ReviewRow": {
         "properties": {
           "holding_id": {
@@ -11772,6 +11841,16 @@
           },
           "gate": {
             "$ref": "#/components/schemas/GateProgress"
+          },
+          "calibration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Calibration"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "methodology": {
             "items": {

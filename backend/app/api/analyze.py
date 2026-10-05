@@ -41,7 +41,7 @@ from app.errors import ApiError
 from app.importer.parse import SYMBOL_PATTERN, norm_symbol
 from app.launchgate import GateDep
 from app.llm.base import LLMProvider
-from app.llm.ledger import quota_add, quota_used
+from app.llm.ledger import quota_try_add, quota_used
 from app.llm.providers import build_providers
 from app.models import Security
 from app.portfolio.freshness import price_is_fresh
@@ -297,14 +297,21 @@ def committee(
     per_day = settings.committee_runs_per_user_per_day
     sec, md = _market(db, sym, settings)  # a bad or unknown symbol never uses up a run
     now = utcnow()
-    if quota_used(quota_key, now.date()) >= per_day:
+    if quota_used(quota_key, now.date()) >= per_day:  # cheap early exit; the take below is atomic
         midnight = datetime.combine(now.date() + timedelta(days=1), datetime.min.time())
         raise too_many(
             max(1, int((midnight - now.replace(tzinfo=None)).total_seconds())),
             f"Daily limit of {per_day} committee runs reached. It resets at midnight UTC.",
         )
     enforce_limit(committee_limiter, key, settings.committee_rate_limit_per_hour, 3600.0)
-    quota_add(quota_key, 1, now.date())  # counted only now that the run will execute
+    # counted only now that the run will execute; one conditional UPDATE, so concurrent requests
+    # at cap-1 cannot both pass
+    if not quota_try_add(quota_key, per_day, now.date()):
+        midnight = datetime.combine(now.date() + timedelta(days=1), datetime.min.time())
+        raise too_many(
+            max(1, int((midnight - now.replace(tzinfo=None)).total_seconds())),
+            f"Daily limit of {per_day} committee runs reached. It resets at midnight UTC.",
+        )
     scout = build_scout_report(
         sec,
         verified=True,

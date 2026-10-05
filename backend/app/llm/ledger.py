@@ -174,6 +174,42 @@ def quota_add(
     record_usage(QUOTA_PREFIX + key, "*", requests=n, day=day, session_factory=session_factory)
 
 
+def quota_try_add(
+    key: str, cap: int, day: date | None = None, session_factory: SessionFactory | None = None
+) -> bool:
+    """Take one unit of the daily quota atomically: `UPDATE ... SET requests = requests + 1 WHERE
+    requests < cap`, then check the row count. False when the cap is already reached."""
+    factory = session_factory or _default_factory
+    day = day or utcnow().date()
+    provider = QUOTA_PREFIX + key
+    cond = (
+        col(LlmUsage.provider) == provider,
+        col(LlmUsage.model) == "*",
+        col(LlmUsage.day) == day,
+    )
+    for _ in range(3):
+        with factory() as db:
+            took = db.connection().execute(
+                update(LlmUsage)
+                .where(*cond, col(LlmUsage.requests) < cap)
+                .values(requests=col(LlmUsage.requests) + 1)
+            )
+            if took.rowcount:
+                db.commit()
+                return True
+            if db.exec(select(LlmUsage.requests).where(*cond)).first() is not None:
+                return False  # row exists and is at the cap
+            if cap <= 0:
+                return False
+            db.add(LlmUsage(provider=provider, model="*", day=day, requests=1))
+            try:
+                db.commit()
+                return True
+            except IntegrityError:  # lost the insert race: loop and update the row instead
+                db.rollback()
+    raise RuntimeError("llm_usage: could not take quota")
+
+
 class TokenBucket:
     """`capacity` requests per minute per provider (default `Settings.llm_requests_per_minute`)."""
 

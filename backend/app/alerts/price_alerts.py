@@ -66,6 +66,7 @@ def check_price_alerts(
     s = settings or get_settings()
     send: Sender = sender or (lambda chat, text: send_telegram(chat, text, s))
     created: list[Notification] = []
+    pending: list[tuple[int | None, str | None, str]] = []  # (alert id, chat id, text)
     for alert in db.exec(select(PriceAlert).where(PriceAlert.active)).all():
         quote = db.get(PriceQuote, alert.symbol)
         if quote is None or not _triggered(alert, quote.price):
@@ -92,11 +93,13 @@ def check_price_alerts(
         user = db.get(User, alert.user_id)
         # The in-app notification is always created; the Telegram push respects the user's switch.
         if user is not None and effective(db, user, s).price_alerts_enabled:
-            try:
-                send(user.telegram_chat_id, join_lines(title, body))
-            except Exception as exc:
-                log.warning(
-                    "price alert %s: telegram send failed: %s", alert_id, type(exc).__name__
-                )
+            pending.append((alert_id, user.telegram_chat_id, join_lines(title, body)))
+    # Commit the claims and notifications first: if the commit fails nothing was sent, so the next
+    # cycle cannot send the same alerts again. Messages go out only after it succeeded.
     db.commit()
+    for alert_id, chat_id, text in pending:
+        try:
+            send(chat_id, text)
+        except Exception as exc:
+            log.warning("price alert %s: telegram send failed: %s", alert_id, type(exc).__name__)
     return created

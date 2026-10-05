@@ -108,6 +108,28 @@ def session_close(market: str, day: date, settings: Settings | None = None) -> d
     return datetime.combine(day, hours[1], tzinfo=_tz(market, s))
 
 
+def session_close_utc_naive(
+    market: str, day: date, settings: Settings | None = None
+) -> datetime | None:
+    """`session_close` converted to naive UTC (the storage convention); None on a closed day."""
+    close = session_close(market, day, settings)
+    return None if close is None else close.astimezone(UTC).replace(tzinfo=None)
+
+
+def current_session_date(
+    market: str, now: datetime | None = None, settings: Settings | None = None
+) -> date | None:
+    """Date of the session whose prices are "current": today's while it is open, otherwise the
+    most recent session that has closed. None for 24/7 markets or when none was found."""
+    if market not in LIBRARY_CODES:
+        return None
+    s = settings or get_settings()
+    if _is_open(market, now, s):
+        return _aware(now).astimezone(_tz(market, s)).date()
+    close = last_session_close(market, now, s)
+    return None if close is None else close.astimezone(_tz(market, s)).date()
+
+
 def last_session_close(
     market: str, now: datetime | None = None, settings: Settings | None = None
 ) -> datetime | None:

@@ -11,8 +11,9 @@ from typing import Any
 import pandas as pd
 
 from app.config import Settings, get_settings
-from app.providers.base import Quote, normalize_history, normalize_price
+from app.providers.base import Quote, market_of_symbol, normalize_history, normalize_price
 from app.providers.cache import TTLCache, retry_with_backoff
+from app.scheduler.calendars import current_session_date, session_close_utc_naive
 from app.timeutil import utcnow
 
 log = logging.getLogger(__name__)
@@ -264,7 +265,8 @@ class YFinanceProvider:
         last = float(closes.iloc[-1])
         prev = float(closes.iloc[-2]) if len(closes) > 1 else None
         change = ((last / prev) - 1.0) * 100.0 if prev else None
-        return build_quote(sym, last, cur, change, now)
+        q = build_quote(sym, last, cur, change, now)
+        return _mark_stale_bar(q, closes.index[-1], now, self.settings)
 
     # -- history --------------------------------------------------------------------------
     def _stale_history(self, key: str) -> pd.DataFrame | None:
@@ -307,6 +309,23 @@ class YFinanceProvider:
         df = normalize_history(df, cur)
         self._history.set(key, (df, cur))
         return df
+
+
+def _mark_stale_bar(q: Quote, bar_ts: Any, now: datetime, settings: Settings) -> Quote:
+    """A last bar older than the market's current session is a last close, not a live price."""
+    if not isinstance(bar_ts, pd.Timestamp) or q.symbol.endswith("=X"):
+        return q
+    market = market_of_symbol(q.symbol)
+    current = current_session_date(market, now, settings)
+    if current is None:
+        return q
+    bar_day = bar_ts.date()
+    if bar_day >= current:
+        return q
+    close = session_close_utc_naive(market, bar_day, settings)
+    if close is None:
+        return q
+    return q.model_copy(update={"basis": "last_close", "as_of": close})
 
 
 def build_quote(

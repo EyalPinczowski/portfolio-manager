@@ -20,10 +20,16 @@ describe("parseLocaleNumber", () => {
     ["-3.2", -3.2],
     ["(12.5)", -12.5],
     ["+7", 7],
+    ["\u200F1,234.50\u200F", 1234.5],
+    ["\u202B1,234.50\u202C", 1234.5],
+    ["\u2067-3.2\u2069", -3.2],
+    ["1,234.50-", -1234.5],
+    ["1,234.50\u2212", -1234.5],
+    ["\u200F1,234.50-\u200F", -1234.5],
   ])("parses %s as %s", (input, expected) => {
     expect(parseLocaleNumber(input)).toBe(expected);
   });
-  it.each(["", "  ", "abc", "1,2,3.4.5", "--1", ".", ",", "12a", "1.2.3"])("rejects %j", (input) => {
+  it.each(["", "  ", "abc", "1,2,3.4.5", "--1", "1-2", "1--", "-1-", ".", ",", "12a", "1.2.3"])("rejects %j", (input) => {
     expect(parseLocaleNumber(input)).toBeNull();
   });
 });

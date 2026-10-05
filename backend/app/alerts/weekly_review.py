@@ -60,7 +60,9 @@ def build_weekly_review(
     if not portfolios:
         return None
     s = settings
-    summary = build_summary(db, portfolios, history, s, now)
+    summary = build_summary(
+        db, portfolios, history, s, now, week_start_day=effective(db, user, s).week_start_day
+    )
     lines: list[TemplateText] = [render(TITLE, settings=s, week_start=week)]
     wk = summary["week_pnl"]
     lines.append(

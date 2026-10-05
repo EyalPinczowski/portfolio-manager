@@ -131,9 +131,12 @@ def combine_points(per_portfolio: Sequence[Sequence[DayPoint]]) -> list[DayPoint
             pt = by_date.get(d)
             if pt is not None:
                 last_value = pt.value_ils
-                totals[d][1] += pt.net_flow_ils
                 if d == s[0].date and d != earliest:
-                    totals[d][1] += pt.value_ils  # joins as a deposit
+                    # joins as a deposit of its whole first-day value (already includes the
+                    # day's own flows, so they must not be added again)
+                    totals[d][1] += pt.value_ils
+                else:
+                    totals[d][1] += pt.net_flow_ils
             totals[d][0] += last_value
     return [DayPoint(d, totals[d][0], totals[d][1]) for d in all_dates]
 

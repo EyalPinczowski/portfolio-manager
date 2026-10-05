@@ -455,4 +455,5 @@ class LlmCache(SQLModel, table=True):
     provider: str
     model: str
     response: str  # the validated JSON of the output model
+    scope: str | None = Field(default=None, index=True)  # "global" or "user:<id>" (account delete)
     created_at: NaiveDatetime = Field(default_factory=utcnow, index=True)

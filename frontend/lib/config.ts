@@ -19,6 +19,9 @@ export const INFER_MIN_VALUE = 1;
 export const INFER_ROUND_SLACK = 1.5;
 /** Lowest P&L % that still gives a meaningful cost (price / (1 + pnl/100)). */
 export const INFER_MIN_PNL_PCT = -99.9;
+/** Generic parser: a leftover number counts as a per-unit cost only within these multiples of the price. */
+export const COST_PLAUSIBLE_MIN = 0.05;
+export const COST_PLAUSIBLE_MAX = 20;
 
 /**
  * Digit runs at least this long are identifiers. Runs of 9+ digits (accounts, phones, IDs) are always dropped from

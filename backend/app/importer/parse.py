@@ -169,6 +169,10 @@ def clean_number(x: float | None, ceiling: float = MONEY_MAX) -> float | None:
     return x
 
 
+COST_PLAUSIBLE_MIN = 0.05  # a per-unit cost below 0.05x the price is not believable
+COST_PLAUSIBLE_MAX = 20.0  # nor above 20x the price
+
+
 def _to_number(token: str) -> float | None:
     t = token.strip().rstrip("%")
     neg = t.startswith("-") or (t.startswith("(") and t.endswith(")"))
@@ -267,6 +271,18 @@ def parse_line(line: str, agorot_global: bool, settings: Settings) -> ParsedRow 
             row.tase_number = raw_tokens[i]
         elif row.cost is None and nums[i] > 0:
             row.cost = nums[i]
+    # Mirror of frontend/lib/ocr/parse.ts: a leftover number is only a guess (P&L, total cost...).
+    # Keep it as a per-unit cost only when plausible next to the price, and mark it inferred so
+    # confirm never overwrites a holding's existing average cost with it.
+    if row.cost is not None:
+        if (
+            row.price is not None
+            and row.price > 0
+            and COST_PLAUSIBLE_MIN * row.price <= row.cost <= COST_PLAUSIBLE_MAX * row.price
+        ):
+            row.flags = [*row.flags, "cost_inferred"]
+        else:
+            row.cost = None
     clean = re.sub(NUMBER_RE, " ", line)
     clean = re.sub(r"[₪$%|]", " ", clean)
     for marker in AGOROT_MARKERS:

@@ -65,10 +65,13 @@ export function detectMeitav(text: string): boolean {
 
 interface Block { anchor: Anchor; lines: string[] }
 
+/** OCR often prints a minus as an en/em dash or a Unicode hyphen: a dash glued to a digit or % is a minus. */
+const MINUS_RE = /(?<!\d)[−–—‐‑](?=[\d%])/g;
+
 function toBlocks(text: string): Block[] {
   const blocks: Block[] = [];
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.replace(/−/g, "-").trim();
+    const line = raw.replace(MINUS_RE, "-").replace(/−/g, "-").trim();
     if (!line) continue;
     const anchors = findAnchors(line);
     if (anchors.length === 0) {

@@ -82,3 +82,20 @@ describe("canvas geometry", () => {
     expect(fitSize(1000, 5200, 2600)).toEqual({ width: 500, height: 2600 });
   });
 });
+
+describe("generic parser: cost plausibility", () => {
+  it("a P&L-like leftover number is not a cost", () => {
+    const r = parseLine("AAPL 10 150.00 1,500.00 2.30", false)!;
+    expect(r).toMatchObject({ quantity: 10, price: 150, value: 1500, cost: null });
+    expect(r.flags).not.toContain("cost_inferred");
+  });
+  it("a total-cost column (far above the price) is dropped", () => {
+    const r = parseLine("AAPL 10 150.00 1,500.00 12,000.00", false)!;
+    expect(r.cost).toBeNull();
+  });
+  it("a plausible per-unit cost is kept and marked cost_inferred", () => {
+    const r = parseLine("AAPL 10 150.00 1,500.00 120.00", false)!;
+    expect(r.cost).toBe(120);
+    expect(r.flags).toContain("cost_inferred");
+  });
+});

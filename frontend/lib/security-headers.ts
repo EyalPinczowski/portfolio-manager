@@ -24,7 +24,7 @@ export function buildCsp(opts: { dev?: boolean; apiOrigin?: string } = {}): stri
     "default-src": ["'self'"],
     "script-src": ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'", TURNSTILE_ORIGIN, ...(dev ? ["'unsafe-eval'"] : [])],
     "style-src": ["'self'", "'unsafe-inline'"],
-    "img-src": ["'self'", "data:"],
+    "img-src": ["'self'", "data:", "blob:"],
     "font-src": ["'self'"],
     "connect-src": connect,
     "frame-src": [TURNSTILE_ORIGIN],

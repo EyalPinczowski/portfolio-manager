@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from sqlalchemy import delete
 from sqlmodel import Session, col, select
 
 from app.committee.history import list_conversations, list_messages
@@ -12,6 +13,7 @@ from app.models import (
     Holding,
     HoldingsSnapshot,
     ImportDraft,
+    LlmCache,
     Notification,
     Portfolio,
     PortfolioSnapshot,
@@ -115,5 +117,8 @@ def delete_user(db: Session, user: User) -> None:
     One DELETE: the foreign keys cascade (portfolios -> holdings, transactions, snapshots, drafts, X-ray rule settings;
     sessions, alerts, notifications, search history, watchlist, settings, Telegram link codes, invites they created) and set `Invite.used_by` to NULL.
     """
+    # llm_cache has no user foreign key: its user-scoped answers (which can mention holdings) are
+    # removed explicitly.
+    db.execute(delete(LlmCache).where(col(LlmCache.scope) == f"user:{user.id}"))
     db.delete(user)
     db.commit()

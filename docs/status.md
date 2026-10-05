@@ -185,3 +185,11 @@ Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after a
 - Deploy: Render + Supabase live. Fixed: trailing dot in the Render health path; `SCHEDULER_START_DELAY_SECONDS` (120 in the slim image); `bootstrap-admin` command (env-var admin, idempotent, silent) with a test.
 - Website: Worker deploy (`frontend/worker/index.ts`, shared `lib/proxy-handler.ts`, `wrangler.jsonc` with `keep_vars`) and GitHub Actions workflow `deploy-site.yml` (skips without Cloudflare secrets). Vitest 519 passed. Waiting on the user's Cloudflare API token.
 
+
+## 2026-10-05 (code review fixes)
+- Opus reviews of backend, frontend/deploy and an efficiency/precision research: `docs/reviews/code-review-*-2026-10-05.md`, `research-efficiency-precision-2026-10-05.md`.
+- Fixed: combined-summary double count on a portfolio's first day; stale Yahoo closes marked "live"; per-user week start in the summary; missed start-day snapshot; price alerts sent before commit; dual-listing cap now the stricter one (user approved); atomic committee quota; bootstrap-admin errors (and it can no longer block boot); user AI answers deleted with the account (Alembic 0018); fallback close times from calendars; fallback IP header only from trusted proxies.
+- Import: Hebrew "תיק אישי" rows can now be confirmed (unit select + "currency checked"); generic parser no longer turns stray numbers into cost; OCR dashes read as minus.
+- Site: real 404 page, deploy secrets scoped to the deploy step with a pinned wrangler, service worker caches only good responses, modal focus, bidi-safe number input.
+- Backtest: trial counter, Deflated Sharpe, PBO, embargo; track record gains a reporting-only Brier score.
+- Checks: backend 1827 passed / 35 skipped; frontend 544 vitest, e2e 93 + real 1, build ok.
