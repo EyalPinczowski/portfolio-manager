@@ -231,7 +231,11 @@ def default_backtest_targets() -> dict[str, BacktestTarget]:
 class Settings(BaseSettings):
     # env_parse_none_str: "none" in the environment means None (e.g. DATABASE_PREPARE_THRESHOLD=none).
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore", env_parse_none_str="none"
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        env_parse_none_str="none",
+        hide_input_in_errors=True,  # a bad value (DATABASE_URL, keys) must never be echoed to logs
     )
 
     # --- core ---
@@ -904,6 +908,18 @@ class Settings(BaseSettings):
     weekly_review_default_time: str = Field(default="20:00", pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     weekly_review_check_interval_minutes: int = Field(default=15, ge=1, le=60)
     seed_csv_path: str | None = None
+
+    @field_validator("database_url")
+    @classmethod
+    def _database_url_scheme(cls, v: str) -> str:
+        # Never echo the value: it holds the database password.
+        scheme = v.split(":", 1)[0].split("+", 1)[0].lower() if ":" in v else ""
+        if scheme not in ("sqlite", "postgres", "postgresql"):
+            raise ValueError(
+                "DATABASE_URL must start with postgresql:// (Supabase: Connect, Session pooler "
+                "string) or sqlite:///. It looks like something else, e.g. an https:// project URL."
+            )
+        return v
 
     @field_validator("horizon_table")
     @classmethod

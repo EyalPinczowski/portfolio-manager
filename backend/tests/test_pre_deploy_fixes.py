@@ -217,3 +217,21 @@ def test_universe_job_can_be_turned_off() -> None:
 def test_the_slim_image_turns_the_universe_job_off() -> None:
     docker = (Path(__file__).parent.parent / "Dockerfile.slim").read_text()
     assert "SCHEDULER_UNIVERSE_ENABLED=false" in docker
+
+
+def test_database_url_must_be_a_database_and_the_error_never_shows_it() -> None:
+    import pytest as _pytest
+
+    from app.config import Settings
+
+    for ok in (
+        "sqlite:///./x.db",
+        "postgresql://u:p@h:5432/db",
+        "postgres://u:p@h/db",
+        "postgresql+psycopg://u:p@h/db",
+    ):
+        assert Settings(database_url=ok).database_url == ok
+    with _pytest.raises(ValueError) as err:
+        Settings(database_url="https://abc.supabase.co/secretpass")
+    assert "DATABASE_URL must start with postgresql://" in str(err.value)
+    assert "secretpass" not in str(err.value)
