@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -18,6 +19,9 @@ from app.signals.base import (
     price_history_source,
 )
 from app.timeutil import utcnow
+
+if TYPE_CHECKING:
+    from app.providers.earnings import EarningsInfo
 
 NAME = "technical"
 REQUIRED_COLUMNS = ("High", "Low", "Close", "Volume")
@@ -62,7 +66,61 @@ def _invalidation(inputs: dict[str, float | str | None], price: float) -> list[s
     return out
 
 
-def technical_signal(df: pd.DataFrame | None, settings: Settings | None = None) -> SignalResult:
+def _vol_normalized(
+    df: pd.DataFrame, s: Settings, inputs: dict[str, float | str | None]
+) -> tuple[Category, Category]:
+    """Trend and momentum as ATR multiples / vol-scaled returns, squashed with tanh to +-100."""
+    close, high, low = df["Close"], df["High"], df["Low"]
+    price = float(close.iloc[-1])
+    trend, mom = Category("trend"), Category("momentum")
+    atr_v = _last(ind.atr(high, low, close, 14))
+    if atr_v is not None and atr_v > 0:
+        for label, series in (("50", ind.sma(close, 50)), ("200", ind.sma(close, 200))):
+            v = _last(series)
+            if v is None:
+                continue
+            z = (price - v) / atr_v
+            inputs[f"z_sma{label}_atr"] = z
+            trend.add(
+                100.0 * math.tanh(z / s.tech_vn_trend_k),
+                f"Price is {abs(z):.1f} ATRs {'above' if z >= 0 else 'below'} its {label}-day average.",
+                f"(close - SMA{label}) / ATR14",
+            )
+        _, _, hist = ind.macd(close)
+        h_now = _last(hist)
+        if h_now is not None:
+            zm = h_now / atr_v
+            inputs["macd_hist_atr"] = zm
+            mom.add(
+                100.0 * math.tanh(zm / s.tech_vn_macd_k),
+                f"MACD histogram is {zm:+.2f} ATRs ({'above' if zm >= 0 else 'below'} its signal line).",
+                "MACD histogram / ATR14",
+            )
+    rets = close.pct_change().dropna()
+    skip = 21
+    lookback = min(252, len(close) - 1)
+    if lookback - skip >= s.tech_vn_mom_min_bars and len(rets) >= lookback:
+        mom_ret = float(close.iloc[-1 - skip] / close.iloc[-1 - lookback] - 1.0)
+        window = rets.iloc[-lookback:]
+        sigma = float(window.std()) * math.sqrt(252)
+        years = (lookback - skip) / 252.0
+        if math.isfinite(sigma) and sigma > 0:
+            z = mom_ret / (sigma * math.sqrt(years))
+            inputs["mom_12_1_z"] = z
+            mom.add(
+                100.0 * math.tanh(z / s.tech_vn_momentum_k),
+                f"Momentum skipping the last month is {mom_ret * 100:+.0f}%, "
+                f"{abs(z):.1f} volatility units {'up' if z >= 0 else 'down'}.",
+                "12-1 momentum / realised volatility",
+            )
+    return trend, mom
+
+
+def technical_signal(
+    df: pd.DataFrame | None,
+    settings: Settings | None = None,
+    earnings: EarningsInfo | None = None,
+) -> SignalResult:
     """Score a daily OHLCV frame in [-100, 100]. Missing/short data gives confidence 0."""
     s = settings or get_settings()
     if df is None or df.empty or any(c not in df.columns for c in REQUIRED_COLUMNS):
@@ -179,6 +237,9 @@ def technical_signal(df: pd.DataFrame | None, settings: Settings | None = None) 
                 "Stochastic K vs D",
             )
 
+    if s.technical_mode == "vol_normalized":
+        trend, mom = _vol_normalized(df, s, inputs)
+
     # ---- volatility ----
     pb = _last(ind.percent_b(close))
     if pb is not None:
@@ -273,6 +334,17 @@ def technical_signal(df: pd.DataFrame | None, settings: Settings | None = None) 
     reasons: list[str] = []
     for c, _ in used:
         reasons.extend(c.reasons)
+    if earnings is not None and (s.earnings_info_enabled or s.earnings_window_effect_enabled):
+        from app.providers.earnings import earnings_line, in_window
+
+        today = as_of.date()
+        if s.earnings_info_enabled:
+            reasons.append(earnings_line(earnings, today))
+        if s.earnings_window_effect_enabled and in_window(earnings, today, s):
+            confidence = round(max(0.05, confidence * s.earnings_confidence_multiplier), 3)
+            reasons.append(
+                "Confidence is lowered: earnings fall inside the window and can gap the price."
+            )
     cat_summary = ", ".join(f"{c.name} {c.score:+.0f}" for c, _ in used if c.score is not None)
     rules = [f"{c.name}: {r}" for c, _ in used for r in c.rules]
     if math.isnan(score):

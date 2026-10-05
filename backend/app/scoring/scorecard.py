@@ -12,6 +12,7 @@ from app.funds import is_fund_symbol
 from app.models import SignalCache
 from app.providers.base import HistoryProvider
 from app.scoring.combine import combine_signals
+from app.signals.analysts import analysts_signal
 from app.signals.base import (
     ChartAnnotation,
     Explanation,
@@ -30,7 +31,12 @@ NOT_VALIDATED = (
 
 
 def compute_scorecard(
-    symbol: str, history: HistoryProvider | None, settings: Settings | None = None
+    symbol: str,
+    history: HistoryProvider | None,
+    settings: Settings | None = None,
+    *,
+    earnings_provider: Any | None = None,
+    analyst_provider: Any | None = None,
 ) -> dict[str, Any]:
     s = settings or get_settings()
     df = None
@@ -39,10 +45,26 @@ def compute_scorecard(
             df = history.get_history(symbol, s.history_days)
         except Exception:
             df = None
+    earnings = None
+    if earnings_provider is not None and (
+        s.earnings_info_enabled or s.earnings_window_effect_enabled
+    ):
+        try:
+            earnings = earnings_provider.next_earnings(symbol)
+        except Exception:
+            earnings = None
     results: dict[str, SignalResult] = {
-        "technical": technical_signal(df, s),
+        "technical": technical_signal(df, s, earnings),
         "patterns": patterns_signal(df, s),
     }
+    if s.analyst_signal_mode == "revisions":  # off by default: the slot stays unimplemented
+        trends = None
+        if analyst_provider is not None:
+            try:
+                trends = analyst_provider.trends(symbol)
+            except Exception:
+                trends = None
+        results["analysts"] = analysts_signal(trends, s, symbol=symbol)
     combined = combine_signals(results, s)
     from app.signals.base import not_implemented_signal
 

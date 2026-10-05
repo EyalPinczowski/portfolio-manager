@@ -51,6 +51,8 @@ from app.llm.untrusted import UntrustedText
 from app.model_probe import active_model
 from app.strictjson import strict_loads
 
+FOREVER_HOURS = 24.0 * 365 * 20  # "no TTL" for `reuse_unchanged`
+
 log = logging.getLogger("llm")
 
 Source = Literal["cache", "llm", "template"]
@@ -165,6 +167,7 @@ def structured_call[T: BaseModel](
     bucket: TokenBucket | None = None,
     now: datetime | None = None,
     use_cache: bool = True,
+    reuse_unchanged: bool = False,
 ) -> StructuredResult[T]:
     """One role's answer: cache, then the provider chain, then the template.
 
@@ -215,6 +218,10 @@ def structured_call[T: BaseModel](
             pairs += [(name, m) for m in extra if m]
         keys = list(dict.fromkeys(key_for(n, m) for n, m in pairs))
         hit = get_cached_any(keys, ttl, now, session_factory)
+        if hit is None and reuse_unchanged and s.llm_reuse_unchanged_answers:
+            # An unchanged input (same facts hash and chunk set: the key is made of the prompt)
+            # needs no new call even after the TTL: reuse the last stored answer.
+            hit = get_cached_any(keys, FOREVER_HOURS, now, session_factory)
         if hit is not None:
             try:
                 result = StructuredResult(

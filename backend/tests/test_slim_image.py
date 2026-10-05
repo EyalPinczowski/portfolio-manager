@@ -131,6 +131,6 @@ def test_slim_dockerfile_runs_one_worker_in_process_scheduler_as_non_root() -> N
     assert "--workers 1" in body
     assert "SCHEDULER_IN_PROCESS=true" in body
     assert "MALLOC_ARENA_MAX=2" in body
-    assert "python -m app.cli migrate" in body  # production does not migrate on its own
+    assert "python -m app.cli boot" in body  # boot = migrate + bootstrap-admin
     user_lines = re.findall(r"^USER (\S+)", body, re.M)
     assert user_lines and user_lines[-1] not in ("root", "0")

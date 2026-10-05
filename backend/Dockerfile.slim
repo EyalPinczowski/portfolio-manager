@@ -15,7 +15,7 @@
 #   SECRET_KEY=<>= 32 random chars>
 #   DATABASE_URL=postgresql://...   (exact Supabase forms: backend/README.md, "Database URLs")
 # AUTO_MIGRATE defaults to false in production; this image's start command runs
-# `python -m app.cli migrate` first, so the schema is current before the API accepts traffic.
+# `python -m app.cli boot` (migrate, then bootstrap-admin) first, so the schema is current before the API accepts traffic.
 # Render sets $PORT (default 10000); locally it falls back to 8000.
 FROM python:3.12-slim@sha256:dddfd7e07f9d15aeeca61529320492139d21cac7f0070c00609243e51e4e0016 AS base
 
@@ -41,7 +41,9 @@ RUN uv export --frozen --no-dev --extra postgres --no-emit-project -o /tmp/requi
     && uv pip install --system --no-cache -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt
 COPY app ./app
-RUN uv pip install --system --no-cache --no-deps .
+RUN uv pip install --system --no-cache --no-deps . \
+    # bytecode at build time: PYTHONDONTWRITEBYTECODE=1 would otherwise recompile every cold start
+    && python -m compileall -q app
 
 # Non-root runtime user. No volume: the database is external (Postgres), disk is ephemeral.
 RUN useradd --create-home --uid 10001 app
@@ -51,6 +53,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
     CMD python -c 'import os,urllib.request as u; u.urlopen("http://127.0.0.1:%s/api/health" % os.environ.get("PORT", "8000"))' || exit 1
 
-# Migrate, then serve with a single worker. `exec` makes uvicorn PID 1 so SIGTERM shuts it down
+# One boot process (migrate; bootstrap-admin never blocks), then serve with a single worker. `exec` makes uvicorn PID 1 so SIGTERM shuts it down
 # cleanly (the scheduler releases its leader lock).
-CMD ["sh", "-c", "python -m app.cli migrate && (python -m app.cli bootstrap-admin || true) && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --no-access-log"]
+CMD ["sh", "-c", "python -m app.cli boot && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --no-access-log"]

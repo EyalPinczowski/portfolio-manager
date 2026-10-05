@@ -22,7 +22,7 @@ import math
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
@@ -42,6 +42,9 @@ from app.signals.base import (
 )
 from app.signals.patterns import cluster_levels, find_pivots
 from app.timeutil import as_utc
+
+if TYPE_CHECKING:
+    from app.providers.earnings import EarningsInfo
 
 Reason = Annotated[str, StringConstraints(max_length=500)]
 FINITE = ConfigDict(allow_inf_nan=False)
@@ -951,6 +954,24 @@ def no_levels_result(
     )
 
 
+def _earnings_notes(earnings: EarningsInfo | None, as_of: datetime, s: Settings) -> list[str]:
+    """Earnings lines for the explanation. Empty unless a switch is on; never moves a level."""
+    if earnings is None or not (s.earnings_info_enabled or s.earnings_window_effect_enabled):
+        return []
+    from app.providers.earnings import earnings_line, in_window
+
+    today = as_of.date()
+    out: list[str] = []
+    if s.earnings_info_enabled:
+        out.append(earnings_line(earnings, today))
+    if s.earnings_window_effect_enabled and in_window(earnings, today, s):
+        out.append(
+            "Gap risk: earnings are inside the window, so the price can jump past the stop "
+            "and the fill can be worse than the stop level."
+        )
+    return out
+
+
 def parse_horizon(value: str | Horizon | None) -> Horizon | None:
     if value is None:
         return None
@@ -968,6 +989,7 @@ def compute_exit_levels(
     portfolio_value_ils: float | None = None,
     now: datetime | None = None,
     settings: Settings | None = None,
+    earnings: EarningsInfo | None = None,
 ) -> ExitLevelsResult:
     """Stop and take-profit levels for one holding. See the module docstring for the rules."""
     s = settings or get_settings()
@@ -1188,6 +1210,7 @@ def compute_exit_levels(
         invalidation_risks=[
             "Levels come from past prices and can be wrong; a gap can pass a stop.",
             "Levels are recomputed as new bars arrive; a saved stop is only ever raised.",
+            *_earnings_notes(earnings, as_of, s),
         ],
         sources=ctx.sources(),
     )

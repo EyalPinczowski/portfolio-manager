@@ -151,7 +151,7 @@ def build_prompt(
     used = estimate_tokens(head, s)
     if used > budget:
         raise PromptRejected("the facts alone exceed the role budget")
-    parts = [head]
+    kept: list[tuple[int, str]] = []
     cited: list[int] = []
     dropped = 0
     kept_words: list[frozenset[str]] = []
@@ -168,9 +168,13 @@ def build_prompt(
             dropped += 1
             continue
         used += cost
-        parts.append(block)
+        kept.append((c.chunk_id, block))
         cited.append(c.chunk_id)
         kept_words.append(words)
+    # chunk-id order, not rank order: the same chunk set always gives the same prompt (cache key)
+    kept.sort(key=lambda kv: kv[0])
+    parts = [head, *(b for _, b in kept)]
+    cited = [i for i, _ in kept]
     if not cited and not no_passages:
         parts.append("(no passages: there is no text coverage for this stock)")
     text = "\n".join(parts)

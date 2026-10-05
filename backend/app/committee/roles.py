@@ -268,6 +268,7 @@ def _run[T: BaseModel](
         cache_scope="global",
         priority="on_demand" if on_demand else "batch",
         news_dependent=news_dependent,
+        reuse_unchanged=True,
         providers=providers,
         settings=settings,
         now=now,

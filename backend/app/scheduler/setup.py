@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.base import BaseScheduler
@@ -14,6 +15,7 @@ from app.config import Settings, get_settings
 from app.db import new_session
 from app.providers.registry import get_providers
 from app.scheduler import jobs
+from app.scheduler.calendars import any_equity_session_today
 
 log = logging.getLogger("scheduler")
 
@@ -34,12 +36,24 @@ def _catchup() -> None:
         log.info("catch-up snapshots: %d", jobs.run_catchup_snapshots(db))
 
 
+def _equity_day() -> bool:
+    """Non-quote market jobs have nothing new on weekends and market holidays."""
+    if any_equity_session_today():
+        return True
+    log.info("no US/TASE session today: skipping market-data job")
+    return False
+
+
 def _scores() -> None:
+    if not _equity_day():
+        return
     with new_session() as db:
         log.info("score refresh: %d", jobs.run_score_refresh(db, get_providers().history))
 
 
 def _universe() -> None:
+    if not _equity_day():
+        return
     with new_session() as db:
         p = get_providers()
         log.info("universe refresh: %d", jobs.run_universe_score_refresh(db, p.history, p.quotes))
@@ -72,12 +86,27 @@ def _paper_resolve() -> None:
         )
 
 
+def interval_trigger(minutes: int, slot: int, s: Settings) -> IntervalTrigger:
+    """An interval trigger whose first run is offset by `slot` * `scheduler_job_offset_seconds` and
+    that jitters every run, so heavy jobs never start in the same minute (0.1 CPU hosts)."""
+    tz = ZoneInfo(s.scheduler_timezone)
+    first = datetime.now(tz) + timedelta(
+        minutes=minutes, seconds=slot * s.scheduler_job_offset_seconds
+    )
+    return IntervalTrigger(
+        minutes=minutes,
+        start_date=first,
+        jitter=s.scheduler_job_jitter_seconds or None,
+        timezone=tz,
+    )
+
+
 def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> None:
     """Add the recurring jobs (shared by `python -m app.scheduler` and the in-process scheduler)."""
     s = settings or get_settings()
     sched.add_job(
         _quotes,
-        IntervalTrigger(minutes=s.quotes_interval_minutes),
+        interval_trigger(s.quotes_interval_minutes, 0, s),
         id="quotes",
         max_instances=1,
         coalesce=True,
@@ -96,7 +125,7 @@ def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> Non
     if s.scheduler_universe_enabled:  # off in the 512 MB slim image: something else runs it
         sched.add_job(
             _universe,
-            IntervalTrigger(minutes=s.universe_refresh_interval_minutes),
+            interval_trigger(s.universe_refresh_interval_minutes, 2, s),
             id="universe_scores",
             max_instances=1,
             coalesce=True,
@@ -104,7 +133,7 @@ def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> Non
         )
     sched.add_job(
         _scores,
-        IntervalTrigger(minutes=s.scores_interval_minutes),
+        interval_trigger(s.scores_interval_minutes, 1, s),
         id="scores",
         max_instances=1,
         coalesce=True,
@@ -136,7 +165,7 @@ def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> Non
     )
     sched.add_job(
         _weekly_review,
-        IntervalTrigger(minutes=s.weekly_review_check_interval_minutes),
+        interval_trigger(s.weekly_review_check_interval_minutes, 3, s),
         id="weekly_review",
         max_instances=1,
         coalesce=True,
@@ -144,7 +173,7 @@ def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> Non
     )
     sched.add_job(
         _paper_resolve,
-        IntervalTrigger(minutes=s.paper_resolve_interval_minutes),
+        interval_trigger(s.paper_resolve_interval_minutes, 4, s),
         id="paper_resolve",
         max_instances=1,
         coalesce=True,

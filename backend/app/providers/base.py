@@ -8,13 +8,15 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
-from typing import Annotated, Any, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Protocol, runtime_checkable
 
-import pandas as pd
 from pydantic import AfterValidator, BaseModel, ConfigDict, StringConstraints, model_validator
 from pydantic import Field as PydField
 
 from app.timeutil import as_utc
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 # Naive datetimes are UTC (the database convention); provider times always carry an offset, so they
 # compare with `Explanation.as_of` (also aware) without a TypeError.

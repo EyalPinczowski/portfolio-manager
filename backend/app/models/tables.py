@@ -467,3 +467,20 @@ class LlmCache(SQLModel, table=True):
     response: str  # the validated JSON of the output model
     scope: str | None = Field(default=None, index=True)  # "global" or "user:<id>" (account delete)
     created_at: NaiveDatetime = Field(default_factory=utcnow, index=True)
+
+
+class DailyBar(SQLModel, table=True):
+    """One stored daily OHLCV bar per symbol, prices already in major units (agorot -> ILS).
+
+    Lets the history provider fetch only the missing tail instead of the whole window after every
+    cache expiry or cold start. Public market data: no user scope.
+    """
+
+    __tablename__ = "daily_bar"
+    symbol: str = Field(primary_key=True)
+    day: date = Field(primary_key=True)
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float = 0.0

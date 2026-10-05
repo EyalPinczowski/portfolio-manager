@@ -466,6 +466,17 @@ class Settings(BaseSettings):
     history_cache_max_entries: int = 200  # one entry per symbol; the oldest is evicted
     provider_small_cache_max_entries: int = 5000  # currencies and failure markers
     history_days: int = 420
+    # Stored daily bars (`daily_bar`): fetch only the missing tail. A stored series that starts
+    # more than this many days after the requested window start is refetched in full.
+    history_incremental_enabled: bool = True
+    history_store_slack_days: int = Field(default=7, ge=0)
+    history_tail_period_days: int = Field(default=5, ge=1)  # gaps up to this use period="5d"
+    # Heavy scheduled jobs start offset from each other (seconds added after the interval start).
+    scheduler_job_offset_seconds: int = Field(default=47, ge=0)
+    scheduler_job_jitter_seconds: int = Field(default=20, ge=0)
+    # Committee roles: an unchanged prompt (same facts and chunks) reuses the last stored answer
+    # even after the cache TTL.
+    llm_reuse_unchanged_answers: bool = True
     provider_max_retries: int = 3
     provider_backoff_base_seconds: float = 2.0
     # Which currencies Yahoo may report per symbol suffix. A lookup outside the list is ignored (a
@@ -502,7 +513,7 @@ class Settings(BaseSettings):
     )  # support / resistance levels shown
     # --- screener / universe (scoring/screener.py, scheduler job run_universe_score_refresh) ---
     universe_file: str | None = None  # symbols, one per line; default: app/data/universe_seed.txt
-    universe_refresh_interval_minutes: int = Field(default=15, gt=0)
+    universe_refresh_interval_minutes: int = Field(default=60, gt=0)
     universe_refresh_batch_size: int = Field(default=20, gt=0)  # scorecards (history calls) per run
     universe_score_ttl_minutes: int = Field(default=720, gt=0)  # re-score a symbol after this long
     universe_quote_chunk_size: int = Field(default=50, gt=0)  # symbols per batched quote call
@@ -572,6 +583,27 @@ class Settings(BaseSettings):
     tech_stoch_oversold: float = 20.0
     tech_volume_spike_ratio: float = 1.5
     tech_high_atr_pct: float = 5.0
+    # --- "smarter signals" research group (docs/reviews/signals-comparison-2026-10-05.md) ---
+    # EVERY effect below defaults to OFF: with default settings scores, confidence, ranking, exit
+    # levels and the launch gate are unchanged. Turning one on needs the user's approval.
+    technical_mode: Literal["classic", "vol_normalized"] = "classic"
+    tech_vn_trend_k: float = 2.0  # tanh scale for (close - SMA) / ATR14, in ATR multiples
+    tech_vn_momentum_k: float = 1.0  # tanh scale for the vol-scaled 12-1 momentum z
+    tech_vn_macd_k: float = 0.5  # tanh scale for MACD histogram / ATR14
+    tech_vn_mom_min_bars: int = 63  # shortest lookback accepted for the 12-1 momentum
+    analyst_signal_mode: Literal["consensus", "revisions"] = "consensus"
+    analyst_revision_scale: float = 0.10  # buy-share change that maps to tanh(1) (about 76 points)
+    analyst_revision_months: int = 3  # compare the latest month with this many months earlier
+    analyst_full_confidence_analysts: int = 10  # analysts needed for full confidence
+    analyst_dispersion_max_cut: float = 0.5  # largest confidence cut from rating dispersion
+    analyst_dispersion_ref: float = 1.2  # std of the 1-5 rating that gives the largest cut
+    analyst_cache_ttl_seconds: float = 12 * 3600
+    earnings_info_enabled: bool = False  # adds an "Earnings in N days" line (no number changes)
+    earnings_window_effect_enabled: bool = False  # confidence cut + gap-risk flag in the window
+    earnings_window_days: int = 5  # the window: earnings within this many days
+    earnings_confidence_multiplier: float = 0.7  # technical confidence x this inside the window
+    earnings_lookahead_days: int = 30
+    earnings_cache_ttl_seconds: float = 12 * 3600
     patterns_min_rows: int = 60
     patterns_pivot_window: int = 5
     patterns_cluster_tolerance_pct: float = 1.5

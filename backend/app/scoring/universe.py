@@ -157,7 +157,14 @@ def refresh_universe(
         due.append((computed, sec.symbol))
     due.sort()
     n = 0
-    for _, sym in due[: s.universe_refresh_batch_size]:
+    batch = [sym for _, sym in due[: s.universe_refresh_batch_size]]
+    prefetch = getattr(history, "prefetch_history", None)
+    if prefetch is not None and batch:  # one batched download instead of one call per symbol
+        try:
+            prefetch(batch, s.history_days)
+        except Exception as exc:
+            log.warning("universe history prefetch failed: %s", exc)
+    for sym in batch:
         try:
             df = history.get_history(sym, s.history_days)
         except Exception as exc:

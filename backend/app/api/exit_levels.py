@@ -9,9 +9,8 @@ moves up) works without storing a trailing-stop state yet.
 from __future__ import annotations
 
 import logging
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
-import pandas as pd
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
@@ -36,6 +35,9 @@ from app.scoring.exit_levels import (
 )
 from app.scoring.risk import PRESETS, PresetName, RiskFilter, resolve_risk_filter
 from app.strictjson import StrictJsonRoute
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["exit-levels"], route_class=StrictJsonRoute)

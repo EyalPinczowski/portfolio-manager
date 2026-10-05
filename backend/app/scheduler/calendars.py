@@ -195,3 +195,13 @@ def markets_status(
     now: datetime | None = None, settings: Settings | None = None
 ) -> dict[str, dict[str, bool]]:
     return {m: {"open": is_market_open(m, now, settings)} for m in ("US", "TASE", "CRYPTO")}
+
+
+def any_equity_session_today(now: datetime | None = None, settings: Settings | None = None) -> bool:
+    """True when the US or TASE has a trading session on its local date (weekends and holidays:
+    False). Used to skip non-quote jobs whose inputs cannot have changed."""
+    s = settings or get_settings()
+    at = _aware(now)
+    return any(
+        _hours_for(m, at.astimezone(_tz(m, s)).date(), s) is not None for m in ("US", "TASE")
+    )

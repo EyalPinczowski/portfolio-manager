@@ -108,6 +108,21 @@ def check_config(settings: Settings, probe: bool = False) -> dict[str, str]:
     return out
 
 
+def boot() -> int:
+    """One process for the container start: migrate, then bootstrap the admin.
+
+    A migration failure propagates (non-zero exit: the API must not serve a stale schema). Admin
+    bootstrap problems are reported by status word and never block the boot.
+    """
+    run_migrations(get_engine())
+    print("database schema is up to date")
+    try:
+        print(f"bootstrap-admin: {bootstrap_admin(get_settings())}")
+    except Exception as exc:  # never include the message: it could carry values
+        print(f"bootstrap-admin: error: {type(exc).__name__}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -117,6 +132,9 @@ def main(argv: list[str] | None = None) -> int:
         "--days", type=int, default=None, help="Validity in days (default from config)"
     )
     sub.add_parser("bootstrap-admin", help="Create the first admin from BOOTSTRAP_ADMIN_* env vars")
+    sub.add_parser(
+        "boot", help="Container start: migrate (failure aborts), then bootstrap-admin (never fatal)"
+    )
     chk = sub.add_parser("check-config", help="Show the state of the safety-relevant settings")
     chk.add_argument("--probe-models", action="store_true", help="Also ask the LLM providers")
     adm = sub.add_parser("create-admin", help="Create an admin user")
@@ -160,6 +178,8 @@ def main(argv: list[str] | None = None) -> int:
         run_migrations(get_engine())
         print("database schema is up to date")
         return 0
+    if args.cmd == "boot":
+        return boot()
     if args.cmd == "bootstrap-admin":
         status = bootstrap_admin(get_settings())
         print(f"bootstrap-admin: {status}")
