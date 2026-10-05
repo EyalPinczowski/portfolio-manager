@@ -897,6 +897,10 @@ class Settings(BaseSettings):
     # The secret Telegram echoes in `X-Telegram-Bot-Api-Secret-Token` on every webhook call (set it
     # with `setWebhook secret_token=`). Without it the webhook route refuses everything.
     telegram_webhook_secret: str | None = None
+    # One-time first admin for hosts without a shell: `python -m app.cli bootstrap-admin` creates
+    # this user when both are set and the email is unused. Remove both after the first login.
+    bootstrap_admin_email: str | None = None
+    bootstrap_admin_password: str | None = None
     telegram_bot_username: str | None = None  # for the t.me deep link only
     telegram_link_code_ttl_minutes: int = Field(default=15, ge=1, le=60)
     telegram_link_code_length: int = Field(default=8, ge=6, le=16)

@@ -63,6 +63,30 @@ def test_cli_create_admin(env: None, capsys: pytest.CaptureFixture[str]) -> None
     assert "error" in capsys.readouterr().err
 
 
+def test_cli_bootstrap_admin_is_idempotent_and_silent(
+    env: None, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from app.config import get_settings
+    from app.db import new_session
+
+    assert cli.main(["bootstrap-admin"]) == 0
+    assert "not configured" in capsys.readouterr().out
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_EMAIL", "Boss@Mail.com")
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_PASSWORD", "bootstrap password 1")
+    get_settings.cache_clear()
+    for expected in ("created", "already exists"):
+        assert cli.main(["bootstrap-admin"]) == 0
+        out = capsys.readouterr().out
+        assert expected in out and "boss@mail.com" not in out.lower() and "password 1" not in out
+    with new_session() as db:
+        u = db.exec(select(User)).one()
+        assert u.is_admin and u.email == "boss@mail.com"
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_PASSWORD", "short")
+    get_settings.cache_clear()
+    assert cli.bootstrap_admin(get_settings()) in ("already exists", "error: password too short")
+    get_settings.cache_clear()
+
+
 # ---------------------------------------------------------------- seed data
 def load_seed() -> list[dict[str, str]]:
     with Path(DEFAULT_SEED).open(encoding="utf-8", newline="") as fh:

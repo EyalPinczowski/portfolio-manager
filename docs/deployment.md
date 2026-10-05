@@ -88,7 +88,7 @@ python -m app.cli migrate
 python -m app.cli create-admin --email you@example.com
 python -m app.cli create-invite
 ```
-Render's free plan probably has no shell, so do this locally against Supabase.
+Render's free plan probably has no shell, so do this locally against Supabase. **Or, with no computer:** set `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` (at least the minimum password length) in Render's environment and redeploy. The container start creates that admin once (`python -m app.cli bootstrap-admin`, silent and idempotent). Log in, then **delete both variables**; invites are then created in the app.
 
 **3. Render (API + scheduler)**
 1. New *Web Service* from this repository, **Docker** runtime, Dockerfile path `backend/Dockerfile.slim`, build context `backend`, instance type **Free**.

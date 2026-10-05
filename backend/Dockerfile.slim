@@ -53,4 +53,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
 
 # Migrate, then serve with a single worker. `exec` makes uvicorn PID 1 so SIGTERM shuts it down
 # cleanly (the scheduler releases its leader lock).
-CMD ["sh", "-c", "python -m app.cli migrate && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --no-access-log"]
+CMD ["sh", "-c", "python -m app.cli migrate && python -m app.cli bootstrap-admin && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --no-access-log"]

@@ -55,6 +55,20 @@ def create_admin(email: str, password: str) -> int:
         return user.id
 
 
+def bootstrap_admin(settings: Settings) -> str:
+    """Create the admin from BOOTSTRAP_ADMIN_* once. Returns a status word; never the values."""
+    email, password = settings.bootstrap_admin_email, settings.bootstrap_admin_password
+    if not email or not password:
+        return "not configured"
+    try:
+        create_admin(email, password)
+    except ValueError as exc:
+        if "already exists" in str(exc):
+            return "already exists"
+        return "error: password too short"
+    return "created"
+
+
 def check_config(settings: Settings, probe: bool = False) -> dict[str, str]:
     """Human-readable state of the settings that matter for safety (no secret values)."""
     out: dict[str, str] = {"env": settings.env}
@@ -95,6 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     inv.add_argument(
         "--days", type=int, default=None, help="Validity in days (default from config)"
     )
+    sub.add_parser("bootstrap-admin", help="Create the first admin from BOOTSTRAP_ADMIN_* env vars")
     chk = sub.add_parser("check-config", help="Show the state of the safety-relevant settings")
     chk.add_argument("--probe-models", action="store_true", help="Also ask the LLM providers")
     adm = sub.add_parser("create-admin", help="Create an admin user")
@@ -137,6 +152,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "migrate":
         run_migrations(get_engine())
         print("database schema is up to date")
+        return 0
+    if args.cmd == "bootstrap-admin":
+        print(f"bootstrap-admin: {bootstrap_admin(get_settings())}")
         return 0
     if args.cmd == "check-config":
         report = check_config(get_settings(), probe=args.probe_models)
