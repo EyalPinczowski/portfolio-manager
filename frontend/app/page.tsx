@@ -10,7 +10,7 @@ export default function RootPage() {
       <head>
         <meta httpEquiv="refresh" content={`0;url=${target}`} />
         <meta name="robots" content="noindex" />
-        <title>Portfolio Manager</title>
+        <title>Holdwise</title>
       </head>
       <body>
         <RootRedirect />

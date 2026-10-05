@@ -308,7 +308,7 @@ function Body() {
       {!draft && portfolios && portfolios.length > 0 && (
         <form onSubmit={readOnDevice} className="card space-y-4">
           <p className="text-sm text-muted">{t("intro")}</p>
-          <p className="rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">{t("keepOnly")}</p>
+          <p className="rounded-xl bg-brand-soft p-3 text-sm font-medium text-brand-text">{t("keepOnly")}</p>
           <div>
             <label htmlFor="imp-portfolio" className="label">{t("portfolio")}</label>
             <select id="imp-portfolio" className="input" value={portfolioId ?? ""} onChange={(e) => setPid(Number(e.target.value))}>

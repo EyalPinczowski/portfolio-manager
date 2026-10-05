@@ -9,6 +9,7 @@ import { applyTheme } from "@/lib/theme";
 import { ActionsSheet } from "./ActionsSheet";
 import { AuthGate } from "./AuthGate";
 import { Disclaimer } from "./Disclaimer";
+import { LogoMark, Wordmark } from "./Logo";
 import { AnalyzeIcon, BellIcon, HomeIcon, PlusIcon, PortfolioIcon, SettingsIcon } from "./icons";
 
 export type TabKey = "home" | "portfolio" | "analyze" | "alerts" | "settings";
@@ -112,7 +113,7 @@ export function AppShell({ children, stable }: { children: ReactNode; stable?: b
       <div className="min-h-dvh pb-[calc(var(--tabbar-h)+var(--safe-b))] md:pb-0">
         <header className="sticky top-0 z-20 border-b border-line bg-surface/90 backdrop-blur">
           <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-2">
-            <Link href="/" className="min-h-11 content-center font-bold text-brand-text">{app("name")}</Link>
+            <Link href="/" className="flex min-h-11 items-center gap-2 font-bold text-fg"><LogoMark className="h-7 w-7" /><Wordmark name={app("name")} /></Link>
             <DesktopNav />
             <div className="ms-auto hidden md:block">
               <button type="button" aria-haspopup="dialog" aria-label={a("open")} onClick={() => setMenu(true)} className="btn-primary">

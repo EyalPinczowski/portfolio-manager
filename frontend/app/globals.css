@@ -17,11 +17,11 @@
   --muted: #475467; /* 7.0:1 on surface */
 
   /* brand accent (one) */
-  --brand: #1d4ed8; /* solid fill, white text 6.7:1 */
-  --brand-hover: #1e40af;
+  --brand: #047857; /* Holdwise green (logo); solid fill, white text 5.5:1 */
+  --brand-hover: #065f46;
   --brand-on: #ffffff;
-  --brand-soft: #e3ebff;
-  --brand-text: #1e3a8a; /* text on brand-soft and on surface */
+  --brand-soft: #d1fae5;
+  --brand-text: #065f46; /* text on brand-soft 6.8:1 and on surface 7.7:1 */
 
   /* semantic */
   --gain: #046c4e; /* 5.9:1 on surface */
@@ -30,7 +30,7 @@
   --warn-fg: #7a2e0e;
   --danger: #b42318;
   --danger-hover: #912018;
-  --ring: #1d4ed8;
+  --ring: #047857;
 
   /* shape and rhythm */
   --radius-card: 1rem;
@@ -49,11 +49,11 @@
     --fg: #eaeef5;
     --muted: #a5b0c0; /* 7.4:1 on surface */
 
-    --brand: #3b6cf0; /* white text 4.8:1 */
-    --brand-hover: #5a83f5;
-    --brand-on: #ffffff;
-    --brand-soft: #1c2b52;
-    --brand-text: #a9c0ff;
+    --brand: #34d399; /* light green fill with dark text 7.9:1 */
+    --brand-hover: #6ee7b7;
+    --brand-on: #022c22;
+    --brand-soft: #0f2e25;
+    --brand-text: #6ee7b7; /* 11.4:1 on surface */
 
     --gain: #4cd9a0;
     --loss: #ff8a80;
@@ -61,7 +61,7 @@
     --warn-fg: #fcd98a;
     --danger: #d92d20;
     --danger-hover: #f04438;
-    --ring: #8fb0ff;
+    --ring: #6ee7b7;
     --shadow-card: none;
   }
 }
@@ -75,11 +75,11 @@
   --fg: #eaeef5;
   --muted: #a5b0c0; /* 7.4:1 on surface */
 
-  --brand: #3b6cf0; /* white text 4.8:1 */
-  --brand-hover: #5a83f5;
-  --brand-on: #ffffff;
-  --brand-soft: #1c2b52;
-  --brand-text: #a9c0ff;
+  --brand: #34d399; /* light green fill with dark text 7.9:1 */
+  --brand-hover: #6ee7b7;
+  --brand-on: #022c22;
+  --brand-soft: #0f2e25;
+  --brand-text: #6ee7b7; /* 11.4:1 on surface */
 
   --gain: #4cd9a0;
   --loss: #ff8a80;
@@ -87,7 +87,7 @@
   --warn-fg: #fcd98a;
   --danger: #d92d20;
   --danger-hover: #f04438;
-  --ring: #8fb0ff;
+  --ring: #6ee7b7;
   --shadow-card: none;
 }
 :root[data-theme="light"] { color-scheme: light; }

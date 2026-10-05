@@ -1,4 +1,4 @@
-# Portfolio Manager
+# Holdwise
 
 A personal stock portfolio analysis and recommendation assistant for the **US** (NYSE / NASDAQ) and **Israeli** (TASE) markets.
 It watches your holdings and a watchlist, scores each one from several independent signals, and shows **buy / sell / hold** suggestions in an app that refreshes all day. Every suggestion is checked against the **risk profile you set**.

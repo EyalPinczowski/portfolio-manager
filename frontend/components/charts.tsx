@@ -12,7 +12,7 @@ export function palette() {
     grid: dark ? "#232d3c" : "#e4e8ef",
     up: dark ? "#4cd9a0" : "#046c4e",
     down: dark ? "#ff8a80" : "#b42318",
-    you: dark ? "#8fb0ff" : "#1d4ed8",
+    you: dark ? "#34d399" : "#047857",
     sp: dark ? "#fbbf24" : "#b45309",
     ta: dark ? "#c084fc" : "#7e22ce",
   };

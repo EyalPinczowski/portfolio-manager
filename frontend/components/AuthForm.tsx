@@ -5,6 +5,7 @@ import { api, ApiError } from "@/lib/api";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Disclaimer } from "./Disclaimer";
 import { TurnstileWidget } from "./TurnstileWidget";
+import { LogoMark, Wordmark } from "./Logo";
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const t = useTranslations("auth");
@@ -49,8 +50,9 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   return (
     <>
       <main className="mx-auto max-w-md space-y-4 px-4 py-10">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-brand-text">{app("name")}</h1>
+        <div className="flex flex-col items-center text-center">
+          <LogoMark className="mb-2 h-14 w-14" />
+          <h1 className="text-2xl font-bold text-fg"><Wordmark name={app("name")} /></h1>
           <p className="text-sm text-muted">{app("tagline")}</p>
         </div>
         <form onSubmit={submit} className="card space-y-4">

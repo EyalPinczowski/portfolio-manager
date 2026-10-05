@@ -44,7 +44,7 @@ describe("holding page", () => {
     render1(1);
     expect(await screen.findByText("Not yet validated")).toBeInTheDocument();
     expect(screen.getByText(/Weight 67%/)).toBeInTheDocument();
-    expect(screen.queryByText(/^(strong )?(buy|sell|hold)$/i)).toBeNull(); // no verdict anywhere
+    expect(screen.queryByText(/^(strong )?(buy|sell|hold)$/i, { ignore: "script, style, [data-wordmark]" })).toBeNull(); // no verdict anywhere (the brand's "Hold" half is not one)
   });
 
   it("real-backend no-data card: nominal weights read 25%, not 2,500%, and every signal has a translated name", async () => {
