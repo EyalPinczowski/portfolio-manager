@@ -3,6 +3,7 @@
   "name": "holdwise",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
+  "keep_vars": true, // keep API_ORIGIN / PROXY_SHARED_SECRET set in the dashboard
   "assets": {
     "directory": "./out",
     "binding": "ASSETS",

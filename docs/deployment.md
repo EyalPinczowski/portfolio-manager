@@ -122,6 +122,8 @@ Add an HTTP monitor on `https://<service>.onrender.com/api/health`, interval **5
 
 *If Cloudflare's Pages screen will not connect to GitHub (it loops back to the GitHub app page), deploy as a Worker instead:* create or open a Worker, connect the repository, root directory `frontend`, build command `npm ci && npm run build`, deploy command `npx wrangler deploy` (config in `frontend/wrangler.jsonc`, entry `frontend/worker/index.ts`; the Worker name must match `holdwise`). In the Worker's Settings -> Variables and Secrets add `API_ORIGIN` and `PROXY_SHARED_SECRET` (same values as above). Open the `*.workers.dev` address.
 
+*If Cloudflare's "Connect to Git" keeps looping back to the GitHub app page, skip it and let GitHub deploy:* (1) Cloudflare -> My Profile -> API Tokens -> Create Token -> template "Edit Cloudflare Workers"; (2) in the GitHub repository -> Settings -> Secrets and variables -> Actions, add the secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (the account id is in the Cloudflare dashboard URL); (3) Actions -> "Deploy site" -> Run workflow; (4) set `API_ORIGIN` and the secret `PROXY_SHARED_SECRET` in the Worker's Settings -> Variables and Secrets (a deploy keeps them, `keep_vars`).
+
 **6. First login**
 Open the Pages URL, sign up with the invite code from step 2, accept the disclaimer, create a portfolio and import a screenshot (read on your phone).
 
