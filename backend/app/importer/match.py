@@ -225,6 +225,10 @@ def apply_match(
 ) -> ParsedRow:
     managed = ("unmatched", "low_confidence_match", "currency_changed", "unit_mismatch")
     flags = [f for f in row.flags if f not in managed]
+    if "currency_changed" in row.flags:
+        # Set by a layout that cannot know the currency (`hebrew_broker_cards`): kept until the
+        # user has checked it, even when the matched security agrees with the guess.
+        flags.append("currency_changed")
     row.candidates = []
     if result.method == "new":
         # Not in the seed, but the row carries the evidence for a user-scoped, unverified
@@ -249,7 +253,7 @@ def apply_match(
         row.symbol = sec.symbol
         row.matched_name = sec.name_en
         flag = currency_flag(row, sec)
-        if flag is not None:
+        if flag is not None and flag not in flags:
             flags.append(flag)
     row.flags = flags
     return row

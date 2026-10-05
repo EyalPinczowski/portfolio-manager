@@ -12,21 +12,21 @@ import type { ImportRow } from "../api";
 type Unit = ImportRow["unit"];
 
 const W = "\\p{L}\\p{N}_";
-const numberRe = () => new RegExp(`(?<![${W}.])[-+]?\\(?\\d[\\d,]*(?:\\.\\d+)?\\)?%?`, "gu");
-const symbolRe = () => new RegExp(`(?<![${W}.$])[A-Z]{1,5}(?:[.-][A-Z]{1,3})?(?![${W}])`, "gu");
-const HEBREW_RE = /[֐-׿]/;
+export const numberRe = () => new RegExp(`(?<![${W}.])[-+]?\\(?\\d[\\d,]*(?:\\.\\d+)?\\)?%?`, "gu");
+export const symbolRe = () => new RegExp(`(?<![${W}.$])[A-Z]{1,5}(?:[.-][A-Z]{1,3})?(?![${W}])`, "gu");
+export const HEBREW_RE = /[֐-׿]/;
 const AGOROT_MARKERS = ["אגורות", "אגורה", "אג'", "אג׳", "agorot", "agora"];
 const ILS_MARKERS = ["₪", 'ש"ח', "שח", "nis", "ils"];
 const HEADER_WORDS = [
   "שם נייר", "שם הנייר", "כמות", "שער", "שווי", "עלות", 'סה"כ', "סהכ", "מספר נייר",
   "quantity", "price", "value", "symbol", "total", "holdings", "portfolio", "name",
 ];
-const SYMBOL_STOPWORDS = new Set(["USD", "ILS", "NIS", "ETF", "ILA", "LTD", "INC", "CORP", "PLC", "CO", "THE", "NYSE"]);
+export const SYMBOL_STOPWORDS = new Set(["USD", "ILS", "NIS", "ETF", "ILA", "LTD", "INC", "CORP", "PLC", "CO", "THE", "NYSE"]);
 const ACCOUNT_LINE_RE = /חשבון|מס['׳]? ?חשבון|\baccount\b|\bacct\b|\ba\/c\b/i;
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-function toNumber(token: string): number | null {
+export function toNumber(token: string): number | null {
   let t = token.trim().replace(/%+$/, "");
   const neg = t.startsWith("-") || (t.startsWith("(") && t.endsWith(")"));
   t = t.replace(/^[+\-()]+|[+\-()]+$/g, "").replace(/,/g, "");

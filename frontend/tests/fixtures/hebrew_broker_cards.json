@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "note": "Synthetic, invented numbers. Shared by tests/hebrew-cards-layout.test.ts and backend/tests/test_hebrew_cards_parser.py.",
+  "cases": [
+    {
+      "id": "mixed_list",
+      "images": {
+        "one_line": "תיק עדכני\nהאחזקות שלי\nIBB כמות 9 205.29 -0.33%\nICLN כמות 71 17.19 +1.02%\n35 מחקה ת\"א MTF כמות 2,140 424.62 +0.34%\nנתוני ת\"א בהשהייה של 15 דקות",
+        "stacked": "תיק עדכני\nהאחזקות שלי\n205.29\n-0.33%\nIBB\nכמות 9\n17.19\n+1.02%\nICLN\nכמות 71\n424.62\n+0.34%\n35 מחקה ת\"א MTF\nכמות 2,140\nמיון\nסוג נייר ערך"
+      },
+      "expected": {
+        "layout": "hebrew_broker_cards",
+        "rows": [
+          {
+            "name": "IBB",
+            "symbol": "IBB",
+            "quantity": 9,
+            "price": 205.29,
+            "currency": "USD",
+            "unit": "USD",
+            "value": null,
+            "cost": null,
+            "flags": [
+              "currency_changed"
+            ]
+          },
+          {
+            "name": "ICLN",
+            "symbol": "ICLN",
+            "quantity": 71,
+            "price": 17.19,
+            "currency": "USD",
+            "unit": "USD",
+            "value": null,
+            "cost": null,
+            "flags": [
+              "currency_changed"
+            ]
+          },
+          {
+            "name": "35 מחקה ת\"א MTF",
+            "symbol": null,
+            "quantity": 2140,
+            "price": 424.62,
+            "currency": "ILS",
+            "unit": "ILS",
+            "value": null,
+            "cost": null,
+            "flags": [
+              "currency_changed"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

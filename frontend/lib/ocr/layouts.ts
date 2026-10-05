@@ -5,6 +5,7 @@
 import { OCR_LAYOUTS, type LayoutId } from "../config";
 import type { ImportRow } from "../api";
 import { namesMatch } from "./hebrew";
+import { detectHebrewCards, parseHebrewCardsText } from "./hebrewCards";
 import { detectMeitav, parseMeitavText } from "./meitav";
 import { parseOcrText } from "./parse";
 import type { ParsedRows, RowMeta } from "./types";
@@ -14,7 +15,8 @@ export type LayoutChoice = LayoutId | "auto";
 export const headerFractionFor = (choice: LayoutChoice): number => OCR_LAYOUTS[choice === "auto" ? "generic" : choice].headerFraction;
 
 export function detectLayout(text: string): LayoutId {
-  return detectMeitav(text) ? "meitav_trade" : "generic";
+  if (detectMeitav(text)) return "meitav_trade";
+  return detectHebrewCards(text) ? "hebrew_broker_cards" : "generic";
 }
 
 /** OCR text of one screenshot to rows plus the client-only facts about each row. */
@@ -23,6 +25,10 @@ export function parseScreenshotText(text: string, choice: LayoutChoice = "auto")
   if (layout === "meitav_trade") {
     const parsed = parseMeitavText(text);
     if (parsed && parsed.rows.length > 0) return parsed;
+  }
+  if (layout === "hebrew_broker_cards") {
+    const rows = parseHebrewCardsText(text);
+    if (rows.length > 0) return { layout, rows, meta: rows.map(() => ({})) };
   }
   const rows = parseOcrText(text);
   return { layout: "generic", rows, meta: rows.map(() => ({})) };

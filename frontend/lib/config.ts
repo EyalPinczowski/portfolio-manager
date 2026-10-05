@@ -4,11 +4,12 @@
 export const IMPORT_VALUE_TOLERANCE = 0.02;
 
 /** On-device OCR: share of the image height (from the top) that is blanked before reading (account header). */
-export type LayoutId = "generic" | "meitav_trade";
+export type LayoutId = "generic" | "meitav_trade" | "hebrew_broker_cards";
 /** Per-layout settings. The header (account name, balance) differs per broker app, so its height is per layout. */
 export const OCR_LAYOUTS: Record<LayoutId, { headerFraction: number }> = {
   generic: { headerFraction: 0.12 },
   meitav_trade: { headerFraction: 0.14 },
+  hebrew_broker_cards: { headerFraction: 0.12 },
 };
 export const OCR_TOP_MASK_FRACTION = OCR_LAYOUTS.generic.headerFraction;
 

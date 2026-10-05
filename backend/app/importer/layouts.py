@@ -9,12 +9,13 @@ from collections.abc import Sequence
 from typing import Literal
 
 from app.config import Settings, get_settings
+from app.importer.hebrew_cards import detect_hebrew_cards, parse_hebrew_cards_text
 from app.importer.meitav import detect_meitav, parse_meitav_text
 from app.importer.merge import merge_screenshots
 from app.importer.parse import ParsedRow, parse_ocr_result, parse_ocr_text
 from app.providers.base import OcrResult
 
-LayoutId = Literal["generic", "meitav_trade"]
+LayoutId = Literal["generic", "meitav_trade", "hebrew_broker_cards"]
 
 
 def header_fraction_for(layout: LayoutId, settings: Settings | None = None) -> float:
@@ -26,7 +27,9 @@ def header_fraction_for(layout: LayoutId, settings: Settings | None = None) -> f
 
 
 def detect_layout(text: str) -> LayoutId:
-    return "meitav_trade" if detect_meitav(text) else "generic"
+    if detect_meitav(text):
+        return "meitav_trade"
+    return "hebrew_broker_cards" if detect_hebrew_cards(text) else "generic"
 
 
 def parse_screenshot_text(
@@ -40,6 +43,10 @@ def parse_screenshot_text(
         rows = parse_meitav_text(text, s)
         if rows:
             return "meitav_trade", rows
+    if chosen == "hebrew_broker_cards":
+        rows = parse_hebrew_cards_text(text)
+        if rows:
+            return "hebrew_broker_cards", rows
     return "generic", parse_ocr_text(text, s)
 
 
