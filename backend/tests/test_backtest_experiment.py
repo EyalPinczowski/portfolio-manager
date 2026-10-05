@@ -114,7 +114,7 @@ def test_proposed_targets_are_in_config_and_unapproved() -> None:
 
 # ---------------------------------------------------------------- end to end on synthetic data
 def test_experiment_splits_by_date_and_is_reproducible(store: HistoryStore) -> None:
-    s = _settings()
+    s = _settings(track_record_horizon_days={"3m": 0})  # no embargo here; see the embargo test
     a = run_experiment(store, _secs(), _cfg(), s)
     b = run_experiment(store, _secs(), _cfg(), s)
     assert a.records == b.records and a.records
@@ -128,6 +128,24 @@ def test_experiment_splits_by_date_and_is_reproducible(store: HistoryStore) -> N
     sm = a.summary("aggressive", "heldout")
     assert sm.n_runs == sm.n_windows * 2 and sm.rate is not None
     assert sm.independent_windows == pytest.approx(sm.n_windows)  # step == window: no overlap
+
+
+def test_embargo_and_trials_end_to_end(store: HistoryStore, tmp_path: Path) -> None:
+    from app.backtest.trials import TrialLog
+
+    log = TrialLog(tmp_path / "trials.json")
+    s = _settings()
+    res = run_experiment(store, _secs(), _cfg(runs=1), s, trials=log)
+    gap = pd.Timedelta(days=res.embargo_days)
+    assert res.embargo_days == 91
+    for r in res.records:
+        if r.split == "heldout":
+            assert r.window_start > res.train_until + gap
+    assert res.n_trials_run == 2 and res.n_trials_total == 2
+    res2 = run_experiment(store, _secs(), _cfg(runs=1), s, trials=log)
+    assert res2.n_trials_total == 4
+    text = render_report(res2, store, s, day=pd.Timestamp("2026-10-04").date())
+    assert "Configurations tried" in text and "Survivorship" in text and "PBO" in text.upper()
 
 
 def test_top_mode_is_one_deterministic_run_per_window(store: HistoryStore) -> None:

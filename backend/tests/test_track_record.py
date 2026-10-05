@@ -113,3 +113,26 @@ def test_no_call_text_or_direction_is_exposed(signup: SignupFn) -> None:
         "symbol", "made_on", "horizon", "horizon_ended_on", "resolved_on", "outcome",
         "return_pct", "active_weights", "benchmarks",
     }  # fmt: skip
+
+
+def test_calibration_is_reported_for_scored_calls_and_none_without(signup: SignupFn) -> None:
+    c = signup()
+    assert c.get("/api/track-record").json()["calibration"] is None
+    from app.signals.base import Explanation
+
+    with new_session() as db:
+        for sym, score, price in (("AAA", 80.0, 110.0), ("BBB", 80.0, 101.0), ("CCC", 10.0, 90.0)):
+            call = put(
+                db,
+                age_days=40,
+                symbol=sym,
+                explanation=Explanation(summary="t", inputs={"score": score}).model_dump(
+                    mode="json"
+                ),
+            )
+            resolve(db, call, price, BENCH, 30)
+        resolve(db, put(db, age_days=40, symbol="NOSCORE"), 150.0, BENCH, 30)  # no score: skipped
+    cal = c.get("/api/track-record").json()["calibration"]
+    assert cal["count"] == 3
+    assert cal["base_rate"] == round(1 / 3, 4)  # only AAA beat ^GSPC (+2)
+    assert 0 <= cal["brier"] <= 1 and cal["bins"]

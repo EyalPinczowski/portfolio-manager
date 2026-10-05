@@ -18,6 +18,7 @@ from app.config import Settings
 from app.launchgate import GateStatus, weights_fingerprint
 from app.models import PaperCall
 from app.papertrading import _raw_return_pct, excess_return_pct, paper_metrics
+from app.scoring.calibration import Calibration, calibration, score_to_prob
 from app.timeutil import utcnow
 
 TrackState = Literal["not_started", "none_ended", "ready"]
@@ -76,6 +77,7 @@ class TrackRecordOut(BaseModel):
     excluded_errors: int  # horizon ended, resolution was an operational error (no price)
     benchmarks: list[BenchmarkAggregate]
     gate: GateProgress
+    calibration: Calibration | None = None  # reporting only; None without scored resolved calls
     methodology: list[str]
     rows: list[TrackCallRow]
     truncated: bool
@@ -94,6 +96,9 @@ def _methodology(s: Settings) -> list[str]:
         "The benchmark return is the return of simply holding the index over the same span.",
         "Excess return is measured in the direction the call was made, in percentage points. A "
         "call is a hit against a benchmark when its excess return is above zero.",
+        "Calibration (reporting only) compares each call's stated chance of success, taken from "
+        "its score (0 = 50%, 100 = 100%), with how often it beat the first benchmark. It changes "
+        "nothing in the scores or the launch gate.",
         "Calls that ended in an operational error, and calls still waiting for a resolution, are "
         "counted separately and never dropped silently.",
         "Prices come from free data sources and can be delayed. This is a record of past calls, "
@@ -128,6 +133,8 @@ def build_track_record(
     awaiting = errors = 0
     names = list(settings.launch_paper_must_beat)
     excess: dict[str, list[float]] = {n: [] for n in names}
+    cal_probs: list[float] = []
+    cal_hits: list[bool] = []
     for c in calls:
         days = settings.track_record_horizon_days.get(c.horizon)
         if days is None:
@@ -157,6 +164,13 @@ def build_track_record(
             )
             if edge is not None:
                 excess.setdefault(name, []).append(edge)
+        score = (c.explanation.get("inputs") or {}).get("score")
+        primary = next((n for n in names if n in (c.benchmark_returns or {})), None)
+        if isinstance(score, int | float) and primary is not None:
+            edge0 = excess_return_pct(c, (c.benchmark_returns or {})[primary])
+            if edge0 is not None:
+                cal_probs.append(score_to_prob(float(score)))
+                cal_hits.append(edge0 > 0)
         rows.append(
             TrackCallRow(
                 symbol=c.symbol,
@@ -205,6 +219,7 @@ def build_track_record(
         excluded_errors=errors,
         benchmarks=aggregates,
         gate=progress,
+        calibration=calibration(cal_probs, cal_hits),
         methodology=_methodology(settings),
         rows=rows[:cap],
         truncated=len(rows) > cap,

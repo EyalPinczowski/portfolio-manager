@@ -3,7 +3,9 @@
 Success of one run = return >= the preset's target AND excess over the benchmark > 0 AND max
 drawdown <= the preset's cap (`Settings.backtest_targets`, PROPOSALS awaiting user approval).
 The held-out success rate (windows that start after `train_until`) is the headline number; the
-train rate is shown only so overfitting is visible. Windows that straddle the split are dropped.
+train rate is shown only so overfitting is visible. Windows that straddle the split are dropped,
+and so are windows starting within one horizon after it (the embargo), because a trade opened
+late in training would still be running when the held-out period starts.
 
 Windows overlap (a 6-month window every month), so their results are not independent. The report
 says how many independent windows that amounts to.
@@ -22,8 +24,10 @@ import numpy as np
 import pandas as pd
 
 from app.backtest.data import HistoryStore, as_timestamp
+from app.backtest.overfit import deflated_sharpe_ratio, pbo_cscv, sharpe
 from app.backtest.screen import ScoreCache
 from app.backtest.simulator import PickMode, RunResult, simulate
+from app.backtest.trials import TrialLog
 from app.config import BacktestTarget, Settings, get_settings
 from app.models import Security
 
@@ -89,6 +93,12 @@ class ExperimentResult:
     dropped_straddling: int = 0
     n_symbols: int = 0
     summaries: dict[tuple[str, Split], Summary] = field(default_factory=dict)
+    embargo_days: int = 0
+    dropped_embargo: int = 0
+    n_trials_run: int = 0  # configurations evaluated by this experiment
+    n_trials_total: int = 0  # cumulative, including earlier experiments (persisted trial log)
+    dsr: dict[str, float | None] = field(default_factory=dict)  # per profile, held-out
+    pbo: float | None = None
 
     def summary(self, preset: str, split: Split) -> Summary:
         return self.summaries[(preset, split)]
@@ -128,6 +138,49 @@ def make_windows(
             return out
         out.append((pd.Timestamp(start), pd.Timestamp(end)))
         k += 1
+
+
+def embargo_days_for(s: Settings) -> int:
+    """The embargo: one trade horizon, in calendar days."""
+    return int(s.track_record_horizon_days.get(s.backtest_horizon, 0))
+
+
+def split_of(
+    a: pd.Timestamp, b: pd.Timestamp, train_until: pd.Timestamp, embargo_days: int
+) -> tuple[Split | None, bool]:
+    """(split, embargoed). split None = dropped; embargoed marks a drop caused by the gap."""
+    if b <= train_until:
+        return "train", False
+    if a > train_until + pd.Timedelta(days=embargo_days):
+        return "heldout", False
+    return None, a > train_until
+
+
+def _window_series(result: ExperimentResult, split: Split | None) -> dict[str, pd.Series]:
+    out: dict[str, pd.Series] = {}
+    for p in result.config.profiles:
+        rows = [
+            (r.window_start, r.excess_pct)
+            for r in result.records
+            if r.preset == p and (split is None or r.split == split)
+        ]
+        out[p] = (
+            pd.DataFrame(rows, columns=["w", "x"]).groupby("w")["x"].mean()
+            if rows
+            else pd.Series(dtype=float)
+        )
+    return out
+
+
+def compute_overfit_stats(result: ExperimentResult) -> None:
+    """Fill `dsr` (held-out excess per window) and `pbo` (all windows x profiles), in place."""
+    held = _window_series(result, "heldout")
+    sharpes = [sr for sr in (sharpe(v.to_numpy()) for v in held.values()) if sr is not None]
+    var = float(np.var(sharpes, ddof=1)) if len(sharpes) >= 2 else None
+    n = max(result.n_trials_total, result.n_trials_run, 1)
+    result.dsr = {p: deflated_sharpe_ratio(v.to_numpy(), n, var) for p, v in held.items()}
+    allw = pd.DataFrame(_window_series(result, None)).dropna()
+    result.pbo = pbo_cscv(allw.to_numpy()) if allw.shape[1] >= 2 else None
 
 
 def _seed_for(seed: int, preset: str, w: int, run: int) -> list[int]:
@@ -203,6 +256,7 @@ def run_experiment(
     *,
     workers: int = 1,
     progress: Callable[[int, int], None] | None = None,
+    trials: TrialLog | None = None,
 ) -> ExperimentResult:
     s = settings or get_settings()
     unknown = [p for p in cfg.profiles if p not in s.backtest_targets]
@@ -229,13 +283,13 @@ def run_experiment(
 
     tasks: list[_Task] = []
     dropped = 0
+    dropped_emb = 0
+    embargo = embargo_days_for(s)
     for i, (a, b) in enumerate(windows):
-        if b <= train_until:
-            split = "train"
-        elif a > train_until:
-            split = "heldout"
-        else:
+        split, emb = split_of(a, b, train_until, embargo)
+        if split is None:
             dropped += 1
+            dropped_emb += emb
             continue
         for preset in cfg.profiles:
             tasks.extend(_Task(preset, split, i, a, b, k) for k in range(runs))
@@ -249,6 +303,15 @@ def run_experiment(
         last_end=windows[-1][1],
         dropped_straddling=dropped,
         n_symbols=len(present),
+        embargo_days=embargo,
+        dropped_embargo=dropped_emb,
+        n_trials_run=len(cfg.profiles),
+    )
+    # every configuration evaluated counts as a trial, even when the result is never recorded
+    result.n_trials_total = (
+        trials.add(len(cfg.profiles), f"{cfg.mode} {cfg.window_months}m/{cfg.step_months}m")
+        if trials
+        else len(cfg.profiles)
     )
     if workers > 1:
         with ProcessPoolExecutor(
@@ -267,6 +330,7 @@ def run_experiment(
             if progress:
                 progress(n, len(tasks))
     result.summaries = summarise(result, s)
+    compute_overfit_stats(result)
     return result
 
 

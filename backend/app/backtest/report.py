@@ -51,6 +51,25 @@ def _table(result: ExperimentResult, split: str, s: Settings) -> list[str]:
     return lines
 
 
+def _prob(x: float | None) -> str:
+    return "n/a" if x is None else f"{x:.2f}"
+
+
+def _overfit_lines(result: ExperimentResult) -> list[str]:
+    lines = [
+        f"- Configurations tried: **{result.n_trials_run}** in this experiment, "
+        f"**{result.n_trials_total}** in total (persisted trial log). More tries raise the bar.",
+        "- Deflated Sharpe Ratio (held-out excess return per window; probability the Sharpe beats "
+        "the best of that many noise trials, so low = likely luck): "
+        + (", ".join(f"{p} {_prob(v)}" for p, v in result.dsr.items()) if result.dsr else "n/a"),
+        f"- Probability of Backtest Overfitting (CSCV over the profiles and all windows; about 0.50 "
+        f"means selection among them is no better than chance): {_prob(result.pbo)}"
+        + (" (needs at least 2 profiles and enough windows)" if result.pbo is None else ""),
+        "- Windows overlap, so both numbers are optimistic about the sample size.",
+    ]
+    return lines
+
+
 def render_report(
     result: ExperimentResult,
     store: HistoryStore,
@@ -92,6 +111,10 @@ def render_report(
         "",
         *_table(result, "train", s),
         "",
+        "## Overfitting checks (reporting only)",
+        "",
+        *_overfit_lines(result),
+        "",
         "## Targets and caps (PROPOSALS, need your approval)",
         "",
         "| Profile | Min return per window | Max drawdown |",
@@ -114,7 +137,9 @@ def render_report(
             else " (deterministic)"
         ),
         f"- Windows from {result.first_start.date()} to {result.last_end.date()}; "
-        f"{result.dropped_straddling} window(s) straddling the split were dropped",
+        f"{result.dropped_straddling} window(s) straddling the split or inside the "
+        f"{result.embargo_days}-day embargo (one horizon, {s.backtest_horizon}) after it were dropped "
+        f"({result.dropped_embargo} of them by the embargo)",
         f"- Universe in the store: {result.n_symbols} securities; benchmark {cfg.benchmark or s.backtest_benchmark}",
         f"- Start capital {s.backtest_capital_ils:,.0f} ILS, empty portfolio; horizon {s.backtest_horizon}; "
         f"screen every {s.backtest_rebalance_every_days} trading days; up to {s.backtest_max_new_per_rebalance} new buys each time",
@@ -129,7 +154,8 @@ def render_report(
         "news and sentiment have no point-in-time history here, so the tested score is not the live score. "
         "The LLM layer is validated by forward paper trading, never by this backtest.",
         "2. **Survivorship bias.** The universe is today's seed list. Companies that were delisted, "
-        "merged or dropped out of the indices are missing, which flatters every result.",
+        "merged or dropped out of the indices are missing, which flatters every result (past windows "
+        "only contain names that survived to today). Point-in-time membership is not available for free.",
         "3. **Overlapping windows are not independent.** A 6-month window every month means each month "
         'is in several windows. The column "Independent windows" is the honest sample size; the confidence '
         "interval above treats runs as independent and is therefore too narrow.",
@@ -145,6 +171,8 @@ def render_report(
         "8. **Random mode is a null model, not a strategy.** It picks at random among candidates that already passed "
         "the screener's filters, so a good rate says the filters (stops, caps, volatility cap) do the work, not the ranking.",
         "9. **Targets are proposals.** They were not chosen from the data, but a pass only means the proposed bar was met.",
+        "10. **Many tries inflate the best result.** The trial count and the two statistics above "
+        "(Deflated Sharpe, PBO) say how likely it is that the best configuration is just the luckiest.",
         "",
         "Not financial advice.",
         "",

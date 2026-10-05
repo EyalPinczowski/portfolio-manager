@@ -19,6 +19,7 @@ from app.backtest.experiment import (
     today,
 )
 from app.backtest.report import render_report
+from app.backtest.trials import TrialLog
 from app.config import Settings
 from app.launchgate import weights_fingerprint
 from app.models import Security
@@ -95,6 +96,10 @@ def maybe_record(
         "seed": result.config.seed,
         "train_until": str(result.train_until.date()),
         "threshold": s.backtest_success_threshold,
+        "n_trials": result.n_trials_total,  # reporting only; the pass decision above is unchanged
+        "dsr": result.dsr,
+        "pbo": result.pbo,
+        "embargo_days": result.embargo_days,
         "heldout": {
             p: {
                 "rate": result.summary(p, "heldout").rate,
@@ -157,7 +162,15 @@ def run_backtest(
             print(f"  {n}/{total} runs", file=sys.stderr)
 
     try:
-        result = run_experiment(store, secs, cfg, s, workers=workers, progress=progress)
+        result = run_experiment(
+            store,
+            secs,
+            cfg,
+            s,
+            workers=workers,
+            progress=progress,
+            trials=TrialLog(store.root / "trials.json"),
+        )
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
