@@ -683,9 +683,9 @@ class Settings(BaseSettings):
     # exists for the key and otherwise takes the first available fallback. The Gemini 2.5 series
     # shuts down no earlier than 2026-10-16; Groq's Llama models may have left the free tier. The
     # fallback ids are best guesses: an id the provider does not list is simply skipped.
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"
     gemini_model_fallbacks: list[str] = Field(
-        default_factory=lambda: ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite"]
+        default_factory=lambda: ["gemini-3.6-flash", "gemini-2.5-flash-lite"]
     )
     groq_api_key: str | None = None
     groq_model: str = "openai/gpt-oss-20b"
@@ -790,14 +790,34 @@ class Settings(BaseSettings):
     # provider bucket; the daily budget is per provider (requests per UTC day), per-user daily caps
     # apply to on-demand calls, and batch work may only use `llm_batch_daily_fraction` of the
     # provider's day so a user's on-demand question is never starved by background jobs.
-    llm_user_rpm: int = 3
+    llm_user_rpm: int = 5  # one committee run is 4 calls in a burst, plus a repair retry
     llm_role_rpm: int = 5
     llm_daily_budget: int = 900
     llm_batch_daily_fraction: float = 0.6
     llm_user_daily_budget: int = 60
-    # Gemini 2.5/3 thinking tokens count against `maxOutputTokens` and can truncate the JSON: set the
-    # budget explicitly (0 = off; None = leave the model's default). Pro models cannot be 0.
+    # Gemini thinking tokens count against `maxOutputTokens` and can truncate the JSON, so thinking is
+    # kept minimal. 2.5 models take `thinkingBudget` (0 = off; None = leave the model's default;
+    # Pro models cannot be 0); 3.x models take `thinkingLevel` instead, never both: by model-id
+    # prefix, longest match wins. 3.8 rejects "minimal", hence "low" there.
     gemini_thinking_budget: int | None = 0
+    gemini_thinking_levels: dict[str, str] = Field(
+        default_factory=lambda: {"gemini-3": "minimal", "gemini-3.8": "low"}
+    )
+    # Tokens per UTC day (tokens_in + tokens_out in the ledger) a provider may use before it is
+    # skipped for the rest of the day. 0 = no limit known. Groq's free plan: 200K tokens a day on
+    # openai/gpt-oss-20b; Gemini's free limits vary by model and date, so none is set.
+    llm_daily_token_budget: dict[str, int] = Field(
+        default_factory=lambda: {"gemini": 0, "groq": 180000}
+    )
+    # Overall time for one committee run: once spent, the roles not yet run use their templates
+    # (Cloudflare answers 524 after about 100 s).
+    committee_deadline_seconds: float = Field(default=75.0, gt=0)
+    # Run the universe screener (20 history calls every 15 minutes) in this process. Off in the slim
+    # image (512 MB): a GitHub Actions cron or a separate worker runs it there.
+    scheduler_universe_enabled: bool = True
+    # Production origin lock: every /api request except /health and the Telegram webhook must carry
+    # `proxy_auth_header` = `proxy_shared_secret` or gets a 404.
+    require_proxy_auth: bool = False
     # Fenced free text (news, user notes): caps applied before it is sent.
     llm_untrusted_max_chars: int = 4000
     llm_untrusted_max_urls: int = 3
@@ -908,8 +928,23 @@ class Settings(BaseSettings):
 MIN_PROXY_SECRET_CHARS = 16
 
 
+def gemini_thinking_config(model: str, settings: Settings) -> dict[str, object] | None:
+    """`thinkingConfig` for a Gemini model id: `thinkingLevel` for 3.x, `thinkingBudget` for the
+    rest (2.5), never both. None = send nothing (leave the model's default)."""
+    prefixes = [p for p in settings.gemini_thinking_levels if model.startswith(p)]
+    if prefixes:
+        return {"thinkingLevel": settings.gemini_thinking_levels[max(prefixes, key=len)]}
+    if model.startswith("gemini-3"):
+        return None  # a 3.x model the table does not know: its default, never a budget
+    if settings.gemini_thinking_budget is not None:
+        return {"thinkingBudget": settings.gemini_thinking_budget}
+    return None
+
+
 def validate_proxy(settings: Settings) -> None:
     """The client-IP header may only be trusted together with a shared secret. Raises RuntimeError."""
+    if settings.require_proxy_auth and not settings.proxy_shared_secret:
+        raise RuntimeError("REQUIRE_PROXY_AUTH is true but PROXY_SHARED_SECRET is not set")
     if not settings.trusted_proxy_header:
         return
     secret = settings.proxy_shared_secret

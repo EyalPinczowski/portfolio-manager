@@ -189,6 +189,12 @@ class PostgresIndex(ChunkIndex):
         terms = query_terms(query)
         if not terms or not cutoffs:
             return []
+        exists = db.connection().execute(
+            text("SELECT 1 FROM pg_indexes WHERE indexname = :n AND tablename = 'doc_chunk'"),
+            {"n": self._INDEX},
+        )
+        if exists.first() is None:  # ensure() has not run: nothing is indexed (same as SQLite)
+            return []
         tsq = " | ".join(f"{t}:*" if len(t) >= MIN_PREFIX else t for t in terms)
         where, params = _filters(cutoffs)
         sql = text(

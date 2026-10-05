@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main, "claude/**", "ccr-**"]
   pull_request:
 
 permissions:
@@ -73,6 +73,42 @@ jobs:
       - run: uv python install 3.12
       - run: uv sync --extra dev --extra postgres
       - run: uv run pytest -q
+
+  docker-slim:
+    # Best effort, unverified (written without a Docker daemon): builds the slim image, migrates a
+    # service Postgres with it and health-checks the API inside a 512 MB limit.
+    name: Docker slim image (512 MB, migrate, /api/health)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: portfolio_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      # TODO(pin-sha): pin this action to a full commit SHA, tag as trailing comment (not verified offline)
+      - uses: actions/checkout@v4
+      - run: docker build -f backend/Dockerfile.slim -t pm-slim backend
+      - name: Migrate and health-check within 512 MB
+        run: |
+          docker run -d --name pm --memory=512m --network host \
+            -e ENV=dev -e COOKIE_SECURE=false -e PORT=8000 \
+            -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/portfolio_test \
+            pm-slim
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/api/health; then ok=1; break; fi
+            sleep 2
+          done
+          docker logs pm
+          test "${ok:-0}" = 1
 
   backend-audit:
     name: Backend (pip-audit)

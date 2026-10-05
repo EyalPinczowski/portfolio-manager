@@ -148,6 +148,20 @@ def requests_today(
         return int(sum(rows))
 
 
+def tokens_today(
+    provider: str, day: date | None = None, session_factory: SessionFactory | None = None
+) -> int:
+    """`tokens_in + tokens_out` used on `provider` today, summed over its models."""
+    day = day or utcnow().date()
+    with (session_factory or _default_factory)() as db:
+        rows = db.exec(
+            select(LlmUsage.tokens_in, LlmUsage.tokens_out).where(
+                LlmUsage.provider == provider, LlmUsage.day == day
+            )
+        ).all()
+        return int(sum((i or 0) + (o or 0) for i, o in rows))
+
+
 def quota_used(
     key: str, day: date | None = None, session_factory: SessionFactory | None = None
 ) -> int:

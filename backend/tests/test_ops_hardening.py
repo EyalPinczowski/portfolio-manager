@@ -109,7 +109,7 @@ class FakeLister:
 
 
 def test_probe_only_asks_providers_that_have_a_key() -> None:
-    lister = FakeLister({"gemini": {"gemini-2.5-flash"}, "groq": set()})
+    lister = FakeLister({"gemini": {"gemini-3.5-flash-lite"}, "groq": set()})
     s = Settings(_env_file=None, gemini_api_key="k")
     res = probe_models(s, lister)
     assert lister.asked == ["gemini"]
@@ -118,14 +118,16 @@ def test_probe_only_asks_providers_that_have_a_key() -> None:
 
 def test_probe_switches_to_a_fallback_when_the_model_is_retired() -> None:
     s = Settings(_env_file=None, gemini_api_key="k", groq_api_key="q")
-    lister = FakeLister({"gemini": {"gemini-3.5-flash-lite"}, "groq": {"openai/gpt-oss-20b"}})
+    lister = FakeLister({"gemini": {"gemini-3.6-flash"}, "groq": {"openai/gpt-oss-20b"}})
     model_probe.reset_probe_results()
     run_probe(s, lister)
-    assert model_probe.active_model("gemini", s) == "gemini-3.5-flash-lite"
+    assert model_probe.active_model("gemini", s) == "gemini-3.6-flash"
     assert model_probe.active_model("groq", s) == "openai/gpt-oss-20b"
     assert model_probe.model_status()["gemini"].status == "fallback"
     model_probe.reset_probe_results()
-    assert model_probe.active_model("gemini", s) == "gemini-2.5-flash"  # nothing probed: config
+    assert (
+        model_probe.active_model("gemini", s) == "gemini-3.5-flash-lite"
+    )  # nothing probed: config
 
 
 def test_a_changed_config_ignores_a_stale_probe_result() -> None:
@@ -144,7 +146,7 @@ def test_probe_errors_and_unreachable_providers_never_raise() -> None:
             raise RuntimeError("network down")
 
     res = probe_models(Settings(_env_file=None, gemini_api_key="k"), Boom())
-    assert res["gemini"].status == "unverified" and res["gemini"].model == "gemini-2.5-flash"
+    assert res["gemini"].status == "unverified" and res["gemini"].model == "gemini-3.5-flash-lite"
     run_probe(Settings(_env_file=None, gemini_api_key="k"), Boom())  # swallowed
     model_probe.reset_probe_results()
 

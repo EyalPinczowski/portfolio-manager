@@ -70,6 +70,16 @@ def parse_start(text: str | None) -> str | None:
     return m.group(1) if m else None
 
 
+def _replayed(db: Session, user: User, chat_id: str) -> BindResult:
+    """A spent code seen again (Telegram redelivers an update, e.g. after a cold start): the same
+    chat gets the same answer as the first time, and nothing is bound twice."""
+    db.refresh(user)
+    if user.telegram_chat_id == chat_id:
+        return "linked"
+    holder = db.exec(select(User).where(User.telegram_chat_id == chat_id)).first()
+    return "chat_taken" if holder is not None and holder.id != user.id else "invalid"
+
+
 def bind_from_start(db: Session, chat_id: str, code: str, settings: Settings) -> BindResult:
     """Bind `chat_id` to the code's user. Idempotent for the same chat and the same user."""
     digest = hash_code(code, settings)
@@ -79,8 +89,8 @@ def bind_from_start(db: Session, chat_id: str, code: str, settings: Settings) ->
     user = db.get(User, row.user_id)
     if user is None or user.disabled_at is not None:
         return "invalid"
-    if row.used_at is not None:  # a redelivered update: the same chat gets the same answer
-        return "linked" if user.telegram_chat_id == chat_id else "invalid"
+    if row.used_at is not None:
+        return _replayed(db, user, chat_id)
     claim = db.execute(
         update(TelegramLinkCode)
         .where(
@@ -92,7 +102,8 @@ def bind_from_start(db: Session, chat_id: str, code: str, settings: Settings) ->
     )
     if claim.rowcount != 1:  # type: ignore[attr-defined]
         db.rollback()
-        return "invalid"
+        db.refresh(row)  # a concurrent delivery of the same update may have spent it a moment ago
+        return _replayed(db, user, chat_id) if row.used_at is not None else "invalid"
     other = db.exec(
         select(User).where(User.telegram_chat_id == chat_id, col(User.id) != user.id)
     ).first()

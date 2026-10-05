@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from collections.abc import Callable, Sequence
 from datetime import datetime
 
@@ -226,6 +227,7 @@ def _run[T: BaseModel](
     check: Callable[[T, BuiltPrompt, PublicFacts], T | None],
     news_dependent: bool = False,
     on_demand: bool = True,
+    user_id: int | None = None,
 ) -> RoleResult[T]:
     query, doc_types = ROLE_RETRIEVAL[role]
     passages_off = settings.committee_role_k[role] == 0  # reads the reports, not raw passages
@@ -269,6 +271,7 @@ def _run[T: BaseModel](
         providers=providers,
         settings=settings,
         now=now,
+        user_id=user_id,
     )
     value, source = res.value, res.source
     if res.source != "template":
@@ -311,6 +314,7 @@ def company_profile(
     providers: Sequence[LLMProvider] | None = None,
     settings: Settings | None = None,
     now: datetime | None = None,
+    user_id: int | None = None,
 ) -> RoleResult[CompanyProfile]:
     s = settings or get_settings()
 
@@ -325,7 +329,7 @@ def company_profile(
 
     return _run(
         role="company_profile", model_cls=CompanyProfile, db=db, facts=facts, providers=providers,
-        settings=s, now=now, reports=(), template=_profile_template, check=check,
+        settings=s, now=now, reports=(), template=_profile_template, check=check, user_id=user_id,
     )  # fmt: skip
 
 
@@ -336,6 +340,7 @@ def news(
     providers: Sequence[LLMProvider] | None = None,
     settings: Settings | None = None,
     now: datetime | None = None,
+    user_id: int | None = None,
 ) -> RoleResult[NewsReport]:
     s = settings or get_settings()
 
@@ -349,6 +354,7 @@ def news(
     return _run(
         role="news", model_cls=NewsReport, db=db, facts=facts, providers=providers, settings=s,
         now=now, reports=(), template=_news_template, check=check, news_dependent=True,
+        user_id=user_id,
     )  # fmt: skip
 
 
@@ -360,6 +366,7 @@ def bear(
     providers: Sequence[LLMProvider] | None = None,
     settings: Settings | None = None,
     now: datetime | None = None,
+    user_id: int | None = None,
 ) -> RoleResult[BearCase]:
     s = settings or get_settings()
     fact_keys = {"score", "confidence", *facts.indicators}
@@ -395,6 +402,7 @@ def cio(
     providers: Sequence[LLMProvider] | None = None,
     settings: Settings | None = None,
     now: datetime | None = None,
+    user_id: int | None = None,
 ) -> RoleResult[CIOAssessment]:
     """The CIO's answer to the Bear. The score adjustment is capped by config and zero when there
     is no score; the adjusted score itself is computed by `apply_adjustment`, not by the model."""
@@ -418,7 +426,7 @@ def cio(
     return _run(
         role="cio", model_cls=CIOAssessment, db=db, facts=facts, providers=providers, settings=s,
         now=now, reports=[bear_case, *reports], template=lambda hits: _cio_template(bear_case),
-        check=check, news_dependent=True,
+        check=check, news_dependent=True, user_id=user_id,
     )  # fmt: skip
 
 
@@ -449,13 +457,37 @@ def run_committee(
     providers: Sequence[LLMProvider] | None = None,
     settings: Settings | None = None,
     now: datetime | None = None,
+    user_id: int | None = None,
+    clock: Callable[[], float] = time.monotonic,
 ) -> CommitteeReport:
+    """The four roles in order. `user_id` (no name: prompts are public) makes the per-user LLM
+    budget and per-minute limit apply. After `committee_deadline_seconds` the roles not yet run use
+    their templates (no more model calls) and say so in their notes."""
     s = settings or get_settings()
-    kw = {"providers": providers, "settings": s, "now": now}
-    profile = company_profile(db, facts, **kw)  # type: ignore[arg-type]
-    nw = news(db, facts, **kw)  # type: ignore[arg-type]
-    br = bear(db, facts, nw.value, **kw)  # type: ignore[arg-type]
-    c = cio(db, facts, br.value, [nw.value], **kw)  # type: ignore[arg-type]
+    start = clock()
+    late = False
+
+    def kw() -> dict[str, object]:
+        nonlocal late
+        late = late or clock() - start > s.committee_deadline_seconds
+        return {
+            "providers": [] if late else providers,
+            "settings": s,
+            "now": now,
+            "user_id": user_id,
+        }
+
+    def mark[T: BaseModel](res: RoleResult[T], skipped: bool) -> RoleResult[T]:
+        if skipped and res.source == "template":
+            res.notes.append(
+                f"time limit of {s.committee_deadline_seconds:g} s reached: template used, no model call"
+            )
+        return res
+
+    profile = company_profile(db, facts, **kw())  # type: ignore[arg-type]
+    nw = mark(news(db, facts, **kw()), late)  # type: ignore[arg-type]
+    br = mark(bear(db, facts, nw.value, **kw()), late)  # type: ignore[arg-type]
+    c = mark(cio(db, facts, br.value, [nw.value], **kw()), late)  # type: ignore[arg-type]
     return CommitteeReport(
         symbol=facts.symbol, profile=profile, news=nw, bear=br, cio=c,
         cio_score=apply_adjustment(facts, c.value, s),

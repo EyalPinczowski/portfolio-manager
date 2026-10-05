@@ -34,7 +34,11 @@ from app.db import get_engine, new_session, prepare_database
 from app.errors import ApiError, api_error_handler
 from app.health import HealthOut, HealthProbe, scheduler_state
 from app.logging_setup import configure_logging
-from app.middleware import BodySizeLimitMiddleware, SecurityHeadersMiddleware
+from app.middleware import (
+    BodySizeLimitMiddleware,
+    ProxyAuthMiddleware,
+    SecurityHeadersMiddleware,
+)
 from app.model_probe import start_probe_in_background
 from app.securities import seed_securities
 from app.strictjson import StrictJsonRoute
@@ -90,6 +94,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RequestValidationError, _validation_error)  # type: ignore[arg-type]
     app.add_middleware(BodySizeLimitMiddleware, settings_factory=get_settings)
     app.add_middleware(SecurityHeadersMiddleware, settings_factory=get_settings)
+    app.add_middleware(ProxyAuthMiddleware, settings_factory=get_settings)  # outermost: 404 first
     if settings.cors_origins:
         app.add_middleware(
             CORSMiddleware,

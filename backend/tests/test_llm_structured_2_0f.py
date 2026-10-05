@@ -251,13 +251,19 @@ def _gemini_body(s: Settings) -> dict[str, Any]:
 
 
 def test_gemini_gets_an_explicit_thinking_budget() -> None:
-    body = _gemini_body(settings(gemini_api_key="k", gemini_thinking_budget=0))
+    body = _gemini_body(
+        settings(gemini_api_key="k", gemini_model="gemini-2.5-flash", gemini_thinking_budget=0)
+    )
     assert body["generationConfig"]["thinkingConfig"] == {"thinkingBudget": 0}
-    body = _gemini_body(settings(gemini_api_key="k", gemini_thinking_budget=256))
+    body = _gemini_body(
+        settings(gemini_api_key="k", gemini_model="gemini-2.5-flash", gemini_thinking_budget=256)
+    )
     assert body["generationConfig"]["thinkingConfig"] == {"thinkingBudget": 256}
     assert body["generationConfig"]["maxOutputTokens"] == 1024
 
 
 def test_the_thinking_budget_can_be_left_to_the_model() -> None:
-    body = _gemini_body(settings(gemini_api_key="k", gemini_thinking_budget=None))
+    body = _gemini_body(
+        settings(gemini_api_key="k", gemini_model="gemini-2.5-flash", gemini_thinking_budget=None)
+    )
     assert "thinkingConfig" not in body["generationConfig"]

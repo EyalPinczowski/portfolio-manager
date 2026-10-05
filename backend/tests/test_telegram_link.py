@@ -314,3 +314,39 @@ def test_fake_sender_applies_the_outbound_gate_and_never_calls_the_network(
     with pytest.raises(OutboundBlocked):
         tg.send("1", "Strong buy AAPL")  # free text is refused while the launch gate is closed
     assert tg.sent == []
+
+
+def test_replayed_start_gets_the_same_answer_and_binds_once(
+    tg: FakeTelegramSender, signup: SignupFn
+) -> None:
+    """M8: Telegram redelivers an update after a cold start; also once the code row has expired."""
+    a = signup("a@mail.com")
+    code = new_code(a)
+    hook = TestClient(a.app)
+    for _ in range(3):
+        hook.post("/api/telegram/webhook", json=update(7, f"/start {code}"), headers=HDR)
+        if _ == 0:
+            with new_session() as db:  # the spent code ages past its expiry between deliveries
+                row = db.exec(select(TelegramLinkCode)).one()
+                row.expires_at = utcnow() - timedelta(hours=1)
+                db.add(row)
+                db.commit()
+    assert chat_of("a@mail.com") == "7"
+    assert len(tg.sent) == 3 and len({t for _, t in tg.sent}) == 1
+    assert "linked to your account" in tg.sent[0][1]
+    with new_session() as db:
+        assert len(db.exec(select(TelegramLinkCode)).all()) == 1
+
+
+def test_replay_of_a_chat_taken_answer_stays_chat_taken(
+    tg: FakeTelegramSender, signup: SignupFn
+) -> None:
+    a = signup("a@mail.com")
+    hook = TestClient(a.app)
+    hook.post("/api/telegram/webhook", json=update(5, f"/start {new_code(a)}"), headers=HDR)
+    b = signup("b@mail.com")
+    code_b = new_code(b)
+    for _ in range(2):
+        hook.post("/api/telegram/webhook", json=update(5, f"/start {code_b}"), headers=HDR)
+    assert chat_of("b@mail.com") is None
+    assert tg.sent[-1][1] == tg.sent[-2][1] and "already" in tg.sent[-1][1].lower()

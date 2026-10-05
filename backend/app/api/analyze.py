@@ -12,7 +12,7 @@ question and notes are never sent to one.
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
@@ -33,7 +33,7 @@ from app.analyze.service import MarketData, load_market, quote_row
 from app.api.exit_levels import _risk_for
 from app.api.schemas import BIG, Horizon
 from app.auth.deps import DbDep, SettingsDep, UserDep
-from app.auth.ratelimit import committee_daily_limiter, committee_limiter, enforce_limit, too_many
+from app.auth.ratelimit import committee_limiter, enforce_limit, too_many
 from app.committee.roles import run_committee
 from app.committee.schemas import CommitteeReport
 from app.config import DISCLAIMER
@@ -41,6 +41,7 @@ from app.errors import ApiError
 from app.importer.parse import SYMBOL_PATTERN, norm_symbol
 from app.launchgate import GateDep
 from app.llm.base import LLMProvider
+from app.llm.ledger import quota_add, quota_used
 from app.llm.providers import build_providers
 from app.models import Security
 from app.portfolio.freshness import price_is_fresh
@@ -292,14 +293,18 @@ def committee(
     assert user.id is not None
     sym = _symbol(symbol)
     key = f"user:{user.id}"
-    enforce_limit(committee_limiter, key, settings.committee_rate_limit_per_hour, 3600.0)
+    quota_key = f"committee:{key}"  # per UTC day in the LLM ledger: survives restarts
     per_day = settings.committee_runs_per_user_per_day
-    wait = committee_daily_limiter.hit(key, per_day, 86400.0)
-    if wait:
+    sec, md = _market(db, sym, settings)  # a bad or unknown symbol never uses up a run
+    now = utcnow()
+    if quota_used(quota_key, now.date()) >= per_day:
+        midnight = datetime.combine(now.date() + timedelta(days=1), datetime.min.time())
         raise too_many(
-            wait, f"Daily limit of {per_day} committee runs reached. It resets within 24 hours."
+            max(1, int((midnight - now.replace(tzinfo=None)).total_seconds())),
+            f"Daily limit of {per_day} committee runs reached. It resets at midnight UTC.",
         )
-    sec, md = _market(db, sym, settings)
+    enforce_limit(committee_limiter, key, settings.committee_rate_limit_per_hour, 3600.0)
+    quota_add(quota_key, 1, now.date())  # counted only now that the run will execute
     scout = build_scout_report(
         sec,
         verified=True,
@@ -309,15 +314,14 @@ def committee(
         history_as_of=md.history_as_of,
     )
     facts = public_facts(scout, md.chart)
-    now = utcnow()
-    report = run_committee(db, facts, providers=providers, settings=settings)
+    report = run_committee(db, facts, providers=providers, settings=settings, user_id=user.id)
     status = gate.evaluate()
     return CommitteeOut(
         symbol=sym,
         generated_at=now,
         cached=md.cached,
         report=report,
-        runs_left_today=max(0, per_day - committee_daily_limiter.count(key, 86400.0)),
+        runs_left_today=max(0, per_day - quota_used(quota_key, now.date())),
         runs_per_day=per_day,
         llm_used=any(
             r.source != "template" for r in (report.profile, report.news, report.bear, report.cio)

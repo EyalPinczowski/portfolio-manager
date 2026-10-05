@@ -150,6 +150,51 @@ def test_daily_cap_counts_every_tap_and_reports_runs_left(
     assert "Daily limit of 3" in r.json()["detail"] and int(r.headers["Retry-After"]) > 0
 
 
+def test_daily_cap_lives_in_the_database_and_survives_a_restart(
+    c: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.auth.ratelimit import clear_all_limiters
+
+    _use(c, None)
+    monkeypatch.setenv("COMMITTEE_RUNS_PER_USER_PER_DAY", "2")
+    monkeypatch.setenv("COMMITTEE_RATE_LIMIT_PER_HOUR", "100")
+    get_settings.cache_clear()
+    assert [c.post("/api/analyze/AAPL/committee").status_code for _ in range(2)] == [200, 200]
+    clear_all_limiters()  # a restart empties every in-memory limiter
+    r = c.post("/api/analyze/AAPL/committee")
+    assert r.status_code == 429 and "Daily limit of 2" in r.json()["detail"]
+
+
+def test_a_bad_symbol_or_a_rejection_does_not_use_up_a_run(
+    c: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.llm.ledger import quota_used
+
+    _use(c, None)
+    monkeypatch.setenv("COMMITTEE_RUNS_PER_USER_PER_DAY", "2")
+    monkeypatch.setenv("COMMITTEE_RATE_LIMIT_PER_HOUR", "2")
+    get_settings.cache_clear()
+    assert c.post("/api/analyze/^GSPC/committee").status_code == 422
+    assert c.post("/api/analyze/ZZZZNOPE/committee").status_code == 404
+    assert quota_used("committee:user:1") == 0
+    assert c.post("/api/analyze/AAPL/committee").json()["runs_left_today"] == 1
+    assert c.post("/api/analyze/AAPL/committee").json()["runs_left_today"] == 0
+    assert c.post("/api/analyze/AAPL/committee").status_code == 429  # daily cap: hourly not burnt
+    assert quota_used("committee:user:1") == 2
+
+
+def test_committee_calls_carry_the_user_id_for_the_per_user_budget(
+    c: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.llm.ledger import quota_used
+
+    llm = MockLLM()
+    _use(c, llm)
+    c.post("/api/analyze/AAPL/committee")
+    assert llm.seen
+    assert quota_used("user:1") > 0  # the per-user LLM ledger counted the calls
+
+
 def test_default_caps_are_ten_a_day_and_five_an_hour() -> None:
     s = get_settings()
     assert s.committee_runs_per_user_per_day == 10 and s.committee_rate_limit_per_hour == 5

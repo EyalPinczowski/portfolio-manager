@@ -44,6 +44,7 @@ from app.llm.ledger import (
     quota_used,
     record_usage,
     requests_today,
+    tokens_today,
 )
 from app.llm.providers import build_providers
 from app.llm.untrusted import UntrustedText
@@ -118,6 +119,11 @@ def _admission(
     limit = s.llm_daily_budget * (s.llm_batch_daily_fraction if priority == "batch" else 1.0)
     if used >= limit:
         return f"{name}: daily budget reached for {priority} calls ({used} of {int(limit)})"
+    token_budget = s.llm_daily_token_budget.get(name, 0)
+    if token_budget > 0:  # 0 = no limit known for this provider
+        spent = tokens_today(name, session_factory=session_factory)
+        if spent >= token_budget:
+            return f"{name}: daily token budget reached ({spent} of {token_budget})"
     if user_id is not None and quota_used(f"user:{user_id}", session_factory=session_factory) >= (
         s.llm_user_daily_budget
     ):

@@ -147,7 +147,8 @@ def test_prompt_never_exceeds_role_budget(db: Session, cfg: Settings, role: str)
 # 17-18: leak checks
 def test_roles_have_no_user_or_free_text_parameters() -> None:
     for fn in (company_profile, news, bear, cio, run_committee):
-        names = set(inspect.signature(fn).parameters)
+        # `user_id` is a bare integer used only for the per-user LLM budget; never put in a prompt
+        names = set(inspect.signature(fn).parameters) - {"user_id"}
         assert not {n for n in names if re.search("user|portfolio|note|question|email|holding", n)}
 
 

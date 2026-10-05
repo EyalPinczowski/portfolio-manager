@@ -12,7 +12,7 @@ from typing import Any, ClassVar
 
 import httpx
 
-from app.config import Settings, get_settings
+from app.config import Settings, gemini_thinking_config, get_settings
 from app.llm.base import (
     BaseLLMProvider,
     LLMError,
@@ -92,9 +92,11 @@ class GeminiProvider(_HttpProvider):
             "maxOutputTokens": self._max_tokens(request),
             "temperature": TEMPERATURE,
         }
-        if self.settings.gemini_thinking_budget is not None:
-            # thinking tokens count against maxOutputTokens: an explicit budget keeps the JSON whole
-            config["thinkingConfig"] = {"thinkingBudget": self.settings.gemini_thinking_budget}
+        model = request.model or self.model
+        thinking = gemini_thinking_config(model, self.settings)
+        if thinking is not None:
+            # thinking tokens count against maxOutputTokens: minimal thinking keeps the JSON whole
+            config["thinkingConfig"] = thinking
         if request.json_schema is not None:
             config["responseMimeType"] = "application/json"
             config["responseJsonSchema"] = request.json_schema
@@ -104,7 +106,6 @@ class GeminiProvider(_HttpProvider):
         }
         if request.system:
             body["systemInstruction"] = {"parts": [{"text": request.system}]}
-        model = request.model or self.model
         data = self._post(
             f"{GEMINI_BASE_URL}/v1beta/models/{model}:generateContent",
             {"x-goog-api-key": key, "content-type": "application/json"},

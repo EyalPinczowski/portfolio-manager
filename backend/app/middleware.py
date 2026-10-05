@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 import re
 from collections.abc import Awaitable, Callable, MutableMapping
@@ -144,3 +145,38 @@ class SecurityHeadersMiddleware:
             await send(message)
 
         await self.app(scope, receive, send_with_headers)
+
+
+PROXY_AUTH_OPEN_PATHS = frozenset({"/api/health", "/api/telegram/webhook"})
+
+
+class ProxyAuthMiddleware:
+    """With `require_proxy_auth`, every /api request except the health check and the Telegram
+    webhook must carry the shared secret (header `proxy_auth_header`) the Pages Function adds; a
+    direct call to the host's own origin gets a plain 404. The secret is compared in constant time
+    and never logged."""
+
+    def __init__(self, app: ASGIApp, settings_factory: Callable[[], Settings]) -> None:
+        self.app = app
+        self._settings = settings_factory
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        settings = self._settings()
+        path = str(scope.get("path", ""))
+        if (
+            not settings.require_proxy_auth
+            or not (path == "/api" or path.startswith("/api/"))
+            or path.rstrip("/") in PROXY_AUTH_OPEN_PATHS
+        ):
+            await self.app(scope, receive, send)
+            return
+        wanted = (settings.proxy_auth_header or "X-Proxy-Auth").lower().encode()
+        sent = next((v for k, v in scope.get("headers", []) if k.lower() == wanted), b"")
+        secret = (settings.proxy_shared_secret or "").encode()
+        if secret and sent and hmac.compare_digest(sent, secret):
+            await self.app(scope, receive, send)
+            return
+        await _send_json(send, 404, "Not Found", [])

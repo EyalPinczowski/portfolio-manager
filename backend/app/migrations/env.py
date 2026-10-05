@@ -22,6 +22,22 @@ target_metadata = SQLModel.metadata
 _MIGRATION_LOCK_ID = 0x504D4D49  # "PMMI"
 
 
+def _widen_version_table(connection: Connection) -> None:
+    """Postgres: Alembic's own `alembic_version.version_num` is varchar(32), and a longer revision
+    id fails with StringDataRightTruncation. Create the table with varchar(255) (or widen an
+    existing one) before migrating. Existing revision ids stay as they are."""
+    connection.execute(
+        text(
+            "CREATE TABLE IF NOT EXISTS alembic_version ("
+            "version_num VARCHAR(255) NOT NULL, "
+            "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+        )
+    )
+    connection.execute(
+        text("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(255)")
+    )
+
+
 def _configure(connection: Connection) -> None:
     context.configure(
         connection=connection,
@@ -52,6 +68,7 @@ def _run(connection: Connection) -> None:
                 connection.execute(
                     text("SELECT pg_advisory_xact_lock(:k)"), {"k": _MIGRATION_LOCK_ID}
                 )
+                _widen_version_table(connection)
             context.run_migrations()
             if sqlite:
                 broken = connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall()

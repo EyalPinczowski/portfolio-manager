@@ -225,3 +225,22 @@ def test_cli_migrate_upgrades_the_configured_database(
         get_engine().dispose()
         get_settings.cache_clear()
         get_engine.cache_clear()
+
+
+def test_no_revision_id_exceeds_the_widened_version_column() -> None:
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    cfg = Config()
+    cfg.set_main_option("script_location", str(Path(__file__).parent.parent / "app" / "migrations"))
+    ids = [r.revision for r in ScriptDirectory.from_config(cfg).walk_revisions()]
+    assert ids and max(len(i) for i in ids) <= 255
+
+
+def test_upgrade_head_widens_the_version_column_on_postgres(empty_engine: Engine) -> None:
+    if empty_engine.dialect.name != "postgresql":
+        pytest.skip("Postgres only")
+    run_migrations(empty_engine)
+    col = {c["name"]: c for c in inspect(empty_engine).get_columns("alembic_version")}
+    assert col["version_num"]["type"].length == 255
+    assert current_revision(empty_engine) == head_revision()

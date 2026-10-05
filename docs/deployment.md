@@ -2,7 +2,7 @@
 
 Status: **host not chosen yet** (user decision, 2026-10-03: "decide later, build host-agnostic"). The code is ready for Option A (Phase 1.5-D): see the setup guide below.
 Constraints: no credit card, no always-on home device, free.
-Researched 2026-10-03 from search results. Items marked *verify* must be checked at deploy time.
+Researched 2026-10-03 from search results. Items still marked *verify* must be checked at deploy time.
 
 ## What the app needs
 - Something that runs the **5-minute price refresh and alerts all day**, which means a process that stays awake.
@@ -25,10 +25,10 @@ Researched 2026-10-03 from search results. Items marked *verify* must be checked
 
 | Part | Service | Free limits | Notes |
 |---|---|---|---|
-| Website | **Cloudflare Pages** (or Vercel Hobby) | static hosting, no card | Needs the Next.js static export with locale-prefixed routes. |
+| Website | **Cloudflare Pages** (or Vercel Hobby) | static hosting, no card; Pages Functions (the `/api` proxy) are capped at **100,000 requests/day** on the free plan | Needs the Next.js static export with locale-prefixed routes. |
 | API + scheduler | **Render free web service** | 512 MB RAM, 0.1 CPU, 750 h/month (one service 24/7), no card | Sleeps after 15 min without inbound requests. Disk is **ephemeral**. |
-| Keep-awake | **UptimeRobot** free | 5-minute checks, no card | Pings `/api/health` so Render never sleeps. *Verify Render's terms on keep-alive pings.* |
-| Database | **Supabase** free Postgres | 500 MB, no card, 2 projects | Pauses after 1 week without activity; our 5-minute jobs keep it active. |
+| Keep-awake | **UptimeRobot** free | 5-minute checks, no card | Pings `/api/health` so Render never sleeps. The free plan is **personal, non-commercial use only**; fallback: a GitHub Actions cron (`curl` every 5-10 min, delays of several minutes happen, so it may let Render nap). |
+| Database | **Supabase** free Postgres | 500 MB, no card, 2 projects | **Pauses after 7 days without activity** (database activity, not `/api/health`); our 5-minute scheduler writes keep it active, but if the API is down for a week the project pauses and must be restored by hand in the dashboard. |
 | Heavy jobs (universe screener) | **GitHub Actions** cron | free minutes, no card | Keeps the 512 MB API light. Actions cron has delays of several minutes. |
 | Screenshot OCR | Gemini free + **in-browser tesseract.js** | free | The image can be read on the phone, so it never leaves the device. Tesseract is dropped from the server image. |
 | Bot | Telegram | free | Alerts and weekly review. |
@@ -69,14 +69,14 @@ Not available to the user today (no spare device), so this is a fallback only.
 ## Measured facts (Phase 1.5-D, 2026-10-03)
 - **Memory:** `backend/scripts/memprobe.py` runs the API (one worker, in-process scheduler, no Tesseract) through 8 concurrent sign-ups and logins, a 3000×6000 screenshot, a pixel bomb and a 25-megapixel image. **Peak 359 MB** against the 400 MB limit it enforces (Render's limit is 512 MB). Idle is 139 MB. Biggest remaining costs: decoding a 25 MP image (~75 MB) and password-hashing bursts. `MALLOC_ARENA_MAX=2` is set in the image and saved ~80 MB.
 - **Tests:** 460 pass on SQLite and 472 on Postgres 16; ruff and mypy strict are clean. Alembic migrations match the models on both databases and downgrade cleanly.
-- **Not verified here:** the Docker image was never built (no Docker daemon in the sandbox), the Supabase hostnames and pooler behaviour are from memory, and Render's keep-alive terms are unconfirmed.
+- **Not verified here:** the Docker image was never built (no Docker daemon in the sandbox), and the CI docker job is unverified. Supabase's direct host is IPv6-only and the session pooler (port 5432) is IPv4 (confirmed). Pick a **US Render region** (e.g. Ohio or Virginia) and the matching **Supabase region** (e.g. us-east-1) to keep database latency low.
 
 ## Setup guide: Option A step by step (about 45 minutes, no card)
 Do these yourself; they need your accounts. Check each *verify* item against the service's current docs.
 
 **1. Supabase (database)**
 1. Create a free project at supabase.com (note the database password).
-2. Open *Connect* and copy the **session pooler** connection string (port **5432**). The direct host may be IPv6-only on the free plan and unreachable from Render *(verify)*.
+2. Open *Connect* and copy the **session pooler** connection string (port **5432**). The direct host is IPv6-only (confirmed) and Render cannot reach it; the pooler on 5432 is IPv4.
 3. Turn it into `DATABASE_URL`: `postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require`. The app rewrites `postgres://`/`postgresql://` to the psycopg driver itself.
 4. If you ever use the **transaction pooler (port 6543)** instead, also set `DATABASE_PREPARE_THRESHOLD=none` and `SCHEDULER_LOCK_DATABASE_URL` to the session-pooler URL (the scheduler's lock needs a session-level connection).
 
@@ -88,7 +88,7 @@ python -m app.cli migrate
 python -m app.cli create-admin --email you@example.com
 python -m app.cli create-invite
 ```
-Render's free plan probably has no shell, so do this locally against Supabase *(verify)*.
+Render's free plan probably has no shell, so do this locally against Supabase.
 
 **3. Render (API + scheduler)**
 1. New *Web Service* from this repository, **Docker** runtime, Dockerfile path `backend/Dockerfile.slim`, build context `backend`, instance type **Free**.
@@ -108,12 +108,12 @@ Render's free plan probably has no shell, so do this locally against Supabase *(
 | `TELEGRAM_BOT_USERNAME` | only for the t.me deep link | | no |
 | `SCHEDULER_IN_PROCESS`, `MALLOC_ARENA_MAX`, `PORT` | already set by the image / Render | | no |
 
-   Leave `GEMINI_API_KEY` unset: the slim image has no Tesseract, and the app refuses to send an image to a third party without server-side redaction. Leave `CORS_ORIGINS` empty (same-origin proxy).
+   **Set `GEMINI_API_KEY` and `GROQ_API_KEY`** (free keys): the committee needs at least one LLM provider, otherwise it falls back to templates. The slim image has no Tesseract, so it only refuses to send *screenshots* to a third party without server-side redaction; text-only committee calls (public facts) are fine. Choose a US region for both Render and Supabase (see above). Leave `CORS_ORIGINS` empty (same-origin proxy).
 3. The image's start command runs `python -m app.cli migrate` and then uvicorn with one worker. Health check path: `/api/health`.
 4. Note the service URL, e.g. `https://pm-api.onrender.com`.
 
 **4. UptimeRobot (keeps Render awake)**
-Add an HTTP monitor on `https://<service>.onrender.com/api/health`, interval **5 minutes**. `/api/health` does not touch the database, so Supabase stays active only because the scheduler writes every 5 minutes. *Verify Render's terms on keep-alive pings and Supabase's 7-day pause rule.*
+Add an HTTP monitor on `https://<service>.onrender.com/api/health`, interval **5 minutes**. `/api/health` does not touch the database, so Supabase stays active only because the scheduler writes every 5 minutes (Supabase pauses after 7 days of inactivity). UptimeRobot's free plan is for personal, non-commercial use only; if that is a problem, use a GitHub Actions cron that curls `/api/health` instead.
 
 **5. Cloudflare Pages (website + same-origin proxy)**
 1. Create a Pages project from this repository: root directory `frontend`, build command `npm ci && npm run build`, output directory `out`.
@@ -130,7 +130,7 @@ Supabase keeps its own backups on paid plans only, so use Settings → Export re
 1. Measure the API's memory in a 512 MB container.
 2. Run the test suite against Postgres.
 3. Confirm Render's free-tier terms and restart behaviour.
-4. Confirm Supabase's pause rules for a database that gets a write every 5 minutes.
+4. Supabase pauses a free project after 7 days without activity; a write every 5 minutes prevents it (see the reminder in `docs/reminders.md`).
 5. Pick the option, then write the step-by-step setup guide here.
 
 

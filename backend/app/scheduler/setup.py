@@ -93,14 +93,15 @@ def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> Non
         coalesce=True,
         misfire_grace_time=s.snapshot_misfire_grace_seconds,
     )
-    sched.add_job(
-        _universe,
-        IntervalTrigger(minutes=s.universe_refresh_interval_minutes),
-        id="universe_scores",
-        max_instances=1,
-        coalesce=True,
-        misfire_grace_time=s.scheduler_misfire_grace_seconds,
-    )
+    if s.scheduler_universe_enabled:  # off in the 512 MB slim image: something else runs it
+        sched.add_job(
+            _universe,
+            IntervalTrigger(minutes=s.universe_refresh_interval_minutes),
+            id="universe_scores",
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=s.scheduler_misfire_grace_seconds,
+        )
     sched.add_job(
         _scores,
         IntervalTrigger(minutes=s.scores_interval_minutes),
