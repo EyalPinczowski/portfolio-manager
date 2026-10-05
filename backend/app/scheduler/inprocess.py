@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Literal
 from zoneinfo import ZoneInfo
 
@@ -140,7 +140,8 @@ class InProcessScheduler:
             sched.add_job(
                 self._run_startup,
                 "date",
-                run_date=datetime.now(ZoneInfo(self.settings.scheduler_timezone)),
+                run_date=datetime.now(ZoneInfo(self.settings.scheduler_timezone))
+                + timedelta(seconds=max(0, self.settings.scheduler_start_delay_seconds)),
                 id=STARTUP_JOB_ID,
                 replace_existing=True,
                 misfire_grace_time=self.settings.scheduler_misfire_grace_seconds,

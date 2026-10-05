@@ -529,6 +529,9 @@ class Settings(BaseSettings):
     snapshot_minute: int = 59
     snapshot_misfire_grace_seconds: int = 6 * 3600  # run a late snapshot instead of skipping it
     scheduler_misfire_grace_seconds: int = 300
+    # Wait this long before the first startup job (snapshot catch-up, quote priming), so a small
+    # free instance answers the host's health check before any market-data work starts.
+    scheduler_start_delay_seconds: int = 0
     scheduler_timezone: str = "Asia/Jerusalem"
     week_start_day: Literal[
         "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"
