@@ -2,7 +2,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { AnalyzeIcon, CameraIcon, CloseIcon, PortfolioIcon, ReviewIcon, SuggestIcon } from "./icons";
+import { AnalyzeIcon, AskIcon, CameraIcon, CloseIcon, PortfolioIcon, ReviewIcon, SuggestIcon } from "./icons";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -97,6 +97,15 @@ export function ActionsSheet({ onClose }: { onClose: () => void }) {
             <span className="flex-1">
               <span className="block font-semibold text-brand-text">{t("dividends")}</span>
               <span className="block text-caption text-muted">{t("dividendsNote")}</span>
+            </span>
+          </Link>
+        </li>
+        <li>
+          <Link href="/ask" onClick={onClose} className={`${row} bg-brand-soft hover:bg-surface-2`}>
+            <span className="text-brand-text"><AskIcon /></span>
+            <span className="flex-1">
+              <span className="block font-semibold text-brand-text">{t("ask")}</span>
+              <span className="block text-caption text-muted">{t("askNote")}</span>
             </span>
           </Link>
         </li>

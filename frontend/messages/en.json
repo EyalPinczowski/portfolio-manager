@@ -93,7 +93,9 @@
     "trackRecord": "Track record",
     "trackRecordNote": "How the app's past calls compared with the indices, for members only.",
     "dividends": "Dividend calendar",
-    "dividendsNote": "Upcoming ex-dividend and payment dates, and a 12-month income estimate."
+    "dividendsNote": "Upcoming ex-dividend and payment dates, and a 12-month income estimate.",
+    "ask": "Ask my portfolio",
+    "askNote": "Ask a question about your holdings, answered from your own data."
   },
   "holdings": {
     "title": "Your holdings",
@@ -1455,5 +1457,105 @@
     "labelPosition": "This position",
     "labelSector": "{name} sector",
     "labelCountry": "{name} exposure"
+  },
+  "ask": {
+    "title": "Ask my portfolio",
+    "intro": "Ask about your holdings, exposure or performance. Answers use read-only tools on your own data and say which ones.",
+    "askLabel": "Your question",
+    "placeholder": "For example: which holdings are my largest?",
+    "send": "Ask",
+    "sending": "Working on it…",
+    "newConversation": "New conversation",
+    "thread": "Conversation",
+    "toolsUsed": "Tools used",
+    "noTools": "No tools were used for this answer.",
+    "note": "Answers come from your portfolio data and computed signals. They are not trade instructions, and your questions are never sent to a free AI provider.",
+    "declined": "I can only describe your data, not tell you what to trade.",
+    "source": {
+      "template": "Written from a template",
+      "llm": "Phrased by an AI model",
+      "cache": "From a saved answer"
+    },
+    "tool": {
+      "get_summary": "Portfolio summary",
+      "get_holdings": "Holdings",
+      "get_xray": "Exposure X-ray",
+      "get_scorecard": "Score card",
+      "get_performance": "Performance",
+      "get_analysis": "Stock analysis",
+      "get_exit_levels": "Exit levels"
+    },
+    "needsHorizonTitle": "A holding period is needed",
+    "needsHorizonBody": "Exit levels depend on how long you plan to hold. Nothing is assumed for you, so set a holding period on the holding first.",
+    "needsHorizonLink": "Set holding period",
+    "needsHorizonHome": "Open my holdings",
+    "historyTitle": "Past conversations",
+    "historyNone": "No conversations yet.",
+    "historyNote": "Conversations are stored for you only. Delete one at any time.",
+    "openConversation": "Open conversation: {title}",
+    "deleteConversation": "Delete conversation: {title}",
+    "deleteTitle": "Delete this conversation?",
+    "deleteBody": "The questions and answers in it are removed for good.",
+    "deleteYes": "Delete conversation",
+    "problem": {
+      "empty": "Type a question first.",
+      "rate": "You have asked too many questions this hour. Try again a little later.",
+      "notFound": "That conversation or portfolio no longer exists.",
+      "generic": "Could not get an answer. Try again."
+    }
+  },
+  "committee": {
+    "title": "Investment committee",
+    "intro": "A deeper read on public information: company profile, news, and the risks a skeptical analyst raises, each answered by the CIO. It never gives a verdict, and it cannot move the score by more than a small cap.",
+    "run": "Run the committee",
+    "rerun": "Run again",
+    "running": "Running…",
+    "runningNote": "The committee is reading the public information. This can take a moment.",
+    "gateTitle": "Not yet validated",
+    "gateBody": "Scores are experimental until a backtest and paper trading validate them. This is neutral analysis to research, not an instruction to trade.",
+    "llmUsed": "Some parts were written by an AI model from public data only.",
+    "templateOnly": "Written from templates, with no AI model.",
+    "profileTitle": "Company profile",
+    "noProfile": "No company profile was found for this stock.",
+    "topic": {
+      "business": "Business",
+      "segments": "Segments",
+      "management": "Management",
+      "competitors": "Competitors"
+    },
+    "newsTitle": "Recent news",
+    "noNews": "No recent news was found.",
+    "tone": {
+      "positive": "Positive tone",
+      "neutral": "Neutral tone",
+      "negative": "Negative tone"
+    },
+    "risksTitle": "Risks the Bear analyst raised",
+    "risksNote": "Each risk is followed by the CIO's answer: answered, accepted as a real risk, or still open.",
+    "noRisks": "No risks were raised.",
+    "severity": "Severity {n} of 5",
+    "invalidate": "What would show it wrong",
+    "cioAnswer": "CIO answer",
+    "stance": {
+      "rebutted": "Answered",
+      "accepted": "Accepted",
+      "unresolved": "Still open",
+      "unanswered": "No answer"
+    },
+    "nudgeTitle": "Score nudge",
+    "nudgeBody": "The CIO may move the chart score by at most {cap} points. This time: {adjustment}.",
+    "baseScore": "Chart score",
+    "adjustedScore": "Score after the nudge",
+    "source": {
+      "llm": "AI model",
+      "cache": "Saved AI answer",
+      "template": "Template"
+    },
+    "noCoverage": "not enough public data",
+    "problem": {
+      "rate": "You have run the committee too many times this hour. Try again a little later.",
+      "notFound": "This ticker was not found.",
+      "generic": "The committee could not run. Try again."
+    }
   }
 }

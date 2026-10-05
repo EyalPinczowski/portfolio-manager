@@ -148,3 +148,16 @@ def test_history_is_in_the_account_export(two) -> None:  # type: ignore[no-untyp
     assert r.status_code == 200, r.text
     conv = r.json()["ask_conversations"]
     assert len(conv) == 1 and len(conv[0]["messages"]) == 2
+
+
+def test_a_holding_without_a_horizon_is_returned_for_the_ui(two) -> None:  # type: ignore[no-untyped-def]
+    a, _, pid = two
+    r = a.post(
+        f"/api/portfolios/{pid}/holdings", json={"symbol": "MSFT", "quantity": 5, "avg_cost": 10}
+    )
+    assert r.status_code == 201, r.text
+    hid = r.json()["id"]
+    body = a.post("/api/ask", json={"question": "stop level for MSFT"}).json()
+    assert body["needs_horizon"] == [{"symbol": "MSFT", "holding_id": hid, "portfolio_id": pid}]
+    body = a.post("/api/ask", json={"question": "stop level for AAPL"}).json()
+    assert body["needs_horizon"] == []  # AAPL has a horizon

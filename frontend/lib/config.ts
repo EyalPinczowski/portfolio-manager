@@ -38,3 +38,8 @@ export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
 /** Base URL of the API. Empty = same origin (Pages Function / reverse proxy / dev rewrite). No trailing slash. */
 export const apiBase = (): string => (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
+
+/** Ask my portfolio: question length used when the API does not say (mirrors backend `ask_max_question_chars`). */
+export const ASK_MAX_QUESTION_CHARS = 500;
+/** Investment Committee: the most the CIO may move the chart score, in points (mirrors backend `committee_cio_max_adjustment`). */
+export const COMMITTEE_MAX_ADJUSTMENT = 15;

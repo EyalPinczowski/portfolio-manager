@@ -222,6 +222,45 @@ for (const locale of LOCALES) {
       errs.expectNone();
     });
 
+    test("ask my portfolio: answer with tools used, holding-period prompt, delete", async ({ page }, info) => {
+      const errs = watchErrors(page);
+      await open(page, locale, "/ask/");
+      await expect(heading(page, m("ask.title"))).toBeVisible();
+      await checkScreen(page, locale);
+      await page.getByLabel(m("ask.askLabel")).fill("What are my exit levels?");
+      await page.getByRole("button", { name: m("ask.send"), exact: true }).click();
+      await expect(page.getByTestId("tools-used")).toBeVisible();
+      await expect(page.getByTestId("tools-used")).toContainText(m("ask.tool.get_exit_levels"));
+      const prompt = page.getByTestId("needs-horizon");
+      await expect(prompt).toBeVisible();
+      await expect(prompt.getByTestId("needs-horizon-link")).toHaveAttribute("href", /holding\/?\?id=\d+/);
+      await expect(page.getByTestId("conversation")).toHaveCount(1);
+      await checkScreen(page, locale);
+      await shot(page, info, `ask-${locale}`, locale === "en");
+      await page.getByRole("button", { name: m("ask.deleteConversation", { title: "What are my exit levels?" }) }).click();
+      const dlg = page.getByRole("dialog", { name: m("ask.deleteTitle") });
+      await expect(dlg).toBeVisible();
+      await shot(page, info, `ask-delete-${locale}`);
+      await dlg.getByRole("button", { name: m("ask.deleteYes") }).click();
+      await expect(page.getByTestId("no-conversations")).toBeVisible();
+      errs.expectNone();
+    });
+
+    test("analyze: investment committee report", async ({ page }, info) => {
+      const errs = watchErrors(page);
+      await open(page, locale, "/analyze/?symbol=NVDA");
+      const section = page.getByTestId("committee");
+      await expect(section).toBeVisible();
+      await section.getByRole("button", { name: m("committee.run"), exact: true }).click();
+      await expect(page.getByTestId("committee-report")).toBeVisible();
+      await expect(page.getByTestId("committee-risk")).toHaveCount(3);
+      await expect(page.getByTestId("committee-gate")).toBeVisible();
+      await section.scrollIntoViewIfNeeded();
+      await checkScreen(page, locale);
+      await shot(page, info, `committee-${locale}`);
+      errs.expectNone();
+    });
+
     test("add a fund flow", async ({ page }, info) => {
       const errs = watchErrors(page);
       await open(page, locale, "/");

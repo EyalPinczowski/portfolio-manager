@@ -111,6 +111,13 @@ export type SignalLine = S["SignalLine"];
 export type MissingInput = S["MissingInput"];
 export type SizeOut = S["SizeOut"];
 export type AskOut = S["AskOut"];
+export type PortfolioAskOut = S["PortfolioAskOut"];
+export type NeedsHorizon = S["NeedsHorizon"];
+export type AskMessage = S["MessageOut"];
+export type AskConversation = S["ConversationOut"];
+export type AskConversationDetail = S["ConversationDetailOut"];
+export type CommitteeOut = S["CommitteeOut"];
+export type CommitteeStance = S["RiskResponse"]["stance"];
 export type SearchHistoryItem = S["SearchHistoryOut"];
 export type WatchlistItem = S["WatchlistOut"];
 /** Inputs of the analysis. No defaults anywhere: what is missing comes back in `needs_input`. */
@@ -301,6 +308,13 @@ export const api = {
   },
   askAboutStock: (symbol: string, b: { question: string; notes?: string | null }) =>
     post<AskOut>(`/analyze/${encodeURIComponent(symbol)}/ask`, b),
+  /** Investment Committee for any ticker: public data only, no verdict. 429 = per-user hourly limit. */
+  committee: (symbol: string) => post<CommitteeOut>(`/analyze/${encodeURIComponent(symbol)}/committee`),
+  /** Ask my portfolio: read-only tools over the caller's own data. 429 = per-user hourly limit, 404 = unknown conversation or portfolio. */
+  askPortfolio: (b: { question: string; conversation_id?: number | null; portfolio_id?: number | null }) => post<PortfolioAskOut>("/ask", b),
+  askConversations: () => get<AskConversation[]>("/ask/conversations"),
+  askConversation: (id: number) => get<AskConversationDetail>(`/ask/conversations/${id}`),
+  deleteAskConversation: (id: number) => del(`/ask/conversations/${id}`),
   searchHistory: () => get<SearchHistoryItem[]>("/search-history"),
   removeSearch: (symbol: string) => del(`/search-history/${encodeURIComponent(symbol)}`),
   clearSearchHistory: () => del("/search-history"),

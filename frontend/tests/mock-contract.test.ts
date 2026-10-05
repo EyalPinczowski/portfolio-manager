@@ -93,6 +93,11 @@ const CASES: Case[] = [
   { method: "GET", path: "/analyze/ARNA.TA?portfolio_id=1&amount=500&currency=ILS&horizon=1m", api: "/analyze/{symbol}" }, // stale, no levels
   { method: "POST", path: "/analyze/AMD/ask", api: "/analyze/{symbol}/ask", body: { question: "What is the trend?" } },
   { method: "POST", path: "/analyze/AMD/ask", api: "/analyze/{symbol}/ask", body: { question: "Should I buy it?", notes: "n" } },
+  { method: "POST", path: "/analyze/AMD/committee", api: "/analyze/{symbol}/committee" },
+  { method: "POST", path: "/ask", api: "/ask", body: { question: "How is my risk spread?" } },
+  { method: "POST", path: "/ask", api: "/ask", body: { question: "What are my exit levels?", conversation_id: 1 } },
+  { method: "GET", path: "/ask/conversations", api: "/ask/conversations" },
+  { method: "GET", path: "/ask/conversations/1", api: "/ask/conversations/{conversation_id}" },
   { method: "GET", path: "/search-history", api: "/search-history" },
   { method: "GET", path: "/watchlist", api: "/watchlist" },
   { method: "POST", path: "/watchlist", api: "/watchlist", body: { symbol: "LUMI.TA" } },

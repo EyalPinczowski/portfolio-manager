@@ -7782,6 +7782,30 @@
         ],
         "title": "MonthlyBar"
       },
+      "NeedsHorizon": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "holding_id": {
+            "type": "integer",
+            "title": "Holding Id"
+          },
+          "portfolio_id": {
+            "type": "integer",
+            "title": "Portfolio Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "holding_id",
+          "portfolio_id"
+        ],
+        "title": "NeedsHorizon",
+        "description": "A holding the answer needed exit levels for but that has no horizon set (the UI links to it)."
+      },
       "NewsItem": {
         "properties": {
           "text": {
@@ -7929,6 +7953,13 @@
             },
             "type": "array",
             "title": "Notes"
+          },
+          "needs_horizon": {
+            "items": {
+              "$ref": "#/components/schemas/NeedsHorizon"
+            },
+            "type": "array",
+            "title": "Needs Horizon"
           },
           "disclaimer": {
             "type": "string",

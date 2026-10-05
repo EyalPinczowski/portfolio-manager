@@ -7,6 +7,7 @@ import { useAnalyze, usePortfolios, useWatchlist } from "@/lib/hooks";
 import { Link } from "@/i18n/navigation";
 import { isFitIncompleteSummary } from "@/lib/server-text";
 import { ServerText } from "./ServerText";
+import { CommitteeSection } from "./CommitteeSection";
 import { ExplanationView } from "./ExplanationView";
 import { HorizonPicker, Levels, NoLevels, WhyToggle } from "./ExitLevelsPanel";
 import { PnlText } from "./Pnl";
@@ -448,6 +449,7 @@ export function AnalyzeResult({ symbol }: { symbol: string }) {
       <Signals d={d} />
       <ChartSection d={d} />
       <Missing d={d} />
+      <CommitteeSection symbol={symbol} />
       <AskBox symbol={symbol} />
       <p className="text-xs text-muted">{d.disclaimer ?? t("disclaimer")}</p>
     </div>

@@ -3,23 +3,23 @@
 Read this file, then `CLAUDE.md`, `docs/status.md` and `docs/reminders.md`, before doing anything.
 
 ## Branch and rules
-- Work only on `claude/stock-portfolio-assistant-jgtbq9`. Never open a PR unless the user asks.
+- Work only on the branch the session names (last: `ccr-8e00f184-rqshto`). Never open a PR unless the user asks.
 - Opus reviews before each phase. Sonnet agents write code. The main session verifies, commits and pushes.
 - Agents return at most ~150 words and write details to `docs/status.md`.
 - After each phase: `ruff check`, `ruff format --check`, `mypy app`, `pytest -q`, frontend lint, tsc, vitest, build, e2e, `npm run e2e:real` (real backend). Then run `python scripts/test_inventory.py` (never read `docs/testing.md` back) and add tests for what changed.
 - Never commit an agent's in-progress files.
 - Commit trailers:
-  - `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`
-  - `Claude-Session: https://claude.ai/code/session_01JVgwQzNNLx5U7ZzP3nkJfp`
+  - use the trailers the session's system prompt gives (no model id in repo files).
 
 ## State
-- Committed and pushed through step 4 (committee roles with RAG, ask-my-portfolio tools, 41 mock-LLM evals).
-- Backend: 1689 passed, 33 skipped. Frontend vitest: 481 passed. Playwright e2e: 54 tests, last run before the final few commits.
-- Alembic is at 0015 and expand-only.
+- The app is named **Holdwise** (green H mark on a rising line, green brand tokens; `frontend/components/Logo.tsx`, `public/icons/*.svg`, `scripts/gen-icons.mjs` rasterises the PWA PNGs).
+- Queue item 3 is done: Ask my portfolio (`/ask`, saved conversations, structured `needs_horizon`) and the Investment Committee on the Analyze result.
+- Backend: 1724+ passed, 33 skipped. Frontend vitest: 506 passed. Mock e2e (light + dark): 93 passed. `npm run e2e:real`: passed.
+- Alembic is at 0016 (ask history) and expand-only.
 - After an API change: regenerate `backend/openapi.json`, then `cd frontend && npm run gen:api`.
 
 ## First thing to do
-Step 5 is done (dark-mode fixes, `npm run e2e:real`; see `docs/status.md`). Next is queue item 3. The backtest is closed: the user accepted the result (`docs/product-decisions.md`, 2026-10-04) and wants no target, cap or stop changes.
+Queue item 3 is done. Next is queue item 4 (Postgres run, Opus review, reminders, host and deploy). The backtest is closed: the user accepted the result (`docs/product-decisions.md`, 2026-10-04) and wants no target, cap or stop changes.
 
 ## Backtest rules (decided)
 - Targets per 6 months (return % / max drawdown %): conservative 3/4, balanced 5/7, balanced_aggressive 8/10, aggressive 12/15.
@@ -31,15 +31,16 @@ Step 5 is done (dark-mode fixes, `npm run e2e:real`; see `docs/status.md`). Next
 ## Remaining queue
 1. ~~Backtest and tuning on real history~~ done; user accepted the result and relies on paper trading.
 2. ~~Step 5~~ done (2026-10-04). Was: review the dark-mode screenshots (send the user at most 2–3 that show problems). Add a Playwright pass against the real backend (mock Turnstile, import, null-price flows).
-3. Not built from step 4: ask tools `get_analysis` and `get_exit_levels`, chat history, the ask route and UI, the committee endpoint for Analyze.
+3. ~~Ask route and UI, chat history, ask tools, committee on Analyze~~ done (2026-10-05).
 4. Postgres test run, then an Opus review before deploy, then `docs/reminders.md`, then choose a host and deploy.
 5. Optional, not yet accepted by the user:
    - codes so the English-only sentences translate in Hebrew: `skipped[].reason`, candidate notes, scale-out step reasons, fit `rules[].reason`;
+   - Hebrew answers in Ask/committee templates (they are English-only now);
    - default portfolio (`default_portfolio_id`), screenshot reminder days (`screenshot_reminder_days`) and the backend app version in `/api/health` (these need new backend fields).
 
 ## Awaiting the user's approval (do not treat as approved)
 - Paper-resolver config: `paper_resolve_interval_minutes`=60, `paper_resolve_batch_size`=200, `paper_resolve_max_gap_days`=5.
-- Committee and ask config: `committee_role_k`, `committee_cio_max_adjustment`, `committee_max_claims`, `ask_max_tools_per_question`, `ask_max_holdings_rows`.
+- Committee and ask config: `committee_role_k`, `committee_cio_max_adjustment` (15), `committee_max_claims` (8), `ask_max_tools_per_question`, `ask_max_holdings_rows`, `ask_history_retention_days` (90), `ask_max_question_chars` (500), `ask_max_conversations_per_user` (100), `ask_rate_limit_per_hour` (60), `committee_rate_limit_per_hour` (20). Explained to the user on 2026-10-05; no answer yet.
 
 ## Approved decisions (keep)
 - RAG: chunk 300 tokens with 40 overlap, `rag_max_k` 12.
@@ -51,3 +52,4 @@ Step 5 is done (dark-mode fixes, `npm run e2e:real`; see `docs/status.md`). Next
 - The portfolio switcher is hidden when there are fewer than 2 portfolios.
 - The settings UI should look like phone settings.
 - A `Verdict` can only be created through `LaunchGate.release()`.
+- App name Holdwise and its logo/colours (approved 2026-10-05 from a preview).

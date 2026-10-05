@@ -85,6 +85,14 @@ class AskAnswer(BaseModel):
     cites: list[str] = Field(default_factory=list)
 
 
+class NeedsHorizon(BaseModel):
+    """A holding the answer needed exit levels for but that has no horizon set (the UI links to it)."""
+
+    symbol: str
+    holding_id: int
+    portfolio_id: int
+
+
 class AskResult(BaseModel):
     answer: str
     cites: list[str]
@@ -94,6 +102,7 @@ class AskResult(BaseModel):
     prompt_tokens: int = 0
     budget: int = 0
     notes: list[str] = Field(default_factory=list)
+    needs_horizon: list[NeedsHorizon] = Field(default_factory=list)
 
 
 class PortfolioTools:
@@ -262,6 +271,8 @@ class PortfolioTools:
             if not h.horizon:
                 return {
                     "symbol": sym,
+                    "holding_id": h.id,
+                    "portfolio_id": p.id,
                     "available": False,
                     "status": "needs_horizon",
                     "note": "No horizon is set for this holding, so no exit levels are shown. "
@@ -473,9 +484,18 @@ def ask(
     if declined:
         text = f"{DECLINE} {text}"
     called = [r.tool for r in results]
+    needs = [
+        NeedsHorizon(
+            symbol=r.data["symbol"],
+            holding_id=r.data["holding_id"],
+            portfolio_id=r.data["portfolio_id"],
+        )
+        for r in results
+        if r.tool == "get_exit_levels" and r.data.get("status") == "needs_horizon"
+    ]
     base = AskResult(
         answer=text, cites=cites, tools_called=called, source="template", declined=declined,
-        budget=budget, notes=notes,
+        budget=budget, notes=notes, needs_horizon=needs,
     )  # fmt: skip
 
     private = [p for p in (providers or []) if getattr(p, "privacy", None) == "no_training"]

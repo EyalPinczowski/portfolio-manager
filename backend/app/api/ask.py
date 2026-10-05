@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from app.api.schemas import Body
 from app.auth.deps import DbDep, SettingsDep, UserDep
 from app.auth.ratelimit import ask_limiter, enforce_limit
+from app.committee.ask import NeedsHorizon
 from app.committee.ask import ask as run_ask
 from app.committee.history import (
     add_message,
@@ -83,6 +84,7 @@ class PortfolioAskOut(BaseModel):
     answer: MessageOut
     declined: bool = False
     notes: list[str] = Field(default_factory=list)
+    needs_horizon: list[NeedsHorizon] = Field(default_factory=list)  # holdings to set a horizon on
     disclaimer: str = DISCLAIMER
 
 
@@ -175,6 +177,7 @@ def ask_question(
         answer=_msg(a),
         declined=result.declined,
         notes=result.notes,
+        needs_horizon=result.needs_horizon,
     )
 
 

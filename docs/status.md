@@ -1,6 +1,6 @@
 # Project status and work queue (kept current for session restarts)
 
-Last updated: 2026-10-03 21:05 UTC. Branch: `claude/stock-portfolio-assistant-jgtbq9`. Read this first after any restart or usage-limit pause, then `docs/reminders.md`, `CLAUDE.md`, `docs/phase-2.0-spec.md`.
+Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after any restart or usage-limit pause, then `docs/handoff.md`, `docs/reminders.md`, `CLAUDE.md`.
 
 ## Built and pushed
 - Phase 1, 1.5, 2.0-A/B/C/D/F (money correctness, security, gate, foundations, review fixes). Backend 1076 tests (SQLite) / 1109 (Postgres); frontend 193 tests; lint, types, static build clean.
@@ -157,4 +157,14 @@ Last updated: 2026-10-03 21:05 UTC. Branch: `claude/stock-portfolio-assistant-jg
 - **Routes** (`backend/app/api/ask.py`): `POST /api/ask`, `GET /api/ask/conversations`, `GET|DELETE /api/ask/conversations/{id}`. Another user's conversation or portfolio is a 404. Per-user rate limit `ask_rate_limit_per_hour`. Free AI providers are never given portfolio data (only `privacy == "no_training"` providers qualify; none exists).
 - **Committee endpoint**: `POST /api/analyze/{symbol}/committee` returns the `CommitteeReport` built from `PublicFacts` and public passages only, plus `launch_gate_open`. No verdict field; every role has a template fallback; per-user limit `committee_rate_limit_per_hour`; chart data comes from the Analyze cache, model answers from the LLM response cache.
 - **Tests**: `tests/test_api_ask.py`, `tests/test_api_committee.py`, `tests/evals/test_ask_tools_evals.py`, migration 0016 data test.
-- New config: `ask_history_retention_days`, `ask_history_purge_interval_minutes`, `ask_max_question_chars`, `ask_max_conversations_per_user`, `ask_rate_limit_per_hour`, `committee_rate_limit_per_hour`. Frontend types need `npm run gen:api`.
+- New config: `ask_history_retention_days`, `ask_history_purge_interval_minutes`, `ask_max_question_chars`, `ask_max_conversations_per_user`, `ask_rate_limit_per_hour`, `committee_rate_limit_per_hour`. API types regenerated (the Ask response is `PortfolioAskOut`).
+
+## 2026-10-05 (Holdwise rebrand, user-approved)
+- Name **Holdwise**; logo: an H whose tops and crossbar climb along one rising line, white on a green gradient (`#10b981 -> #065f46`). `components/Logo.tsx` (`LogoMark`, `Wordmark` "Hold" + green "wise"), `public/icons/icon.svg` + `icon-maskable.svg`, PNGs from `node scripts/gen-icons.mjs`.
+- Brand tokens are green (light `--brand #047857`, dark `#34d399` with dark text); manifest, theme colour, offline page, en/he names, API title "Holdwise API".
+
+## 2026-10-05 (queue item 3, frontend half)
+- `/ask` (`components/AskPage.tsx`): question box (500 chars), answers with tool chips (inline `[tool:...]` tags hidden), saved conversations with open/delete, a prompt linking to the holding when the answer's `needs_horizon` lists one (new structured backend field), 429 shown as a readable message. Reached from the "+" menu; grouped under the Portfolio tab.
+- Analyze result: `components/CommitteeSection.tsx` (run on tap; company profile, news, Bear risks with the CIO's answer, score nudge within the cap; "not yet validated" while the gate is closed; no verdict words).
+- Mock layer `lib/mock-ask.ts`; tests `tests/ask-page.test.tsx`, `tests/committee.test.tsx`, mock-contract cases, two e2e flows (light + dark).
+- Known gap: Ask and committee template text is English-only, also in Hebrew (queue item 5 option).

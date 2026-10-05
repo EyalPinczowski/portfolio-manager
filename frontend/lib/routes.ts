@@ -25,3 +25,6 @@ export const suggestHref = (): string => "/suggest";
 
 /** Path of the dividend calendar. */
 export const dividendsHref = (): string => "/dividends";
+
+/** Path of "Ask my portfolio". */
+export const askHref = (): string => "/ask";

@@ -29,6 +29,7 @@ export const PlusIcon = (p: P) => <Svg {...p}><path d="M12 5v14M5 12h14" /></Svg
 export const CloseIcon = (p: P) => <Svg {...p}><path d="M6 6l12 12M18 6 6 18" /></Svg>;
 export const ReviewIcon = (p: P) => <Svg {...p}><path d="M9 4h6l1 2h3v14H5V6h3l1-2Z" /><path d="m9 13 2 2 4-4" /></Svg>;
 export const SuggestIcon = (p: P) => <Svg {...p}><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /><path d="m12 8 1.6 2.4L16 12l-2.4 1.6L12 16l-1.6-2.4L8 12l2.4-1.6L12 8Z" /></Svg>;
+export const AskIcon = (p: P) => <Svg {...p}><path d="M5 5h14v10H10l-5 4V5Z" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .7-1 1.2" /><path d="M12 14.5v.01" /></Svg>;
 export const CameraIcon = (p: P) => <Svg {...p}><path d="M4 8h3l1.5-2h7L17 8h3v11H4V8Z" /><circle cx="12" cy="13" r="3.2" /></Svg>;
 export const CheckIcon = (p: P) => <Svg {...p}><path d="m5 12.5 4.5 4.5L19 7.5" /></Svg>;
 /** Directional: flips in right-to-left layouts. */

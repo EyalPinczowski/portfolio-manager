@@ -88,6 +88,7 @@ def test_exit_levels_without_a_horizon_never_assume_one(
     assert row is not None and row.horizon is None  # nothing was filled in
     out = ask(db, a, "What is my stop for MSFT?", settings=cfg)
     assert "no horizon" in out.answer and "[tool:get_exit_levels]" in out.answer
+    assert [(n.symbol, n.holding_id) for n in out.needs_horizon] == [("MSFT", row.id)]
 
 
 def test_exit_levels_are_scoped_to_the_user(db: Session, cfg: Settings, world) -> None:  # type: ignore[no-untyped-def]

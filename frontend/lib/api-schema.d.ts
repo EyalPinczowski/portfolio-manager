@@ -2733,6 +2733,18 @@ export interface components {
             /** Pct */
             pct: number;
         };
+        /**
+         * NeedsHorizon
+         * @description A holding the answer needed exit levels for but that has no horizon set (the UI links to it).
+         */
+        NeedsHorizon: {
+            /** Symbol */
+            symbol: string;
+            /** Holding Id */
+            holding_id: number;
+            /** Portfolio Id */
+            portfolio_id: number;
+        };
         /** NewsItem */
         NewsItem: {
             /** Text */
@@ -2796,6 +2808,8 @@ export interface components {
             declined: boolean;
             /** Notes */
             notes?: string[];
+            /** Needs Horizon */
+            needs_horizon?: components["schemas"]["NeedsHorizon"][];
             /**
              * Disclaimer
              * @default Not financial advice.

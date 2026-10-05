@@ -16,6 +16,7 @@ import {
   mockAnalyze, mockAsk, mockHistoryDelete, mockSearchHistory, mockSearchHits, mockWatchAdd, mockWatchDelete, mockWatchlist,
   type AnalyzeCtx,
 } from "./mock-analyze";
+import { mockAskConversation, mockAskConversations, mockAskDelete, mockAskPost, mockCommittee } from "./mock-ask";
 
 const exitSeed = (s: { id: number; symbol: string; en: string; he: string; cur: string; qty: number; price: number; cost: number | null; horizon: Horizon | null; stale?: boolean; noData?: boolean; fund?: unknown }): ExitSeed => ({ ...s, fund: !!s.fund });
 
@@ -481,6 +482,10 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
     return draft;
   }
   if (p === "/securities/search") return mockSearchHits(new URLSearchParams(path.split("?")[1] ?? "").get("q") ?? "");
+  if (p === "/ask" && method === "POST") return mockAskPost(b as never);
+  if (p === "/ask/conversations") return mockAskConversations();
+  if ((m = p.match(/^\/ask\/conversations\/(\d+)$/))) return method === "DELETE" ? mockAskDelete(Number(m[1])) : mockAskConversation(Number(m[1]));
+  if ((m = p.match(/^\/analyze\/([^/]+)\/committee$/)) && method === "POST") return mockCommittee(m[1]);
   if ((m = p.match(/^\/analyze\/([^/]+)\/ask$/)) && method === "POST") return mockAsk(m[1], b as { question?: string; notes?: string | null });
   if ((m = p.match(/^\/analyze\/([^/]+)$/))) {
     const qs = new URLSearchParams(path.split("?")[1] ?? "");
