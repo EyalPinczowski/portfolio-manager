@@ -38,3 +38,7 @@ These are suggestions from the phase reviews that the user didn't pick yet. Each
 - **F4 Score-change alerts on the watchlist**, only on change (rule 5).
 - **F6 "Copy portfolio for my AI"**: privacy-safe export of symbols and weights; costs zero free-tier quota.
 - Not chosen yet: F3 insider-transaction notices, F5 dividend forecast chart, F7 read-only MCP endpoint, F8 outbound Bizportal/Funder links. Details in `docs/reviews/phase-pre-deploy-2026-10-05.md`.
+
+## From the code review (2026-10-05, not approved for now)
+- **Unknown stored risk preset falls back to `settings.default_risk_preset`** instead of the built-in `balanced_aggressive` (`scoring/risk.py` `resolve_risk_filter`). Risk logic: the user kept the current behaviour. Details in `docs/reviews/code-review-backend-2026-10-05.md` (L7).
+- Not adopted from the research (`docs/reviews/research-efficiency-precision-2026-10-05.md`): self-consistency sampling for committee roles (small gain, near-linear token cost); a regime filter as a confidence multiplier (a scoring decision, to bring back with backtest numbers).
