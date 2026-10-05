@@ -1,0 +1,11 @@
+{
+  // Deploys the static export (out/) plus the /api proxy as one Cloudflare Worker. See docs/deployment.md.
+  "name": "holdwise",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./out",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  }
+}

@@ -120,6 +120,8 @@ Add an HTTP monitor on `https://<service>.onrender.com/api/health`, interval **5
 2. Environment variables: `API_ORIGIN` = the Render URL (used by `functions/api/[[path]].ts`), and `PROXY_SHARED_SECRET` (the same value as on Render). Leave `NEXT_PUBLIC_API_URL` empty so the browser calls the same origin.
 3. The Function forwards `/api/*` to Render and passes `CF-Connecting-IP`; the browser only ever talks to the Pages domain, so the login cookie is first-party.
 
+*If Cloudflare's Pages screen will not connect to GitHub (it loops back to the GitHub app page), deploy as a Worker instead:* create or open a Worker, connect the repository, root directory `frontend`, build command `npm ci && npm run build`, deploy command `npx wrangler deploy` (config in `frontend/wrangler.jsonc`, entry `frontend/worker/index.ts`; the Worker name must match `holdwise`). In the Worker's Settings -> Variables and Secrets add `API_ORIGIN` and `PROXY_SHARED_SECRET` (same values as above). Open the `*.workers.dev` address.
+
 **6. First login**
 Open the Pages URL, sign up with the invite code from step 2, accept the disclaimer, create a portfolio and import a screenshot (read on your phone).
 
