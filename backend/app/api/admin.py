@@ -201,8 +201,12 @@ def enable_user(user_id: int, admin: AdminDep, db: DbDep) -> AdminUserOut:
 class LlmModelUsage(BaseModel):
     model: str
     requests: int
-    tokens: int  # total tokens recorded (the ledger keeps one total, not in/out)
+    tokens: int  # total tokens the vendor reported
     fallbacks: int
+    tokens_in: int
+    tokens_out: int  # thinking tokens included
+    tokens_cached: int  # prompt tokens served from the vendor's prompt cache
+    cache_hits: int  # answers served from our own response cache
 
 
 class LlmProviderUsage(BaseModel):
@@ -210,6 +214,10 @@ class LlmProviderUsage(BaseModel):
     requests: int
     tokens: int
     fallbacks: int
+    tokens_in: int
+    tokens_out: int
+    tokens_cached: int
+    cache_hits: int
     models: list[LlmModelUsage]
 
 
@@ -222,7 +230,7 @@ class LlmUsageOut(BaseModel):
     requests_per_minute: int
     role_requests_per_minute: int
     user_requests_per_minute: int
-    # the ledger records neither a token split nor cache hits, so they are reported as unavailable
+    # kept so older clients still parse the response; both are recorded now
     tokens_in_out_recorded: bool
     cache_hits_recorded: bool
 
@@ -236,7 +244,14 @@ def llm_usage(_admin: AdminDep, settings: SettingsDep) -> LlmUsageOut:
     for r in usage_for_day(day):
         by.setdefault(r.provider, []).append(
             LlmModelUsage(
-                model=r.model, requests=r.requests, tokens=r.tokens, fallbacks=r.fallbacks
+                model=r.model,
+                requests=r.requests,
+                tokens=r.tokens,
+                fallbacks=r.fallbacks,
+                tokens_in=r.tokens_in,
+                tokens_out=r.tokens_out,
+                tokens_cached=r.tokens_cached,
+                cache_hits=r.cache_hits,
             )
         )
     providers = [
@@ -245,6 +260,10 @@ def llm_usage(_admin: AdminDep, settings: SettingsDep) -> LlmUsageOut:
             requests=requests_today(name, day),
             tokens=sum(m.tokens for m in models),
             fallbacks=sum(m.fallbacks for m in models),
+            tokens_in=sum(m.tokens_in for m in models),
+            tokens_out=sum(m.tokens_out for m in models),
+            tokens_cached=sum(m.tokens_cached for m in models),
+            cache_hits=sum(m.cache_hits for m in models),
             models=sorted(models, key=lambda m: m.model),
         )
         for name, models in sorted(by.items())
@@ -258,6 +277,6 @@ def llm_usage(_admin: AdminDep, settings: SettingsDep) -> LlmUsageOut:
         requests_per_minute=settings.llm_requests_per_minute,
         role_requests_per_minute=settings.llm_role_rpm,
         user_requests_per_minute=settings.llm_user_rpm,
-        tokens_in_out_recorded=False,
-        cache_hits_recorded=False,
+        tokens_in_out_recorded=True,
+        cache_hits_recorded=True,
     )

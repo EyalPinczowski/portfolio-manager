@@ -122,3 +122,47 @@ def test_numbers_the_model_may_quote_are_in_the_prompt() -> None:
     assert roles.numbers_grounded(["Score 41, price 187, RSI 55, support 180."], text)
     # the exact tick price is not shown, so it cannot be quoted
     assert not roles.numbers_grounded(["Price is 187.43."], text)
+
+
+# ---------------------------------------------------------------- fewer passages (token saving)
+def test_new_k_values_and_duplicate_chunks_are_dropped() -> None:
+    k = get_settings().committee_role_k
+    assert (k["company_profile"], k["news"], k["bear"], k["cio"]) == (5, 6, 4, 0)
+    same = "Regulators opened a review of the company's pricing practices this week."
+    chunks = [
+        _hit(1, same),
+        _hit(2, same + " Officials said."),
+        _hit(3, "Cloud revenue grew fast."),
+    ]
+    p = build_prompt("news", _facts(), chunks)
+    assert p.cited_chunk_ids == [1, 3] and p.dropped_chunks == 1
+
+
+def test_passage_header_has_date_and_type_but_no_url() -> None:
+    p = build_prompt("news", _facts(), [_hit(7)])
+    assert (
+        "[c7] news 2026-10-04\n" in p.text and "source_url" not in p.text and " u\n" not in p.text
+    )
+
+
+def test_cio_prompt_has_no_raw_passages_but_keeps_the_reports() -> None:
+    bear_case = BearCase(risks=[BearRisk(text="Pricing review.", severity=3, chunk_ids=[7])])
+    p = build_prompt("cio", _facts(), [_hit(7, "SECRET RAW PASSAGE TEXT")], reports=[bear_case])
+    assert "SECRET RAW PASSAGE TEXT" not in p.text and "Passages:" not in p.text
+    assert "Pricing review." in p.text and p.cited_chunk_ids == []
+
+
+def test_cio_may_cite_chunks_of_the_bear_report_and_gets_their_citations(corpus: Session) -> None:
+    from app.llm.fakes import FakeLLMProvider
+    from app.rag.retriever import Retriever
+
+    cid = Retriever(corpus).search("AAPL", "services", k=1, now=NOW).hits[0].chunk_id
+    bear_case = BearCase(risks=[BearRisk(text="Pricing review.", severity=3, chunk_ids=[cid])])
+    answer = (
+        '{"adjustment": -2, "adjustment_reason": "Review risk.", "responses": '
+        f'[{{"risk_index": 0, "stance": "unresolved", "reason": "Open.", "chunk_ids": [{cid}]}}]}}'
+    )
+    f = FakeLLMProvider([answer])
+    res = roles.cio(corpus, _facts(), bear_case, providers=[f], now=NOW)
+    assert res.source == "llm" and [c.chunk_id for c in res.citations] == [cid]
+    assert "Passages:" not in f.seen[0].prompt

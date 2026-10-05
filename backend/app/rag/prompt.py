@@ -81,6 +81,19 @@ def facts_block(role: str, facts: PublicFacts, settings: Settings | None = None)
     return json.dumps(d, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
 
 
+_WORD = re.compile(r"\w+", re.UNICODE)
+
+
+def _words(text: str) -> frozenset[str]:
+    return frozenset(w.lower() for w in _WORD.findall(text))
+
+
+def _similar(a: frozenset[str], b: frozenset[str], threshold: float) -> bool:
+    if not a or not b:
+        return a == b
+    return len(a & b) / len(a | b) >= threshold
+
+
 class PromptRejected(ValueError):
     """The input is not a plain PublicFacts plus chunks, or it cannot fit the role budget."""
 
@@ -124,6 +137,7 @@ def build_prompt(
         "</untrusted>"
         for r in reports
     ]
+    no_passages = s.committee_role_k.get(role) == 0  # the role reads the reports, not raw text
     head = "\n".join(
         [
             ROLE_INSTRUCTIONS[role],
@@ -131,7 +145,7 @@ def build_prompt(
             UNTRUSTED_RULE,
             "Facts: " + facts_block(role, facts, s),
             *report_lines,
-            "Passages:",
+            *([] if no_passages else ["Passages:"]),
         ]
     )
     used = estimate_tokens(head, s)
@@ -140,12 +154,15 @@ def build_prompt(
     parts = [head]
     cited: list[int] = []
     dropped = 0
-    for c in chunks:
+    kept_words: list[frozenset[str]] = []
+    for c in chunks if not no_passages else []:
         body = limit_text(c.text, max_chars=20_000, max_urls=3, url_chars=120)
-        block = (
-            f"[c{c.chunk_id}] {c.doc_type} {c.as_of:%Y-%m-%d} {c.source_url}\n"
-            f"<untrusted>{body}</untrusted>"
-        )
+        words = _words(body)
+        if any(_similar(words, k, s.rag_dedupe_similarity) for k in kept_words):
+            dropped += 1  # near-duplicate of a better-ranked chunk: costs tokens, adds nothing
+            continue
+        # date and type only: the URL stays in our DB, keyed by the chunk id
+        block = f"[c{c.chunk_id}] {c.doc_type} {c.as_of:%Y-%m-%d}\n<untrusted>{body}</untrusted>"
         cost = estimate_tokens(block, s) + 1
         if used + cost > budget:
             dropped += 1
@@ -153,7 +170,8 @@ def build_prompt(
         used += cost
         parts.append(block)
         cited.append(c.chunk_id)
-    if not cited:
+        kept_words.append(words)
+    if not cited and not no_passages:
         parts.append("(no passages: there is no text coverage for this stock)")
     text = "\n".join(parts)
     # the join adds a few newline characters: re-measure and drop from the end if needed

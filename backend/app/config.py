@@ -690,7 +690,19 @@ class Settings(BaseSettings):
     groq_api_key: str | None = None
     groq_model: str = "openai/gpt-oss-20b"
     groq_model_fallbacks: list[str] = Field(
-        default_factory=lambda: ["openai/gpt-oss-120b", "llama-3.3-70b-versatile"]
+        default_factory=lambda: ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
+    )
+    # Groq's free plan limits tokens per minute (8K per model), which binds before requests do.
+    # A shared bucket of this size (estimated prompt + output tokens per call) makes a cold run
+    # fall through to the next provider or the template instead of a 429.
+    groq_tokens_per_minute: int = Field(default=8000, ge=1)
+    # Models (by id prefix) that accept strict `json_schema` output; others keep `json_object`.
+    groq_strict_json_prefixes: list[str] = Field(
+        default_factory=lambda: ["openai/gpt-oss", "qwen/qwen3"]
+    )
+    # `reasoning_effort` sent to Groq models, by id prefix (thinking tokens count as output).
+    groq_reasoning_effort: dict[str, str] = Field(
+        default_factory=lambda: {"openai/gpt-oss": "low", "qwen/qwen3": "none"}
     )
     # --- LLM foundation (`app/llm/`): the template path is the default; a provider is used only
     # when its key is set, the bucket has a token and the answer validates ---
@@ -699,7 +711,16 @@ class Settings(BaseSettings):
     llm_requests_per_minute: int = 8  # token bucket per provider, shared by all processes
     llm_bucket_cas_retries: int = 100
     llm_timeout_seconds: float = 30.0
-    llm_max_output_tokens: int = 1024
+    llm_max_output_tokens: int = 1024  # default cap; roles below override it
+    # Output cap per role, sized with ~30% headroom over measured answers (a cap that is too low
+    # truncates the JSON and falls back to the template). Roles not listed use the default above.
+    llm_role_max_output_tokens: dict[str, int] = Field(
+        default_factory=lambda: {"company_profile": 600, "news": 500, "bear": 500, "cio": 500}
+    )
+    # Per-role model routing: {role: {provider: model id}}. Empty = every role uses the provider's
+    # active model. Each model has its own free quota, so e.g. light roles can sit on a cheaper
+    # model: {"news": {"gemini": "gemini-2.5-flash-lite", "groq": "openai/gpt-oss-20b"}}.
+    llm_role_models: dict[str, dict[str, str]] = Field(default_factory=dict)
 
     # --- RAG (docs/rag-spec.md): chunking runs in the index job, never in the API process ---
     rag_chunk_target_tokens: int = Field(default=300, ge=50, le=2000)
@@ -707,6 +728,9 @@ class Settings(BaseSettings):
     # Cheap token estimator (no tokenizer dependency): characters per token by script.
     rag_chars_per_token_latin: float = Field(default=4.0, gt=0)
     rag_chars_per_token_hebrew: float = Field(default=2.5, gt=0)
+    # Chunks whose word sets overlap at least this much (Jaccard) with a better-ranked chunk of the
+    # same prompt are dropped (the same story from several feeds); 1.0 = identical word sets only.
+    rag_dedupe_similarity: float = Field(default=0.8, ge=0.1, le=1.0)
     rag_max_k: int = Field(default=12, ge=1, le=50)  # hard cap on chunks per search
     # A chunk older than its doc type's TTL (days) is never returned.
     rag_doc_ttl_days: dict[str, int] = Field(
@@ -735,15 +759,15 @@ class Settings(BaseSettings):
     # how far it may move the deterministic score. Ask-my-portfolio: tool calls per question.
     committee_role_k: dict[str, int] = Field(
         default_factory=lambda: {
-            "company_profile": 8,
-            "news": 8,
-            "bear": 6,
-            "cio": 6,
+            "company_profile": 5,
+            "news": 6,
+            "bear": 4,
+            "cio": 0,  # the CIO reads the facts and the news and bear reports, not raw passages
             "ask_portfolio": 6,
         }
     )
     committee_cio_max_adjustment: float = Field(default=15.0, ge=0, le=100)
-    committee_max_claims: int = Field(default=8, ge=1, le=30)
+    committee_max_claims: int = Field(default=5, ge=1, le=30)
     ask_max_tools_per_question: int = Field(default=4, ge=1, le=10)
     ask_max_holdings_rows: int = Field(default=30, ge=1, le=200)
     # Ask chat history: kept this many days after the last message, then purged by the scheduler.
@@ -757,7 +781,10 @@ class Settings(BaseSettings):
     # Every tap counts, including ones answered from saved results.
     committee_runs_per_user_per_day: int = Field(default=10, ge=1)
     llm_cache_ttl_hours: float = 24.0 * 7
-    llm_cache_ttl_news_hours: float = 6.0  # answers whose prompt depends on news go stale fast
+    # News answers: the prompt holds the retrieved passages, so new news changes the prompt and misses
+    # the cache by itself. A byte-identical prompt means nothing changed, so it is reused as long
+    # as any other answer (set lower to force earlier re-runs).
+    llm_cache_ttl_news_hours: float = 24.0 * 7
     # Free-tier quotas are per day and shared by every user: reserve them. Per-minute sub-buckets
     # (on top of `llm_requests_per_minute` per provider) stop one user or one role from emptying the
     # provider bucket; the daily budget is per provider (requests per UTC day), per-user daily caps

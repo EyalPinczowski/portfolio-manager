@@ -399,3 +399,29 @@ def test_0016_adds_ask_history_without_touching_existing_data(tmp_path: Path) ->
         )
         assert conn.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
     engine.dispose()
+
+
+def test_0017_adds_llm_usage_token_columns_with_zero_defaults(tmp_path: Path) -> None:
+    engine = make_engine(f"sqlite:///{tmp_path / 'm.db'}")
+    run_migrations(engine)
+    downgrade_migrations(engine, "0016_ask_history")
+    with engine.connect() as conn:
+        cols = {r[1] for r in conn.exec_driver_sql("PRAGMA table_info(llm_usage)")}
+    assert "tokens_in" not in cols
+    with engine.begin() as conn:  # a row written by the previous release
+        conn.execute(
+            text(
+                "INSERT INTO llm_usage (provider, model, day, requests, tokens, fallbacks) "
+                "VALUES ('gemini', 'm', '2026-10-05', 3, 90, 0)"
+            )
+        )
+    run_migrations(engine)  # expand-only: old rows get 0
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(
+                "SELECT requests, tokens, tokens_in, tokens_out, tokens_cached, cache_hits "
+                "FROM llm_usage"
+            )
+        ).one()
+    assert tuple(row) == (3, 90, 0, 0, 0, 0)
+    engine.dispose()

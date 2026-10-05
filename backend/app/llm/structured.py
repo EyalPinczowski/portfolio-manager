@@ -6,7 +6,8 @@ result and the `fallbacks` counter in `llm_usage` goes up. Roles never see a ven
 
 Order for one call:
 1. the response cache (keyed by the hash of role, prompts, fenced inputs, output schema, cache scope,
-   provider and model; shorter lifetime when the prompt depends on news);
+   provider and model; an answer from any provider or model for the same prompt is accepted, the
+   primary's first; a hit is counted in the ledger);
 2. for each provider in order: admission (daily budget with room kept for on-demand calls, the
    user's daily cap, role/user/provider per-minute buckets; refused -> next provider), call it,
    record the request and tokens in the ledger, validate the JSON against the output model; on
@@ -28,8 +29,14 @@ from typing import Literal
 from pydantic import BaseModel, ValidationError
 
 from app.config import Settings, get_settings
-from app.llm.base import LLMError, LLMProvider, LLMRequest, LLMUnavailableError
-from app.llm.cache import get_cached, input_hash, model_hash, prompt_hash, put_cached
+from app.llm.base import LLMError, LLMProvider, LLMRequest, LLMResponse, LLMUnavailableError
+from app.llm.cache import (
+    get_cached_any,
+    input_hash,
+    model_hash,
+    prompt_hash,
+    put_cached,
+)
 from app.llm.ledger import (
     SessionFactory,
     TokenBucket,
@@ -98,6 +105,7 @@ def _admission(
     bkt: TokenBucket,
     now: datetime | None,
     session_factory: SessionFactory | None,
+    request: LLMRequest | None = None,
 ) -> str | None:
     """Why this provider may not be called now (None: go ahead, and the tokens are taken).
 
@@ -118,6 +126,15 @@ def _admission(
         return f"{name}: role '{role}' is rate limited"
     if user_id is not None and not bkt.try_acquire(f"{name}|user:{user_id}", now, s.llm_user_rpm):
         return f"{name}: the user is rate limited"
+    estimate = getattr(provider, "estimate_request_tokens", None)
+    if request is not None and estimate is not None:  # a vendor that limits tokens per minute
+        model = request.model or provider.model
+        reason: str | None = provider.precheck(request, model)  # type: ignore[attr-defined]
+        if reason is not None:
+            return reason
+        need = estimate(request, model)
+        if not bkt.try_acquire(f"{name}|tpm", now, s.groq_tokens_per_minute, float(need)):
+            return f"{name}: about {need} tokens do not fit this minute's token limit"
     if not bkt.try_acquire(name, now):
         return f"{name}: rate limit bucket empty"
     return None
@@ -147,7 +164,7 @@ def structured_call[T: BaseModel](
 
     `cache_scope` is required: `"global"` for answers that depend only on public data, `"user:<id>"`
     for anything shaped by a user's data (text a user wrote can only be cached under their scope).
-    `news_dependent` shortens the cache lifetime (`llm_cache_ttl_news_hours`). `priority` is
+    `news_dependent` selects `llm_cache_ttl_news_hours` for the cache lifetime. `priority` is
     `"on_demand"` for a person waiting for the answer and `"batch"` for background jobs: batch calls
     may only use part of the daily budget. `untrusted` blocks are fenced; user ones are scrubbed.
     """
@@ -160,6 +177,12 @@ def structured_call[T: BaseModel](
     chain = list(build_providers(s) if providers is None else providers)
     ttl = s.llm_cache_ttl_news_hours if news_dependent else s.llm_cache_ttl_hours
 
+    routes = s.llm_role_models.get(role, {})
+
+    def model_of(provider: LLMProvider) -> str:
+        """The model this role uses on this provider (routing setting; empty = the provider's own)."""
+        return routes.get(provider.name) or provider.model
+
     def key_for(provider_name: str, model: str) -> str:
         return input_hash(
             role, system, prompt, schema, scope=cache_scope, provider=provider_name, model=model,
@@ -167,41 +190,58 @@ def structured_call[T: BaseModel](
         )  # fmt: skip
 
     # the key reported when nothing answers: the first provider that was meant to
-    key = key_for(*(chain[0].name, chain[0].model)) if chain else key_for("template", "template")
+    key = key_for(chain[0].name, model_of(chain[0])) if chain else key_for("template", "template")
 
     if use_cache:
-        for provider in chain:
-            hit = get_cached(key_for(provider.name, provider.model), ttl, now, session_factory)
-            if hit is None:
+        # The same prompt answered (and validated) by another provider or model is as good: look at
+        # the chain first, then at every other model the settings know, so a failover day is not
+        # paid for again once the primary is back.
+        pairs: list[tuple[str, str]] = [(p.name, model_of(p)) for p in chain]
+        for name in s.llm_provider_order:
+            if name not in ("gemini", "groq"):
                 continue
+            extra = [
+                routes.get(name),
+                active_model(name, s),  # type: ignore[arg-type]
+                getattr(s, f"{name}_model"),
+                *getattr(s, f"{name}_model_fallbacks"),
+            ]
+            pairs += [(name, m) for m in extra if m]
+        keys = list(dict.fromkeys(key_for(n, m) for n, m in pairs))
+        hit = get_cached_any(keys, ttl, now, session_factory)
+        if hit is not None:
             try:
-                return StructuredResult(
+                result = StructuredResult(
                     value=parse_output(hit.response, model_cls),
                     source="cache",
                     provider=hit.provider,
                     model=hit.model,
                     model_hash=model_hash(hit.provider, hit.model),
                     prompt_hash=p_hash,
-                    input_hash=key_for(provider.name, provider.model),
+                    input_hash=key_for(hit.provider, hit.model),
                 )
             except (ValueError, ValidationError):
                 notes.append("cached answer no longer validates; ignored")
+            else:
+                record_usage(hit.provider, hit.model, cache_hits=1, session_factory=session_factory)
+                return result
 
     bkt = bucket or TokenBucket(s, session_factory)
     attempts = 0
     first_meant: tuple[str, str] | None = None
 
-    def spend(provider: LLMProvider, request: LLMRequest) -> str | None:
-        """One bucket token + one request. The answer text, or None (reason noted)."""
+    def spend(provider: LLMProvider, request: LLMRequest) -> LLMResponse | None:
+        """One bucket token + one request. The response, or None (reason noted)."""
         nonlocal attempts
         refused = _admission(
             provider, role=role, user_id=user_id, priority=priority, s=s, bkt=bkt, now=now,
-            session_factory=session_factory,
+            session_factory=session_factory, request=request,
         )  # fmt: skip
         if refused is not None:
             notes.append(refused)
             return None
         attempts += 1
+        used_model = request.model or provider.model
         try:
             response = provider.complete(request)
         except LLMUnavailableError as exc:
@@ -209,39 +249,44 @@ def structured_call[T: BaseModel](
             notes.append(str(exc))
             return None
         except LLMError as exc:
-            record_usage(provider.name, provider.model, requests=1, session_factory=session_factory)
+            record_usage(provider.name, used_model, requests=1, session_factory=session_factory)
             if user_id is not None:
                 quota_add(f"user:{user_id}", session_factory=session_factory)
             notes.append(str(exc))
             return None
         record_usage(
-            provider.name, provider.model, requests=1, tokens=response.tokens,
-            session_factory=session_factory,
+            provider.name, used_model, requests=1, tokens=response.tokens,
+            tokens_in=response.tokens_in, tokens_out=response.tokens_out,
+            tokens_cached=response.tokens_cached, session_factory=session_factory,
         )  # fmt: skip
         if user_id is not None:
             quota_add(f"user:{user_id}", session_factory=session_factory)
-        return response.text
+        return response
 
     for provider in chain:
-        first_meant = first_meant or (provider.name, provider.model)
+        used_model = model_of(provider)
+        first_meant = first_meant or (provider.name, used_model)
         request = LLMRequest(
             role=role, system=system, prompt=prompt, untrusted=list(untrusted),
             user_id=user_id, known_names=list(known_names), json_schema=schema,
-            max_output_tokens=s.llm_max_output_tokens,
+            max_output_tokens=s.llm_role_max_output_tokens.get(role, s.llm_max_output_tokens),
+            model=routes.get(provider.name),
         )  # fmt: skip
-        text = spend(provider, request)
+        response = spend(provider, request)
         for retry in (False, True):
-            if text is None:
+            if response is None:
                 break
             try:
-                value = parse_output(text, model_cls)
+                value = parse_output(response.text, model_cls)
             except (ValueError, ValidationError) as exc:
                 summary = _error_summary(exc)
                 notes.append(f"{provider.name}: invalid answer ({summary})")
-                if retry:
-                    text = None
+                if retry or response.strict:
+                    # a strict-schema answer that still fails is a semantic error: a second call
+                    # on the same model would not repair it, so go on to the next provider
+                    response = None
                     break
-                text = spend(
+                response = spend(
                     provider,
                     request.model_copy(
                         update={
@@ -251,12 +296,12 @@ def structured_call[T: BaseModel](
                     ),
                 )
                 continue
-            answered = key_for(provider.name, provider.model)
+            answered = key_for(provider.name, used_model)
             put_cached(
                 answered,
                 role,
                 provider.name,
-                provider.model,
+                used_model,
                 value.model_dump_json(),
                 now,
                 session_factory,
@@ -265,8 +310,8 @@ def structured_call[T: BaseModel](
                 value=value,
                 source="llm",
                 provider=provider.name,
-                model=provider.model,
-                model_hash=model_hash(provider.name, provider.model),
+                model=used_model,
+                model_hash=model_hash(provider.name, used_model),
                 prompt_hash=p_hash,
                 input_hash=answered,
                 attempts=attempts,

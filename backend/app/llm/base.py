@@ -30,6 +30,7 @@ class LLMRequest(BaseModel):
     known_names: list[str] = Field(default_factory=list)  # e.g. owner names captured at import
     json_schema: dict[str, Any] | None = None  # JSON schema the answer must follow
     max_output_tokens: int | None = None
+    model: str | None = None  # route this request to a specific model id (per-role routing)
 
 
 class LLMResponse(BaseModel):
@@ -37,6 +38,10 @@ class LLMResponse(BaseModel):
     provider: str
     model: str
     tokens: int = 0  # total tokens the vendor reported (0 when it did not)
+    tokens_in: int = 0  # prompt tokens
+    tokens_out: int = 0  # answer tokens (thinking tokens included)
+    tokens_cached: int = 0  # prompt tokens served from the vendor's cache
+    strict: bool = False  # the vendor enforced the JSON schema (a retry cannot repair a bad answer)
 
 
 class LLMError(Exception):

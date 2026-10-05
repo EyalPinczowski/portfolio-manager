@@ -42,6 +42,10 @@ def record_usage(
     requests: int = 0,
     tokens: int = 0,
     fallbacks: int = 0,
+    tokens_in: int = 0,
+    tokens_out: int = 0,
+    tokens_cached: int = 0,
+    cache_hits: int = 0,
     day: date | None = None,
     session_factory: SessionFactory | None = None,
 ) -> None:
@@ -57,6 +61,10 @@ def record_usage(
         "requests": col(LlmUsage.requests) + requests,
         "tokens": col(LlmUsage.tokens) + tokens,
         "fallbacks": col(LlmUsage.fallbacks) + fallbacks,
+        "tokens_in": col(LlmUsage.tokens_in) + tokens_in,
+        "tokens_out": col(LlmUsage.tokens_out) + tokens_out,
+        "tokens_cached": col(LlmUsage.tokens_cached) + tokens_cached,
+        "cache_hits": col(LlmUsage.cache_hits) + cache_hits,
     }
     for _ in range(3):
         with factory() as db:
@@ -71,6 +79,10 @@ def record_usage(
                     requests=requests,
                     tokens=tokens,
                     fallbacks=fallbacks,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    tokens_cached=tokens_cached,
+                    cache_hits=cache_hits,
                 )
             )
             try:
@@ -89,6 +101,10 @@ class UsageRow:
     requests: int
     tokens: int
     fallbacks: int
+    tokens_in: int = 0
+    tokens_out: int = 0
+    tokens_cached: int = 0
+    cache_hits: int = 0
 
 
 def usage_for_day(
@@ -98,7 +114,18 @@ def usage_for_day(
     with (session_factory or _default_factory)() as db:
         rows = db.exec(select(LlmUsage).where(LlmUsage.day == day)).all()
         return [
-            UsageRow(r.provider, r.model, r.day, r.requests, r.tokens, r.fallbacks)
+            UsageRow(
+                r.provider,
+                r.model,
+                r.day,
+                r.requests,
+                r.tokens,
+                r.fallbacks,
+                r.tokens_in or 0,
+                r.tokens_out or 0,
+                r.tokens_cached or 0,
+                r.cache_hits or 0,
+            )
             for r in rows
             if not r.provider.startswith(QUOTA_PREFIX)
         ]
@@ -156,12 +183,18 @@ class TokenBucket:
         return min(cap, tokens + elapsed * cap / 60.0)
 
     def try_acquire(
-        self, provider: str, now: datetime | None = None, capacity: int | None = None
+        self,
+        provider: str,
+        now: datetime | None = None,
+        capacity: int | None = None,
+        cost: float = 1.0,
     ) -> bool:
-        """Take one token if there is one. False when the bucket is empty (or contention never ends).
+        """Take `cost` tokens (one request by default) if there are that many. False when the bucket is empty (or contention never ends).
 
         `provider` is any bucket key: a provider name, or a sub-bucket such as `gemini|user:5` or
-        `gemini|role:news` with its own `capacity` (requests per minute)."""
+        `gemini|role:news` with its own `capacity` (per minute). A bucket may count something else than
+        requests, e.g. `groq|tpm` counts estimated tokens per minute; a `cost` above `capacity`
+        can never be taken."""
         now = now or utcnow()
         cap = float(capacity) if capacity is not None else self.capacity
         for _ in range(self.retries):
@@ -187,7 +220,7 @@ class TokenBucket:
                 # Never move the clock backwards (a slow process with an older `now`).
                 stamp = max(now, updated_at)
                 available = self._refilled(tokens, updated_at, stamp, cap)
-                if available < 1.0:
+                if available < cost:
                     return False
                 swapped = (
                     db.connection()
@@ -196,7 +229,7 @@ class TokenBucket:
                         .where(
                             col(LlmBucket.provider) == provider, col(LlmBucket.version) == version
                         )
-                        .values(tokens=available - 1.0, version=version + 1, updated_at=stamp)
+                        .values(tokens=available - cost, version=version + 1, updated_at=stamp)
                     )
                     .rowcount
                 )

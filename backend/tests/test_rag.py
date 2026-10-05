@@ -228,11 +228,12 @@ def test_prompt_never_exceeds_role_budget(corpus: Session) -> None:
     for role, budget in s.rag_role_budgets.items():
         p = build_prompt(role, _facts(), big)
         assert p.tokens <= budget and estimate_tokens(p.text) <= budget
-        assert p.dropped_chunks > 0
+        if s.committee_role_k.get(role) != 0:  # a k=0 role (the CIO) gets no raw passages
+            assert p.dropped_chunks > 0
         assert all(f"[c{c}]" in p.text for c in p.cited_chunk_ids)
         assert "<untrusted>" in p.text and "never invent" in p.text
-    real = Retriever(corpus).search("AAPL", "services", k=3, role="cio", now=NOW)
-    p = build_prompt("cio", _facts(), real.hits)
+    real = Retriever(corpus).search("AAPL", "services", k=3, role="bear", now=NOW)
+    p = build_prompt("bear", _facts(), real.hits)
     assert p.cited_chunk_ids == [h.chunk_id for h in real.hits]
 
 

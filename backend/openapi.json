@@ -3318,6 +3318,7 @@
               "$ref": "#/components/schemas/BearRisk"
             },
             "type": "array",
+            "maxItems": 10,
             "title": "Risks"
           }
         },
@@ -3344,6 +3345,7 @@
               "type": "integer"
             },
             "type": "array",
+            "maxItems": 8,
             "title": "Chunk Ids"
           },
           "fact_refs": {
@@ -3351,6 +3353,7 @@
               "type": "string"
             },
             "type": "array",
+            "maxItems": 8,
             "title": "Fact Refs"
           },
           "what_would_invalidate": {
@@ -3634,6 +3637,7 @@
               "$ref": "#/components/schemas/RiskResponse"
             },
             "type": "array",
+            "maxItems": 10,
             "title": "Responses"
           }
         },
@@ -4307,6 +4311,7 @@
               "$ref": "#/components/schemas/ProfileClaim"
             },
             "type": "array",
+            "maxItems": 10,
             "title": "Claims"
           }
         },
@@ -7458,6 +7463,22 @@
           "fallbacks": {
             "type": "integer",
             "title": "Fallbacks"
+          },
+          "tokens_in": {
+            "type": "integer",
+            "title": "Tokens In"
+          },
+          "tokens_out": {
+            "type": "integer",
+            "title": "Tokens Out"
+          },
+          "tokens_cached": {
+            "type": "integer",
+            "title": "Tokens Cached"
+          },
+          "cache_hits": {
+            "type": "integer",
+            "title": "Cache Hits"
           }
         },
         "type": "object",
@@ -7465,7 +7486,11 @@
           "model",
           "requests",
           "tokens",
-          "fallbacks"
+          "fallbacks",
+          "tokens_in",
+          "tokens_out",
+          "tokens_cached",
+          "cache_hits"
         ],
         "title": "LlmModelUsage"
       },
@@ -7487,6 +7512,22 @@
             "type": "integer",
             "title": "Fallbacks"
           },
+          "tokens_in": {
+            "type": "integer",
+            "title": "Tokens In"
+          },
+          "tokens_out": {
+            "type": "integer",
+            "title": "Tokens Out"
+          },
+          "tokens_cached": {
+            "type": "integer",
+            "title": "Tokens Cached"
+          },
+          "cache_hits": {
+            "type": "integer",
+            "title": "Cache Hits"
+          },
           "models": {
             "items": {
               "$ref": "#/components/schemas/LlmModelUsage"
@@ -7501,6 +7542,10 @@
           "requests",
           "tokens",
           "fallbacks",
+          "tokens_in",
+          "tokens_out",
+          "tokens_cached",
+          "cache_hits",
           "models"
         ],
         "title": "LlmProviderUsage"
@@ -7986,6 +8031,7 @@
               "type": "integer"
             },
             "type": "array",
+            "maxItems": 8,
             "title": "Chunk Ids"
           }
         },
@@ -8003,6 +8049,7 @@
               "$ref": "#/components/schemas/NewsItem"
             },
             "type": "array",
+            "maxItems": 10,
             "title": "Items"
           }
         },
@@ -8829,6 +8876,7 @@
               "type": "integer"
             },
             "type": "array",
+            "maxItems": 8,
             "title": "Chunk Ids"
           }
         },
@@ -9730,6 +9778,7 @@
               "type": "integer"
             },
             "type": "array",
+            "maxItems": 8,
             "title": "Chunk Ids"
           }
         },

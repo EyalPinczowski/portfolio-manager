@@ -223,7 +223,10 @@ def test_audit_rows_exist_and_hold_no_personal_data(
 def test_llm_usage_shape_and_no_user_data(signup: SignupFn) -> None:
     from app.llm.ledger import quota_add, record_usage
 
-    record_usage("gemini", "m1", requests=3, tokens=120, fallbacks=1)
+    record_usage(
+        "gemini", "m1", requests=3, tokens=120, fallbacks=1,
+        tokens_in=80, tokens_out=40, tokens_cached=10, cache_hits=2,
+    )  # fmt: skip
     record_usage("gemini", "m2", requests=2, tokens=30)
     quota_add("user:7", 4)  # per-user quota rows must not show up
     admin = signup("boss@mail.com")
@@ -240,6 +243,12 @@ def test_llm_usage_shape_and_no_user_data(signup: SignupFn) -> None:
     assert [p["provider"] for p in body["providers"]] == ["gemini"]
     g = body["providers"][0]
     assert (g["requests"], g["tokens"], g["fallbacks"]) == (5, 150, 1)
+    assert (g["tokens_in"], g["tokens_out"], g["tokens_cached"], g["cache_hits"]) == (80, 40, 10, 2)
+    m1 = g["models"][0]
+    assert (m1["tokens_in"], m1["tokens_out"], m1["tokens_cached"], m1["cache_hits"]) == (
+        80, 40, 10, 2,
+    )  # fmt: skip
+    assert body["tokens_in_out_recorded"] is True and body["cache_hits_recorded"] is True
     assert [m["model"] for m in g["models"]] == ["m1", "m2"]
     assert body["daily_budget"] == 900 and body["user_daily_budget"] == 60
     assert "quota" not in r.text and "@" not in r.text

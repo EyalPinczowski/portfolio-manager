@@ -20,7 +20,7 @@ from collections.abc import Callable, Sequence
 from datetime import datetime
 
 from pydantic import BaseModel
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from app.analyze.public_facts import PublicFacts
 from app.committee.schemas import (
@@ -40,8 +40,9 @@ from app.committee.schemas import (
 from app.config import Settings, get_settings
 from app.llm.base import LLMProvider
 from app.llm.structured import structured_call
+from app.models import DocChunk
 from app.rag.prompt import BuiltPrompt, PromptRejected, build_prompt
-from app.rag.retriever import Hit, Retriever
+from app.rag.retriever import Hit, RetrievalResult, Retriever
 from app.verdict_words import verdict_words_in_text
 
 log = logging.getLogger(__name__)
@@ -80,6 +81,44 @@ def _citations(hits: Sequence[Hit]) -> list[Citation]:
         Citation(chunk_id=h.chunk_id, doc_type=h.doc_type, source_url=h.source_url, as_of=h.as_of)
         for h in hits
     ]
+
+
+def _report_chunk_ids(reports: Sequence[BaseModel]) -> set[int]:
+    """Every chunk id the typed reports cite (they are the only passages a k=0 role sees)."""
+    found: set[int] = set()
+
+    def walk(node: object) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key == "chunk_ids" and isinstance(value, list):
+                    found.update(i for i in value if isinstance(i, int))
+                else:
+                    walk(value)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    for r in reports:
+        walk(r.model_dump())
+    return found
+
+
+def _hits_by_id(db: Session, symbol: str, ids: set[int]) -> list[Hit]:
+    """The cited chunks of this symbol, for citations and templates (never put in a prompt)."""
+    if not ids:
+        return []
+    rows = db.exec(
+        select(DocChunk).where(col(DocChunk.id).in_(ids), DocChunk.symbol == symbol.strip().upper())
+    ).all()
+    return [
+        Hit(
+            chunk_id=r.id, symbol=r.symbol, market=r.market, doc_type=r.doc_type,
+            source_url=r.source_url, as_of=r.as_of, text=r.text, token_count=r.token_count,
+            score=0.0,
+        )
+        for r in sorted(rows, key=lambda r: r.id or 0)
+        if r.id is not None
+    ]  # fmt: skip
 
 
 def _first_sentence(text: str, limit: int = 300) -> str:
@@ -189,11 +228,18 @@ def _run[T: BaseModel](
     on_demand: bool = True,
 ) -> RoleResult[T]:
     query, doc_types = ROLE_RETRIEVAL[role]
-    found = Retriever(db, settings=settings).search(
-        facts.symbol, query, doc_types, k=settings.committee_role_k[role], role=role, now=now
+    passages_off = settings.committee_role_k[role] == 0  # reads the reports, not raw passages
+    found = (
+        RetrievalResult(status="ok", hits=[], tokens=0, budget=settings.rag_role_budgets[role])
+        if passages_off
+        else Retriever(db, settings=settings).search(
+            facts.symbol, query, doc_types, k=settings.committee_role_k[role], role=role, now=now
+        )
     )
     notes: list[str] = []
     hits = found.hits
+    if passages_off:
+        hits = _hits_by_id(db, facts.symbol, _report_chunk_ids(reports))
     if found.no_coverage and role in ("company_profile", "news"):
         # nothing to summarise: no LLM call, an empty answer with confidence 0
         return RoleResult[T](
@@ -201,7 +247,7 @@ def _run[T: BaseModel](
             confidence=0.0, budget=found.budget, notes=["no retrieved text for this stock"],
         )  # fmt: skip
     try:
-        built = build_prompt(role, facts, list(hits), settings, reports)
+        built = build_prompt(role, facts, [] if passages_off else list(hits), settings, reports)
     except PromptRejected as exc:
         notes.append(f"prompt rejected: {exc}")
         return RoleResult[T](
@@ -210,7 +256,7 @@ def _run[T: BaseModel](
             budget=settings.rag_role_budgets[role], notes=notes,
         )  # fmt: skip
     cited = {i for i in built.cited_chunk_ids}
-    used = [h for h in hits if h.chunk_id in cited]
+    used = list(hits) if passages_off else [h for h in hits if h.chunk_id in cited]
     res = structured_call(
         role=role,
         model_cls=model_cls,
@@ -356,7 +402,7 @@ def cio(
     cap = s.committee_cio_max_adjustment
 
     def check(v: CIOAssessment, b: BuiltPrompt, f: PublicFacts) -> CIOAssessment | None:
-        allowed = set(b.cited_chunk_ids)
+        allowed = set(b.cited_chunk_ids) | _report_chunk_ids([bear_case, *reports])
         if abs(v.adjustment) > cap or (f.score is None and v.adjustment != 0):
             return None
         if v.adjustment != 0 and not v.adjustment_reason.strip():

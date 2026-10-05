@@ -37,4 +37,6 @@ class FakeLLMProvider(BaseLLMProvider):
         item = self.responses.pop(0)
         if isinstance(item, Exception):
             raise item
-        return LLMResponse(text=item, provider=self.name, model=self.model, tokens=self.tokens)
+        return LLMResponse(
+            text=item, provider=self.name, model=request.model or self.model, tokens=self.tokens
+        )

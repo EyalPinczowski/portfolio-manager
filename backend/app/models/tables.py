@@ -429,6 +429,10 @@ class LlmUsage(SQLModel, table=True):
     requests: int = 0
     tokens: int = 0
     fallbacks: int = 0
+    tokens_in: int = 0  # prompt tokens the vendor reported (0 before the split was recorded)
+    tokens_out: int = 0  # answer tokens, including thinking tokens
+    tokens_cached: int = 0  # prompt tokens served from the vendor's prompt cache
+    cache_hits: int = 0  # answers served from our own response cache
 
 
 class LlmBucket(SQLModel, table=True):

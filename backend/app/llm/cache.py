@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy.exc import IntegrityError
+from sqlmodel import col, select
 
 from app.llm.ledger import SessionFactory, _default_factory
 from app.models import LlmCache
@@ -75,6 +76,31 @@ def get_cached(
         if row is None or row.created_at < now - timedelta(hours=ttl_hours):
             return None
         return CachedAnswer(row.response, row.provider, row.model, row.created_at)
+
+
+def get_cached_any(
+    keys: Sequence[str],
+    ttl_hours: float,
+    now: datetime | None = None,
+    session_factory: SessionFactory | None = None,
+) -> CachedAnswer | None:
+    """The first of `keys` (in the order given: the preferred provider first) that holds a fresh
+    answer. Lets a validated answer from another provider or model serve the same prompt."""
+    if not keys:
+        return None
+    now = now or utcnow()
+    cutoff = now - timedelta(hours=ttl_hours)
+    with (session_factory or _default_factory)() as db:
+        rows = {
+            r.key: r
+            for r in db.exec(select(LlmCache).where(col(LlmCache.key).in_(list(keys)))).all()
+            if r.created_at >= cutoff
+        }
+    for k in keys:
+        row = rows.get(k)
+        if row is not None:
+            return CachedAnswer(row.response, row.provider, row.model, row.created_at)
+    return None
 
 
 def put_cached(
