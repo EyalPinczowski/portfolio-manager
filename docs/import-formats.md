@@ -32,3 +32,21 @@ Other things on the screen: a status bar (time, battery, a media-player notifica
 - Two overlapping screenshots (shared last/first card) import without double counting.
 - An unseen US ticker is accepted as unverified and verified by a (mocked) quote; an unknown 7-digit TASE number is accepted with a manual symbol.
 - The server and the on-device (TypeScript) parser agree on the same fixtures.
+
+## Second Hebrew broker app, dark theme, "תיק אישי" holdings list (received 2026-10-05)
+Screenshot not kept (security rule); only the layout is recorded here, with invented numbers.
+
+- **Header card:** portfolio name with a dropdown (`תיק עדכני`), total in ₪, daily change (amount + %), total change (amount + %), and `כח קניה` (buying power, ₪). Tabs: `אחזקות` (holdings), `פילוח תיק`, `יתרות במטבע`.
+- **Holdings list (`האחזקות שלי`):** one card per holding. Right side: symbol or Hebrew fund name, then `כמות N` (quantity). Left side: the **last price** and a coloured daily-change chip. There is **no per-row value, cost or currency** on this screen.
+- **Mixed markets in one list:** US ETFs (`IBB`, `ICLN`, priced in USD, no currency sign) next to a TASE fund (`35 מחקה ת"א MTF`, price 424.62, almost certainly ILS/agorot-adjusted). The currency has to come from the symbol or the user, not from the screen.
+- **Hebrew names contain digits:** `35 מחקה ת"א MTF` starts with a number that is part of the name (the TA-35), not a quantity.
+- **Footer notice:** `נתוני ת"א בהשהייה של 15 דקות` (TASE data delayed 15 minutes), a bottom tab bar, and a sort/filter row (`מיון`, `סוג נייר ערך`).
+
+### What the current parser does with it (probe 2026-10-05, text as OCR would give it)
+1. One-line form `IBB כמות 9 205.29 -0.33%`: the price lands in `value`, `price` is empty, and the name becomes `IBB כמות` (the word `כמות` leaks into it).
+2. Currency defaults to ILS for the US ETFs.
+3. `35 מחקה ת"א MTF כמות 2,140 424.62 +0.34%`: quantity = 35 (the name's number), price = 2,140 (the real quantity), value = 424.62.
+4. Stacked form (price, %, name, quantity on separate lines) returns no rows.
+
+### What a dedicated layout needs (`hebrew_broker_cards`)
+Detect `כמות` followed by a number; take quantity from it, the nearest decimal number as price; strip `כמות` from the name; never treat a leading number inside a Hebrew name as a quantity; leave currency to the symbol lookup (US ticker → USD, `MTF` / Hebrew fund → ILS) and ask the user to confirm it. Needs a synthetic fixture and tests before it is built, and the user's OK to start.
