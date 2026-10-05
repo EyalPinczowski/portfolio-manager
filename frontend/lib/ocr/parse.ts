@@ -151,6 +151,28 @@ export function scrubIdentifiers(text: string): string {
     .join("\n");
 }
 
+const TOTAL_LINE_RE = /סה"כ|סהכ|שווי\s*(?:ה)?תיק|שווי\s*כולל|total|portfolio\s*value|market\s*value/i;
+export const TOTAL_TOLERANCE = 0.02;
+
+/** The portfolio total the screen displays: the largest number on a total-keyword line with at most two numbers. */
+export function detectTotal(text: string): number | null {
+  let best: number | null = null;
+  for (const line of text.split(/\r?\n/)) {
+    if (!TOTAL_LINE_RE.test(line)) continue;
+    const vals = (line.match(numberRe()) ?? []).filter((t) => !t.endsWith("%")).map(toNumber).filter((n): n is number => n !== null && n > 0);
+    if (vals.length >= 1 && vals.length <= 2) { const m = Math.max(...vals); if (best === null || m > best) best = m; }
+  }
+  return best;
+}
+
+/** Flag every row `total_mismatch` when the rows' values do not add up to the displayed total (same currency only). */
+export function flagTotalMismatch(rows: ImportRow[], total: number | null): void {
+  if (total === null || total <= 0 || rows.length === 0) return;
+  if (new Set(rows.map((r) => r.currency)).size !== 1 || rows.some((r) => r.value === null || r.value === undefined)) return;
+  const sum = rows.reduce((a, r) => a + (r.value ?? 0), 0);
+  if ((sum - total) / total > TOTAL_TOLERANCE) for (const r of rows) if (!r.flags?.includes("total_mismatch")) r.flags = [...(r.flags ?? []), "total_mismatch"];
+}
+
 export function parseOcrText(text: string, tol: number = IMPORT_VALUE_TOLERANCE): ImportRow[] {
   const lowered = text.toLowerCase();
   const agorotGlobal = AGOROT_MARKERS.some((m) => lowered.includes(m));
@@ -161,5 +183,6 @@ export function parseOcrText(text: string, tol: number = IMPORT_VALUE_TOLERANCE)
     const row = parseLine(line, agorotGlobal, tol);
     if (row) { row.index = rows.length; rows.push(row); }
   }
+  flagTotalMismatch(rows, detectTotal(text));
   return rows;
 }

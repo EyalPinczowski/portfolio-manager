@@ -193,3 +193,7 @@ Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after a
 - Site: real 404 page, deploy secrets scoped to the deploy step with a pinned wrangler, service worker caches only good responses, modal focus, bidi-safe number input.
 - Backtest: trial counter, Deflated Sharpe, PBO, embargo; track record gains a reporting-only Brier score.
 - Checks: backend 1827 passed / 35 skipped; frontend 544 vitest, e2e 93 + real 1, build ok.
+
+## 2026-10-05 (terms + screenshot reading)
+- Terms of use and disclaimer (he/en) at `/terms`: analysis tool only, not investment advice, no license, the decision is the user's. Every user must accept the current `terms_version` (Alembic 0019, `terms_acceptance`); the API returns 403 `terms_not_accepted` on every other authenticated route until then. A version bump asks everyone again. Footer links to it. A lawyer should review the final text.
+- Screenshot reading: dark-mode invert, 2x upscale of small images, Otsu threshold when two-toned; warning flags (never blocking) for prices 100x off (agorot), rows adding up to more than the shown total, and Gemini low-confidence fields; doubtful cells highlighted in the review table. A numeric-only OCR pass was skipped: layouts carry no column positions.

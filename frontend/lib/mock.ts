@@ -1,8 +1,9 @@
 /* Fixture data + in-memory handler used when NEXT_PUBLIC_API_MOCK=1. */
 import type {
   Holding, Summary, Portfolio, RiskFilter, RiskPreset, ScoreCardDetail, XrayRaw, HeatmapItem,
-  ImportDraft, ImportRow, PriceAlert, Me, Horizon, SignalBreakdown, ProposedChange,
+  ImportDraft, ImportRow, PriceAlert, Me, Terms, Horizon, SignalBreakdown, ProposedChange,
 } from "./api";
+import { mutate } from "swr";
 import type { LaunchGate, SessionInfo } from "./api";
 import { ApiError } from "./errors";
 import type { Health } from "./api";
@@ -348,7 +349,7 @@ function mockScenario(): string | null {
   try { return typeof window === "undefined" ? null : window.localStorage.getItem("pm.mock"); } catch { return null; }
 }
 
-const ME: Me = { id: 1, email: "demo@example.com", locale: "he", disclaimer_accepted: true, ocr_consent: false, csrf_token: "mock-csrf-token" };
+const ME: Me = { id: 1, email: "demo@example.com", locale: "he", disclaimer_accepted: true, ocr_consent: false, terms_accepted: true, csrf_token: "mock-csrf-token" };
 
 function analyzeCtx(pid: number | null): AnalyzeCtx {
   const seeds = pid === null ? [] : SEEDS.filter((x) => x.pid === pid);
@@ -360,11 +361,29 @@ function analyzeCtx(pid: number | null): AnalyzeCtx {
   };
 }
 
+const MOCK_TERMS_VERSION = "2026-10-05";
+let termsAcceptedAt: string | null = null;
+/** Test hook: forget the mock acceptance. */
+export const resetMockTerms = (): void => { termsAcceptedAt = null; };
+const termsAccepted = (): boolean => (mockScenario() === "terms" ? termsAcceptedAt !== null : true);
+const termsOut = (): Terms => ({ version: MOCK_TERMS_VERSION, accepted: termsAccepted(), accepted_at: termsAccepted() ? (termsAcceptedAt ?? AS_OF) : null });
+
 export function mockRequest(method: string, path: string, body?: unknown): unknown {
   const [p] = path.split("?");
   const b = (body ?? {}) as Record<string, unknown>;
   let m: RegExpMatchArray | null;
-  if (p === "/auth/me") return ME;
+  if (p === "/auth/me") return { ...ME, terms_accepted: termsAccepted() };
+  if (p === "/terms") return termsOut();
+  if (p === "/terms/accept") {
+    if (b.version !== MOCK_TERMS_VERSION) throw new ApiError(409, "terms_version_mismatch");
+    termsAcceptedAt ??= new Date().toISOString();
+    return termsOut();
+  }
+  // Scenario "terms" (localStorage pm.mock): every other route answers like the server before acceptance.
+  if (mockScenario() === "terms" && !termsAccepted() && p !== "/auth/login" && p !== "/auth/signup" && p !== "/auth/logout" && p !== "/health" && p !== "/settings") {
+    void mutate("me");
+    throw new ApiError(403, "terms_not_accepted");
+  }
   if (p === "/auth/login") return mockLogin(b);
   if (p === "/auth/signup" || p === "/auth/logout") return ME;
   if (p === "/health") return HEALTH;

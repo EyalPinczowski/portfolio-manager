@@ -216,6 +216,10 @@ function Body() {
                   const plainFlags = r.flags.filter((f) => !SERVER_NOTES.includes(f));
                   const flagged = plainFlags.length > 0 || mustEnterQty || fl.has("quantity_fractional") || mustAck;
                   const k = (f: string) => `${draft.id}-${r.index}-${f}`;
+                  const doubt = (...names: string[]): string | undefined => {
+                    const hit = names.filter((n) => r.flags.some((f) => f === n));
+                    return hit.length ? hit.map((n) => t(`flags.${n}`)).join(" · ") : undefined;
+                  };
                   const isCash = ch?.type === "deposit" || ch?.type === "withdrawal";
                   const rowType = (ch?.type === "keep" ? undefined : ch?.type) as ChangeType | undefined;
                   return (
@@ -276,9 +280,9 @@ function Body() {
                         )}
                         {r.tase_number && <p className="mt-1 text-xs text-muted" dir="ltr">{t("taseNumber", { n: r.tase_number })}</p>}
                       </td>
-                      <td className="px-2 py-2"><NumberCell key={k("q")} label={`${t("col.quantity")} ${r.index + 1}`} className="w-24" required={mustEnterQty} value={r.quantity} onValue={(n, ok) => { editRow(r.index, { quantity: n }); cell(k("q"))(ok); }} /></td>
-                      <td className="px-2 py-2"><NumberCell key={k("p")} label={`${t("col.price")} ${r.index + 1}`} className="w-24" value={r.price} onValue={(n, ok) => { editRow(r.index, { price: n }); cell(k("p"))(ok); }} /></td>
-                      <td className="px-2 py-2"><NumberCell key={k("v")} label={`${t("col.value")} ${r.index + 1}`} className="w-28" value={r.value} onValue={(n, ok) => { editRow(r.index, { value: n }); cell(k("v"))(ok); }} /></td>
+                      <td className="px-2 py-2"><NumberCell key={k("q")} label={`${t("col.quantity")} ${r.index + 1}`} className="w-24" required={mustEnterQty} doubt={doubt("ocr_low_confidence")} value={r.quantity} onValue={(n, ok) => { editRow(r.index, { quantity: n }); cell(k("q"))(ok); }} /></td>
+                      <td className="px-2 py-2"><NumberCell key={k("p")} label={`${t("col.price")} ${r.index + 1}`} className="w-24" doubt={doubt("price_unit_100x", "ocr_low_confidence")} value={r.price} onValue={(n, ok) => { editRow(r.index, { price: n }); cell(k("p"))(ok); }} /></td>
+                      <td className="px-2 py-2"><NumberCell key={k("v")} label={`${t("col.value")} ${r.index + 1}`} className="w-28" doubt={doubt("total_mismatch", "price_unit_100x", "ocr_low_confidence")} value={r.value} onValue={(n, ok) => { editRow(r.index, { value: n }); cell(k("v"))(ok); }} /></td>
                       <td className="px-2 py-2"><NumberCell key={k("k")} label={`${t("col.cost")} ${r.index + 1}`} className="w-24" value={r.cost} onValue={(n, ok) => { setRows((rs) => rs.map((x) => (x.index === r.index ? { ...x, cost: n, flags: x.flags.filter((f) => f !== "cost_inferred") } : x))); cell(k("k"))(ok); }} /></td>
                       <td className="px-2 py-2">
                         <select aria-label={`${t("col.currency")} ${r.index + 1}`} className="input w-28" dir="ltr" value={r.unit} onChange={(e) => setUnit(r.index, e.target.value as ImportRow["unit"])}>

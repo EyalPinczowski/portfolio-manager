@@ -7,6 +7,7 @@
  */
 import { canvasToPng, disposeCanvas, toMaskedCanvas } from "./image";
 import { headerFractionFor, mergeScreenshots, parseScreenshotText, type LayoutChoice } from "./layouts";
+import { preprocessCanvas } from "./preprocess";
 import { scrubIdentifiers } from "./parse";
 import type { ParsedRows } from "./types";
 
@@ -48,8 +49,9 @@ export async function readScreenshotsOnDevice(
   const layout = opts.layout ?? "auto";
   const parts: ParsedRows[] = [];
   for (const file of files) {
-    const canvas = await toMaskedCanvas(file, headerFractionFor(layout));
+    let canvas = await toMaskedCanvas(file, headerFractionFor(layout));
     try {
+      canvas = preprocessCanvas(canvas);
       const text = await recognize(canvas, opts.onProgress);
       parts.push(parseScreenshotText(scrubIdentifiers(text), layout));
     } finally {

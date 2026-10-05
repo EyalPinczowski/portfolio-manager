@@ -885,6 +885,11 @@ class Settings(BaseSettings):
     )
     track_record_max_rows: int = Field(default=500, ge=1, le=5000)
 
+    # --- terms ---
+    # Current version of the terms / disclaimer every user must accept. Bump it (when the text
+    # changes) to make everyone accept again. The frontend text carries the same version.
+    terms_version: str = "2026-10-05"
+
     # --- alerts ---
     # Words that make outgoing text (Telegram, notifications, weekly review) read as a buy/sell
     # verdict. The list lives in `app.verdict_words` (one list, shared with the verdict contract

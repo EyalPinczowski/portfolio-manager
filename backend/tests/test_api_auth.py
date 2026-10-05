@@ -86,7 +86,15 @@ def test_me_requires_session_and_returns_contract_fields(
 ) -> None:
     assert client.get("/api/auth/me").status_code == 401
     me = signup().get("/api/auth/me").json()
-    assert set(me) == {"id", "email", "locale", "disclaimer_accepted", "ocr_consent", "csrf_token"}
+    assert set(me) == {
+        "id",
+        "email",
+        "locale",
+        "disclaimer_accepted",
+        "ocr_consent",
+        "terms_accepted",
+        "csrf_token",
+    }
 
 
 def test_csrf_header_is_required_on_every_mutation(signup: SignupFn) -> None:

@@ -161,7 +161,9 @@ def signup(env: None, providers: Providers) -> Iterator[SignupFn]:
     clients: list[TestClient] = []
 
     def _signup(
-        email: str = "alice@mail.com", password: str = "correct horse battery"
+        email: str = "alice@mail.com",
+        password: str = "correct horse battery",
+        accept_terms: bool = True,
     ) -> TestClient:
         c = TestClient(create_app())
         c.__enter__()
@@ -178,6 +180,9 @@ def signup(env: None, providers: Providers) -> Iterator[SignupFn]:
         )
         assert r.status_code == 201, r.text
         c.headers["X-CSRF-Token"] = r.json()["csrf_token"]
+        if accept_terms:
+            version = get_settings().terms_version
+            assert c.post("/api/terms/accept", json={"version": version}).status_code == 200
         return c
 
     yield _signup

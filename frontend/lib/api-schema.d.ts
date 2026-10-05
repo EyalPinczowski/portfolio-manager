@@ -1110,6 +1110,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Terms */
+        get: operations["get_terms_api_terms_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/terms/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Terms */
+        post: operations["accept_terms_api_terms_accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -2508,7 +2542,7 @@ export interface components {
             /** Candidates */
             candidates?: components["schemas"]["MatchCandidate"][];
             /** Flags */
-            flags?: ("missing_fields" | "value_mismatch" | "unmatched" | "low_confidence_match" | "currency_changed" | "unit_mismatch" | "quantity_uncertain" | "quantity_fractional" | "cost_inferred" | "duplicate_removed" | "conflict")[];
+            flags?: ("missing_fields" | "value_mismatch" | "unmatched" | "low_confidence_match" | "currency_changed" | "unit_mismatch" | "quantity_uncertain" | "quantity_fractional" | "cost_inferred" | "duplicate_removed" | "conflict" | "price_unit_100x" | "total_mismatch" | "ocr_low_confidence")[];
             /** Exchange */
             exchange?: ("NASDAQ" | "NYSE" | "AMEX") | null;
             conflict?: components["schemas"]["RowConflict"] | null;
@@ -2763,6 +2797,8 @@ export interface components {
             disclaimer_accepted: boolean;
             /** Ocr Consent */
             ocr_consent: boolean;
+            /** Terms Accepted */
+            terms_accepted: boolean;
             /** Csrf Token */
             csrf_token: string;
         };
@@ -4033,6 +4069,20 @@ export interface components {
             linked: boolean;
             /** Bot Username */
             bot_username?: string | null;
+        };
+        /** TermsAcceptIn */
+        TermsAcceptIn: {
+            /** Version */
+            version: string;
+        };
+        /** TermsOut */
+        TermsOut: {
+            /** Version */
+            version: string;
+            /** Accepted */
+            accepted: boolean;
+            /** Accepted At */
+            accepted_at?: string | null;
         };
         /**
          * TextCode
@@ -6388,6 +6438,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DividendsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_terms_api_terms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TermsOut"];
+                };
+            };
+        };
+    };
+    accept_terms_api_terms_accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TermsAcceptIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TermsOut"];
                 };
             };
             /** @description Validation Error */

@@ -6,6 +6,7 @@ import io
 import shutil
 
 from app.config import Settings, get_settings
+from app.importer.preprocess import preprocess_for_ocr
 from app.providers.base import OcrResult, OcrUnavailableError
 
 ON_DEVICE_MESSAGE = (
@@ -35,7 +36,11 @@ class TesseractProvider:
         from PIL import Image
 
         with Image.open(io.BytesIO(image_bytes)) as img:
-            text = pytesseract.image_to_string(
-                img.convert("L"), lang=self.settings.tesseract_lang, config="--psm 6"
-            )
+            prepared = preprocess_for_ocr(img)
+            try:
+                text = pytesseract.image_to_string(
+                    prepared, lang=self.settings.tesseract_lang, config="--psm 6"
+                )
+            finally:
+                prepared.close()
         return OcrResult(provider=self.name, text=text)

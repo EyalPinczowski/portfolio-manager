@@ -3,6 +3,7 @@ import { RASTER_TYPES } from "./upload-types";
 import { apiBase } from "./config";
 import { ApiError } from "./errors";
 import { mockRequest } from "./mock";
+import { mutate } from "swr";
 import { clearClientState } from "./session";
 import { sanitizeRows } from "./import-rows";
 
@@ -24,6 +25,7 @@ export type Pnl = S["Pnl"];
 export type StopTpStatus = S["HoldingOut"]["stop_tp_status"];
 
 export type Me = Narrow<S["MeOut"], { locale: "he" | "en" }>;
+export type Terms = S["TermsOut"];
 export type Summary = S["SummaryOut"];
 export type RiskFilter = Narrow<S["RiskFilterOut"], { stop_type: "fixed" | "trailing" | "both" }>;
 export type RiskPreset = { name: string } & RiskFilter;
@@ -166,6 +168,9 @@ let csrfToken: string | null = null;
 export const setCsrfToken = (t: string | null): void => { csrfToken = t; };
 export const getCsrfToken = (): string | null => csrfToken;
 
+/** `detail` of the 403 the server sends for every gated route until the current terms are accepted. */
+export const TERMS_NOT_ACCEPTED = "terms_not_accepted";
+
 interface Payload { json?: unknown; image?: Blob }
 
 async function raw<T>(method: string, path: string, payload: Payload = {}): Promise<T> {
@@ -189,6 +194,8 @@ async function raw<T>(method: string, path: string, payload: Payload = {}): Prom
     let msg = res.statusText;
     let body: unknown;
     try { body = await res.json(); const d = (body as { detail?: unknown }).detail; msg = typeof d === "string" ? d : msg; } catch { /* ignore */ }
+    // The account has not accepted the current terms: refresh "me" so the gate sends the user to the terms page.
+    if (res.status === 403 && msg === TERMS_NOT_ACCEPTED) void mutate("me");
     const ra = Number(res.headers.get("Retry-After"));
     throw new ApiError(res.status, msg, Number.isFinite(ra) && ra > 0 ? ra : undefined, body);
   }
@@ -223,6 +230,9 @@ export const api = {
   async logout() {
     try { await post("/auth/logout"); } finally { csrfToken = null; await clearClientState(); }
   },
+  terms: () => get<Terms>("/terms"),
+  /** 409 = the version is no longer the current one (reload and read the new text). */
+  acceptTerms: (version: string) => post<Terms>("/terms/accept", { version }),
   consentOcr: () => post("/auth/consent/ocr"),
   /** Needs the account password (wrong password -> 403). */
   exportData: (password: string) => post<unknown>("/me/export", { password } satisfies PasswordBody),

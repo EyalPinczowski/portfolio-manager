@@ -9,6 +9,7 @@ const cfg: SWRConfiguration = { refreshInterval: POLL_MS, revalidateOnFocus: tru
 
 export type PortfolioRef = number | "combined";
 
+export const useTerms = (enabled = true) => useSWR(enabled ? "terms" : null, () => api.terms(), { revalidateOnFocus: false });
 export const useMe = () => useSWR("me", () => api.me(), { revalidateOnFocus: false });
 export const usePortfolios = () => useSWR("portfolios", () => api.portfolios(), cfg);
 export const useSummary = (id: PortfolioRef | null) =>

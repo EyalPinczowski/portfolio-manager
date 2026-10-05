@@ -25,6 +25,7 @@ from app.api import (
     misc,
     portfolios,
     telegram,
+    terms,
     track_record,
     xray_rules,
 )
@@ -121,6 +122,7 @@ def create_app() -> FastAPI:
         xray_rules,
         funds,
         dividends,
+        terms,
     ):
         api.include_router(module.router)
 

@@ -28,3 +28,9 @@ export const dividendsHref = (): string => "/dividends";
 
 /** Path of "Ask my portfolio". */
 export const askHref = (): string => "/ask";
+
+/** Path of the terms page; `next` (a locale-less app path) is where to go after accepting. */
+export const termsHref = (next?: string | null): string => (safeNext(next) ? `/terms?next=${encodeURIComponent(next as string)}` : "/terms");
+/** Only same-app paths ("/x", never "//host" or a path back to the terms page) are valid redirect targets. */
+export const safeNext = (next: string | null | undefined): string | null =>
+  next && /^\/(?!\/)/.test(next) && !/^\/terms(\/|\?|$)/.test(next) && !next.includes("\\") ? next : null;

@@ -235,7 +235,10 @@
       "low_confidence_match": "Weak match: check the symbol",
       "missing_fields": "Some fields are missing",
       "unmatched": "Could not match this security",
-      "unit_mismatch": "Price unit looks wrong (shekels or agorot?)"
+      "unit_mismatch": "Price unit looks wrong (shekels or agorot?)",
+      "price_unit_100x": "Price or value looks 100× off: shekels or agorot?",
+      "total_mismatch": "The rows add up to more than the total shown on the screen: a number was probably misread",
+      "ocr_low_confidence": "The reader was unsure about some of these numbers: check them against the screenshot"
     },
     "unit": {
       "ILS": "ILS (₪)",
@@ -1577,5 +1580,50 @@
     },
     "runsPerDay": "Up to {n} runs a day.",
     "runsLeft": "{left} of {n} runs left today."
+  },
+  "terms": {
+    "title": "Terms of use and disclaimer",
+    "intro": "Please read this before you use Holdwise. You need to accept it once, and again if it changes.",
+    "versionLine": "Version {version} · {date}",
+    "link": "Terms of use",
+    "sections": [
+      {
+        "title": "What this app is",
+        "body": "Holdwise is a tool for analysis and information only. It collects data, charts, indicators and news, and shows them next to your own holdings and the risk limits you set."
+      },
+      {
+        "title": "It is not investment advice",
+        "body": "Nothing in the app is investment advice, investment marketing, or a recommendation suited to you personally. This includes scores, labels such as buy, hold or sell, alerts, text written by AI, exit levels (stop and target prices), screeners and any other output. The app does not know your full financial situation, goals or needs."
+      },
+      {
+        "title": "No license",
+        "body": "The operator of this app is not licensed as an investment adviser, investment marketer or portfolio manager under Israel's Regulation of Investment Advice, Investment Marketing and Portfolio Management Law, 1995, and does not offer those services."
+      },
+      {
+        "title": "Data can be wrong",
+        "body": "Prices, financial data, news and other information come from third parties. They may be delayed, incomplete, out of date or wrong. Calculations and scores may contain errors. Check anything important with your broker or another reliable source."
+      },
+      {
+        "title": "The past does not predict the future",
+        "body": "Past performance, back-tests and track records do not predict future results. Investing can lose part or all of your money."
+      },
+      {
+        "title": "The decision is yours",
+        "body": "Every investment decision, and everything that results from it, is your responsibility alone. Before you invest, consider speaking with a licensed investment adviser who can look at your personal situation."
+      },
+      {
+        "title": "No trading",
+        "body": "The app never places orders and never trades for you. Any action in your brokerage account is taken by you."
+      }
+    ],
+    "checkbox": "I have read and understood, and I agree",
+    "accept": "Accept and continue",
+    "accepting": "Saving…",
+    "error": "Could not save your acceptance. Try again.",
+    "stale": "The terms were updated. Reload the page and read the new version.",
+    "acceptedOn": "You accepted this version on {date}.",
+    "readOnly": "Sign in to accept these terms and start using the app.",
+    "signIn": "Sign in",
+    "backHome": "Back to the app"
   }
 }

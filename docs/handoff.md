@@ -15,7 +15,7 @@ Read this file, then `CLAUDE.md`, `docs/status.md` and `docs/reminders.md`, befo
 - The app is named **Holdwise** (green H mark on a rising line, green brand tokens; `frontend/components/Logo.tsx`, `public/icons/*.svg`, `scripts/gen-icons.mjs` rasterises the PWA PNGs).
 - Queue item 3 is done: Ask my portfolio (`/ask`, saved conversations, structured `needs_horizon`) and the Investment Committee on the Analyze result.
 - Backend: 1724+ passed, 33 skipped. Frontend vitest: 506 passed. Mock e2e (light + dark): 93 passed. `npm run e2e:real`: passed.
-- Alembic is at 0018 (llm_cache.scope) and expand-only.
+- Alembic is at 0019 (terms_acceptance) and expand-only.
 - After an API change: regenerate `backend/openapi.json`, then `cd frontend && npm run gen:api`.
 
 ## Deploy state (2026-10-05)

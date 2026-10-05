@@ -12,7 +12,13 @@ from app.config import Settings, get_settings
 from app.importer.hebrew_cards import detect_hebrew_cards, parse_hebrew_cards_text
 from app.importer.meitav import detect_meitav, parse_meitav_text
 from app.importer.merge import merge_screenshots
-from app.importer.parse import ParsedRow, parse_ocr_result, parse_ocr_text
+from app.importer.parse import (
+    ParsedRow,
+    detect_total,
+    flag_total_mismatch,
+    parse_ocr_result,
+    parse_ocr_text,
+)
 from app.providers.base import OcrResult
 
 LayoutId = Literal["generic", "meitav_trade", "hebrew_broker_cards"]
@@ -47,7 +53,9 @@ def parse_screenshot_text(
         rows = parse_hebrew_cards_text(text)
         if rows:
             return "hebrew_broker_cards", rows
-    return "generic", parse_ocr_text(text, s)
+    rows = parse_ocr_text(text, s)
+    flag_total_mismatch(rows, detect_total(text))  # generic tables only: card layouts differ
+    return "generic", rows
 
 
 def parse_screenshots(

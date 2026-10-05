@@ -21,7 +21,9 @@ PROMPT = (
     "quantity, price (as displayed), value (total market value as displayed), cost (average cost "
     "or total cost per share as displayed, null if absent). currency: ILS, USD or null. "
     "unit: 'agorot' if prices are shown in agorot (אגורות / אג'), 'ILS' if shekels, 'USD' if "
-    "dollars, else null. Use plain numbers (no thousands separators). Do not invent rows."
+    "dollars, else null. Use plain numbers (no thousands separators). Do not invent rows. "
+    "confidence: for name, quantity, price, value and cost give 'low' when the text is blurry, "
+    "cut off or you are guessing, else 'ok'."
 )
 
 

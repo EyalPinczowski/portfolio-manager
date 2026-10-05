@@ -169,6 +169,14 @@ def clean_number(x: float | None, ceiling: float = MONEY_MAX) -> float | None:
     return x
 
 
+TOTAL_TOLERANCE = 0.02  # rows' values vs the screen's displayed total (relative)
+UNIT_100X_TOLERANCE = 0.05  # how close qty x price must be to 100x (or 1/100 of) the value
+TOTAL_LINE_RE = re.compile(
+    r"סה\"כ|סהכ|שווי\s*(?:ה)?תיק|שווי\s*כולל|total|portfolio\s*value|market\s*value", re.IGNORECASE
+)
+# Flags computed from the numbers alone: recomputed on every validation (never stale after an edit).
+COMPUTED_FLAGS = ("missing_fields", "value_mismatch", "quantity_uncertain", "price_unit_100x")
+
 COST_PLAUSIBLE_MIN = 0.05  # a per-unit cost below 0.05x the price is not believable
 COST_PLAUSIBLE_MAX = 20.0  # nor above 20x the price
 
@@ -331,6 +339,7 @@ def _from_ocr_row(r: OcrRow, index: int) -> ParsedRow:
     if not isinstance(symbol, str) or not re.fullmatch(SYMBOL_PATTERN, symbol):
         symbol = None
     tase = re.sub(r"\D", "", r.tase_number or "")
+    low = r.confidence is not None and "low" in r.confidence.model_dump().values()
     return ParsedRow(
         index=index,
         name=mask_digit_runs(r.name),
@@ -342,6 +351,7 @@ def _from_ocr_row(r: OcrRow, index: int) -> ParsedRow:
         cost=clean_number(r.cost),
         currency=cur,  # type: ignore[arg-type]
         unit=unit,
+        flags=["ocr_low_confidence"] if low else [],
     )
 
 
@@ -354,9 +364,7 @@ def parse_ocr_result(result: OcrResult, settings: Settings | None = None) -> lis
 def validate_row(row: ParsedRow, settings: Settings | None = None) -> ParsedRow:
     """Flag incomplete rows and rows where quantity x price differs from value by > tolerance."""
     s = settings or get_settings()
-    flags = [
-        f for f in row.flags if f not in ("missing_fields", "value_mismatch", "quantity_uncertain")
-    ]
+    flags = [f for f in row.flags if f not in COMPUTED_FLAGS]
     if row.quantity is None:
         flags.append("quantity_uncertain")  # the user must enter one (confirm stays blocked)
     if row.quantity is None or row.price is None or row.value is None:
@@ -366,5 +374,47 @@ def validate_row(row: ParsedRow, settings: Settings | None = None) -> ParsedRow:
         expected = row.quantity * price
         if row.value == 0 or abs(expected - row.value) / abs(row.value) > s.import_value_tolerance:
             flags.append("value_mismatch")
+            if unit_off_by_100(row):
+                flags.append("price_unit_100x")
     row.flags = flags
     return row
+
+
+def unit_off_by_100(row: ParsedRow) -> bool:
+    """A shekel row whose quantity x price is ~100x (or ~1/100 of) the value: the price (or value)
+    was probably read in the wrong unit (agorot vs shekels). Only a flag: never auto-corrected."""
+    if row.currency != "ILS" or not row.quantity or not row.price or not row.value:
+        return False
+    expected = row.quantity * (price_native(row) or 0.0)
+    if expected <= 0:
+        return False
+    ratio = expected / row.value
+    return any(abs(ratio - k) / k <= UNIT_100X_TOLERANCE for k in (100.0, 0.01))
+
+
+def detect_total(text: str) -> float | None:
+    """The portfolio total the screen displays, if a total line is found: the largest number on a
+    line that has a total keyword and at most two numbers (so it is not a holding row)."""
+    best: float | None = None
+    for line in text.splitlines():
+        if not TOTAL_LINE_RE.search(line):
+            continue
+        nums = [_to_number(t) for t in NUMBER_RE.findall(line) if not t.endswith("%")]
+        vals = [n for n in nums if n is not None and n > 0]
+        if 1 <= len(vals) <= 2 and (best is None or max(vals) > best):
+            best = max(vals)
+    return best
+
+
+def flag_total_mismatch(rows: list[ParsedRow], total: float | None) -> None:
+    """Add `total_mismatch` to every row when the rows' values EXCEED the displayed total by more
+    than the tolerance (same currency only). A partial screenshot sums below it: not flagged."""
+    if total is None or total <= 0 or not rows:
+        return
+    if len({r.currency for r in rows}) != 1 or any(r.value is None for r in rows):
+        return
+    summed = sum(r.value or 0.0 for r in rows)
+    if (summed - total) / total > TOTAL_TOLERANCE:  # only an excess is impossible
+        for r in rows:
+            if "total_mismatch" not in r.flags:
+                r.flags = [*r.flags, "total_mismatch"]

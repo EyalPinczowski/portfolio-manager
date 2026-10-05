@@ -278,6 +278,23 @@ for (const locale of LOCALES) {
       await shot(page, info, `fund-detail-${locale}`);
       errs.expectNone();
     });
+
+    test("terms gate: an account that has not accepted is sent to the terms page and back", async ({ page }, info) => {
+      const errs = watchErrors(page);
+      await page.addInitScript(() => window.localStorage.setItem("pm.mock", "terms"));
+      await page.goto(`/${locale}/`);
+      await expect(heading(page, m("terms.title"))).toBeVisible();
+      await expect(page).toHaveURL(/terms/);
+      await expectDir(page, locale);
+      const accept = page.getByRole("button", { name: m("terms.accept"), exact: true });
+      await expect(accept).toBeDisabled();
+      await shot(page, info, `terms-${locale}`);
+      await page.getByRole("checkbox", { name: m("terms.checkbox") }).check();
+      await expect(accept).toBeEnabled();
+      await accept.click();
+      await expect(page.getByText(m("holdings.title"), { exact: true })).toBeVisible();
+      errs.expectNone();
+    });
   });
 }
 

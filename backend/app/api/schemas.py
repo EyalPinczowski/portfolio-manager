@@ -83,6 +83,7 @@ class MeOut(BaseModel):
     locale: Locale
     disclaimer_accepted: bool
     ocr_consent: bool
+    terms_accepted: bool
     csrf_token: str
 
 
@@ -354,6 +355,9 @@ ImportFlag = Literal[
     "cost_inferred",  # `cost` was derived from the broker's P&L %, not read from the screen
     "duplicate_removed",  # the same card was in two screenshots and is counted once
     "conflict",  # two screenshots disagree; the later one was kept, see `conflict`
+    "price_unit_100x",  # quantity x price is ~100x (or 1/100) of the value: agorot vs shekels?
+    "total_mismatch",  # the rows do not add up to the total shown on the screen
+    "ocr_low_confidence",  # the reader marked a field of this row as unclear
 ]
 
 

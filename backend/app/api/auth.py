@@ -11,7 +11,7 @@ from sqlmodel import Session, col, select
 
 from app.api.schemas import LoginIn, MeOut, PasswordBody, SessionOut, SignupIn
 from app.auth import account
-from app.auth.deps import AuthContext, AuthDep, DbDep, SettingsDep
+from app.auth.deps import AuthContext, AuthDep, DbDep, SettingsDep, terms_accepted
 from app.auth.device import (
     forget_device,
     is_known_device,
@@ -37,7 +37,7 @@ from app.timeutil import as_utc, utcnow
 router = APIRouter(tags=["auth"], route_class=StrictJsonRoute)
 
 
-def _me(user: User, session: AuthSession) -> MeOut:
+def _me(user: User, session: AuthSession, db: Session, settings: Settings) -> MeOut:
     assert user.id is not None
     return MeOut(
         id=user.id,
@@ -45,6 +45,7 @@ def _me(user: User, session: AuthSession) -> MeOut:
         locale=user.locale,
         disclaimer_accepted=user.disclaimer_accepted_at is not None,
         ocr_consent=user.ocr_consent_at is not None,
+        terms_accepted=terms_accepted(db, user, settings)[0],
         csrf_token=session.csrf_token,
     )
 
@@ -107,7 +108,7 @@ def signup(
     db.commit()
     session, cookie = create_session(db, user, settings)
     set_session_cookie(response, cookie, settings)
-    return _me(user, session)
+    return _me(user, session, db, settings)
 
 
 @router.post(
@@ -188,7 +189,7 @@ def login(
     session, cookie = create_session(db, user, settings)
     set_session_cookie(response, cookie, settings)
     remember_device(request, response, settings, db, user)
-    return _me(user, session)
+    return _me(user, session, db, settings)
 
 
 @router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -203,17 +204,17 @@ def logout(auth: AuthDep, db: DbDep, settings: SettingsDep) -> Response:
 
 
 @router.get("/auth/me", response_model=MeOut)
-def me(auth: AuthDep) -> MeOut:
-    return _me(auth.user, auth.session)
+def me(auth: AuthDep, db: DbDep, settings: SettingsDep) -> MeOut:
+    return _me(auth.user, auth.session, db, settings)
 
 
 @router.post("/auth/consent/ocr", response_model=MeOut)
-def consent_ocr(auth: AuthDep, db: DbDep) -> MeOut:
+def consent_ocr(auth: AuthDep, db: DbDep, settings: SettingsDep) -> MeOut:
     if auth.user.ocr_consent_at is None:
         auth.user.ocr_consent_at = utcnow()
         db.add(auth.user)
         db.commit()
-    return _me(auth.user, auth.session)
+    return _me(auth.user, auth.session, db, settings)
 
 
 def _check_password(auth: AuthContext, password: str) -> None:

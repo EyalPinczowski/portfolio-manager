@@ -55,6 +55,16 @@ class AuthSession(SQLModel, table=True):
     last_seen_at: NaiveDatetime = Field(default_factory=utcnow)
 
 
+class TermsAcceptance(SQLModel, table=True):
+    """One row per (user, terms version) the user accepted; history is kept, never overwritten."""
+
+    __tablename__ = "terms_acceptance"
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True, ondelete="CASCADE")
+    version: str
+    accepted_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
 class Security(SQLModel, table=True):
     __tablename__ = "security"
     symbol: str = Field(primary_key=True)

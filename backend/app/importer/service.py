@@ -69,7 +69,16 @@ log = logging.getLogger(__name__)
 
 # Flags the reading side (the on-device parser) decides; the server keeps them. Every other flag
 # (match, currency, value checks) is the server's own and is recomputed.
-CLIENT_FLAGS = frozenset({"quantity_fractional", "cost_inferred", "duplicate_removed", "conflict"})
+CLIENT_FLAGS = frozenset(
+    {
+        "quantity_fractional",
+        "cost_inferred",
+        "duplicate_removed",
+        "conflict",
+        "total_mismatch",
+        "ocr_low_confidence",
+    }
+)
 
 
 def draft_expires_at(draft: ImportDraft, settings: Settings | None = None) -> datetime:

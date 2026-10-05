@@ -102,6 +102,16 @@ class HistoryProvider(Protocol):
         """Daily OHLCV (Open High Low Close Volume, DatetimeIndex), normalised. None if unavailable."""
 
 
+class OcrConfidence(BaseModel):
+    """Per-field reading confidence from a vision model: `low` means unclear text."""
+
+    name: Literal["low", "ok"] = "ok"
+    quantity: Literal["low", "ok"] = "ok"
+    price: Literal["low", "ok"] = "ok"
+    value: Literal["low", "ok"] = "ok"
+    cost: Literal["low", "ok"] = "ok"
+
+
 class OcrRow(BaseModel):
     """A raw row as returned by a structured OCR provider (Gemini)."""
 
@@ -114,6 +124,7 @@ class OcrRow(BaseModel):
     cost: float | None = None
     currency: str | None = None
     unit: str | None = None  # "agorot" | "ILS" | "USD" | None
+    confidence: OcrConfidence | None = None  # Gemini only; any "low" becomes a review flag
 
 
 class OcrResult(BaseModel):

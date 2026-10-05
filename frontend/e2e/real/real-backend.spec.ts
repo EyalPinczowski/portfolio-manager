@@ -78,6 +78,13 @@ test("real backend: challenge, first portfolio, import, null-price paths", async
   await page.getByRole("button", { name: "e2e check" }).click();
   await login.click();
 
+  // 1b. Terms: the server refuses everything else until the current version is accepted.
+  await expect(page.getByRole("heading", { name: m("terms.title") })).toBeVisible();
+  const accept = page.getByRole("button", { name: m("terms.accept") });
+  await expect(accept).toBeDisabled();
+  await page.getByLabel(m("terms.checkbox")).check();
+  await accept.click();
+
   // 2. First portfolio.
   await expect(page.getByText(m("createPortfolio.title"))).toBeVisible();
   await checkScreen(page, "en");
