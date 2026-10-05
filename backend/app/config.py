@@ -687,6 +687,13 @@ class Settings(BaseSettings):
     gemini_model_fallbacks: list[str] = Field(
         default_factory=lambda: ["gemini-3.6-flash", "gemini-2.5-flash-lite"]
     )
+    # Mistral La Plateforme, Free mode (no card): second free provider. Env only, never logged.
+    # Free limits are not published (console Limits page), hence no token budget below.
+    mistral_api_key: str | None = None
+    mistral_model: str = "mistral-small-latest"
+    mistral_model_fallbacks: list[str] = Field(
+        default_factory=lambda: ["mistral-small-2506", "open-mistral-nemo"]
+    )
     groq_api_key: str | None = None
     groq_model: str = "openai/gpt-oss-20b"
     groq_model_fallbacks: list[str] = Field(
@@ -707,7 +714,7 @@ class Settings(BaseSettings):
     # --- LLM foundation (`app/llm/`): the template path is the default; a provider is used only
     # when its key is set, the bucket has a token and the answer validates ---
     llm_enabled: bool = True
-    llm_provider_order: list[str] = Field(default_factory=lambda: ["gemini", "groq"])
+    llm_provider_order: list[str] = Field(default_factory=lambda: ["gemini", "mistral", "groq"])
     llm_requests_per_minute: int = 8  # token bucket per provider, shared by all processes
     llm_bucket_cas_retries: int = 100
     llm_timeout_seconds: float = 30.0
@@ -719,7 +726,7 @@ class Settings(BaseSettings):
     )
     # Per-role model routing: {role: {provider: model id}}. Empty = every role uses the provider's
     # active model. Each model has its own free quota, so e.g. light roles can sit on a cheaper
-    # model: {"news": {"gemini": "gemini-2.5-flash-lite", "groq": "openai/gpt-oss-20b"}}.
+    # model: {"news": {"gemini": "gemini-2.5-flash-lite", "mistral": "mistral-small-latest"}}.
     llm_role_models: dict[str, dict[str, str]] = Field(default_factory=dict)
 
     # --- RAG (docs/rag-spec.md): chunking runs in the index job, never in the API process ---
@@ -804,10 +811,10 @@ class Settings(BaseSettings):
         default_factory=lambda: {"gemini-3": "minimal", "gemini-3.8": "low"}
     )
     # Tokens per UTC day (tokens_in + tokens_out in the ledger) a provider may use before it is
-    # skipped for the rest of the day. 0 = no limit known. Groq's free plan: 200K tokens a day on
+    # skipped for the rest of the day. 0 = no limit known (Mistral's free limits are unpublished). Groq's free plan: 200K tokens a day on
     # openai/gpt-oss-20b; Gemini's free limits vary by model and date, so none is set.
     llm_daily_token_budget: dict[str, int] = Field(
-        default_factory=lambda: {"gemini": 0, "groq": 180000}
+        default_factory=lambda: {"gemini": 0, "mistral": 0, "groq": 180000}
     )
     # Overall time for one committee run: once spent, the roles not yet run use their templates
     # (Cloudflare answers 524 after about 100 s).

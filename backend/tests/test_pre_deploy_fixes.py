@@ -136,7 +136,7 @@ def test_a_provider_over_its_token_budget_is_skipped(env: None) -> None:
 
 
 def test_default_token_budgets() -> None:
-    assert cfg().llm_daily_token_budget == {"gemini": 0, "groq": 180000}
+    assert cfg().llm_daily_token_budget == {"gemini": 0, "mistral": 0, "groq": 180000}
 
 
 # ------------------------------------------------------------------ H3: committee deadline

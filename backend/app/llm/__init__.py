@@ -10,7 +10,7 @@ from app.llm.base import (
     LLMUnavailableError,
 )
 from app.llm.ledger import TokenBucket, record_usage, usage_for_day
-from app.llm.providers import GeminiProvider, GroqProvider, build_providers
+from app.llm.providers import GeminiProvider, GroqProvider, MistralProvider, build_providers
 from app.llm.scrub import PersonalDataScrubber, ScrubResult
 from app.llm.structured import StructuredResult, structured_call
 from app.llm.untrusted import UntrustedText
@@ -25,6 +25,7 @@ __all__ = [
     "LLMRequest",
     "LLMResponse",
     "LLMUnavailableError",
+    "MistralProvider",
     "PersonalDataScrubber",
     "ScrubResult",
     "StructuredResult",

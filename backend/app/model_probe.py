@@ -1,6 +1,6 @@
 """Startup probe: does the configured LLM model id still exist for our key?
 
-Model ids are config (`gemini_model`, `groq_model`) because providers retire them (the Gemini 2.5
+Model ids are config (`gemini_model`, `mistral_model`, `groq_model`) because providers retire them (the Gemini 2.5
 series shuts down no earlier than 2026-10-16; Groq's Llama models may have left the free tier). At
 startup a background thread asks each provider with a key for its model list. If the configured id
 is missing, the first fallback that exists is used instead (`active_model`). For Gemini a model that
@@ -28,7 +28,7 @@ from app.config import Settings, gemini_thinking_config, get_settings
 
 log = logging.getLogger("model_probe")
 
-Provider = Literal["gemini", "groq"]
+Provider = Literal["gemini", "mistral", "groq"]
 Status = Literal["ok", "fallback", "none_available", "unverified", "no_key", "disabled"]
 
 
@@ -62,12 +62,15 @@ class NetworkModelLister:
                     if not settings.gemini_api_key:
                         return None
                     return self._list_gemini(client, settings.gemini_api_key)
-                if not settings.groq_api_key:
+                key = settings.mistral_api_key if provider == "mistral" else settings.groq_api_key
+                if not key:
                     return None
-                resp = client.get(
-                    "https://api.groq.com/openai/v1/models",
-                    headers={"Authorization": f"Bearer {settings.groq_api_key}"},
+                base = (
+                    "https://api.mistral.ai/v1"
+                    if provider == "mistral"
+                    else "https://api.groq.com/openai/v1"
                 )
+                resp = client.get(f"{base}/models", headers={"Authorization": f"Bearer {key}"})
                 resp.raise_for_status()
                 return {str(m["id"]) for m in resp.json().get("data", [])}
         except Exception as exc:  # never leak the key or a response body into the log
@@ -94,7 +97,7 @@ class NetworkModelLister:
         return found
 
     def generates(self, provider: Provider, model: str, settings: Settings) -> bool | None:
-        """Does `model` answer one tiny request for our key? None: not checked (no key, Groq)."""
+        """Does `model` answer one tiny request for our key? None: not checked (no key, not Gemini)."""
         if provider != "gemini" or not settings.gemini_api_key:
             return None
         config: dict[str, object] = {"maxOutputTokens": 16}
@@ -144,6 +147,12 @@ def resolve_model(
 def _plan(settings: Settings) -> list[tuple[Provider, str, list[str], str | None]]:
     return [
         ("gemini", settings.gemini_model, settings.gemini_model_fallbacks, settings.gemini_api_key),
+        (
+            "mistral",
+            settings.mistral_model,
+            settings.mistral_model_fallbacks,
+            settings.mistral_api_key,
+        ),
         ("groq", settings.groq_model, settings.groq_model_fallbacks, settings.groq_api_key),
     ]
 
@@ -225,8 +234,7 @@ def active_model(provider: Provider, settings: Settings | None = None) -> str:
     s = settings or get_settings()
     with _lock:
         choice = _results.get(provider)
-    if choice is not None and choice.configured == (
-        s.gemini_model if provider == "gemini" else s.groq_model
-    ):
+    configured: str = getattr(s, f"{provider}_model")
+    if choice is not None and choice.configured == configured:
         return choice.model
-    return s.gemini_model if provider == "gemini" else s.groq_model
+    return configured

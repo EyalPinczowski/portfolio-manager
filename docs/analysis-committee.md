@@ -61,7 +61,7 @@ The idea from the article: give the agents **ready-made data tools** instead of 
 - The chat history is stored per user, can be deleted, and is included in the data export.
 
 ## Structured outputs (Pydantic)
-- Every role output is a Pydantic v2 model in `backend/app/committee/schemas.py`. The LLM is called with a JSON response schema (Gemini `response_schema`, Groq JSON mode), then the result is validated with `Model.model_validate_json`.
+- Every role output is a Pydantic v2 model in `backend/app/committee/schemas.py`. The LLM is called with a JSON response schema (Gemini `response_schema`, Mistral/Groq `json_schema`/JSON mode), then the result is validated with `Model.model_validate_json`.
 - **Validation chain:**
   1. If the schema check fails, retry once with the validation error attached.
   2. If it fails again, fall back to a rule-based template, for example a Bear case generated from the signal thresholds.
@@ -75,7 +75,7 @@ The idea from the article: give the agents **ready-made data tools** instead of 
 - One full analysis = **4 LLM calls** (Company Profile, News, Bear, CIO); the profile is cached for weeks and the transcript tone per quarter. Everything else is code.
 - Gemini free (~10 RPM) is fine for on-demand "Analyze a stock".
 - The **screener does NOT run the committee on the whole universe**. Deterministic scores rank ~800 symbols, and only the **top ~10 finalists** go through the committee, from a queue at no more than 8 RPM.
-- Results are cached for each symbol per data refresh. Groq is the fallback provider, and templates are the last resort.
+- Results are cached for each symbol per data refresh. Mistral (Free mode, `mistral-small-latest`, `MISTRAL_API_KEY`; free-plan inputs may be used for training, so only public facts are sent) is the second provider, Groq a third one used only when its key is set, and templates are the last resort.
 - **Real numbers (config in `backend/app/config.py`, free tier only; Gemini's free limits are no longer published, so 8 RPM / 900 RPD are unverified until read from AI Studio):**
   - Per provider: 8 requests a minute (`llm_requests_per_minute`) and 900 a day (`llm_daily_budget`), shared by everyone. **Groq also has a tokens-per-minute bucket** (`groq_tokens_per_minute`, 8000 on the free plan): a call whose estimated size (prompt + output cap) does not fit, or exceeds the `x-ratelimit-remaining-tokens` of the last response, skips Groq and falls to the next provider or the template instead of earning a 429.
   - Per user: 5 calls a minute and 60 a day (`llm_user_rpm`, `llm_user_daily_budget`).
@@ -86,7 +86,7 @@ The idea from the article: give the agents **ready-made data tools** instead of 
   - **Per-role models** (`llm_role_models`, `{role: {provider: model}}`, empty by default = every role on the provider's active model): put profile/news on a cheaper model (Flash-Lite, gpt-oss-20b) and keep Bear/CIO on the bigger one; each model has its own free quota.
   - **Groq models:** primary `openai/gpt-oss-20b`, fallbacks `openai/gpt-oss-120b`, `qwen/qwen3.8-27b` (`llama-3.3-70b-versatile` left the free plan). Gemini 2.5 may be refused to projects that never used it; the startup probe falls back.
   - **Daily cap in the database:** the committee's 10 runs a day are counted in the LLM ledger (`committee:user:<id>` per UTC day), so a restart or redeploy does not reset them; the hourly cap stays in memory. A bad symbol (404/422) or a cap rejection never uses a run. Committee calls carry the user id, so `llm_user_daily_budget` and `llm_user_rpm` apply too (prompts hold public facts only, no names).
-  - **Tokens per day per provider** (`llm_daily_token_budget`, default gemini 0 = no limit known, groq 180000 of Groq's 200K): a provider whose `tokens_in + tokens_out` today reached it is skipped for the day (next provider or template).
+  - **Tokens per day per provider** (`llm_daily_token_budget`, default gemini 0 and mistral 0 = no limit known (Mistral does not publish free limits), groq 180000 of Groq's 200K): a provider whose `tokens_in + tokens_out` today reached it is skipped for the day (next provider or template).
   - **Time cap** (`committee_deadline_seconds`, 75): once a run has taken that long, the roles not yet run use templates and each says so in its `notes`. This keeps a run under Cloudflare's ~100 s 524.
   - **Gemini model:** default `gemini-3.5-flash-lite`, fallbacks `gemini-3.6-flash`, `gemini-2.5-flash-lite`. Thinking is minimal: 2.5 gets `thinkingBudget` 0, 3.x gets `thinkingLevel` (`gemini_thinking_levels`: "minimal", "low" for 3.8), never both. The startup probe lists models and makes one tiny `generateContent` call (plain httpx), so a listed model that refuses calls is skipped.
   - **Ask my portfolio costs 0 AI tokens:** no free provider is allowed to see portfolio data, so it always uses templates.

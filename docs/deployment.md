@@ -108,7 +108,7 @@ Render's free plan probably has no shell, so do this locally against Supabase.
 | `TELEGRAM_BOT_USERNAME` | only for the t.me deep link | | no |
 | `SCHEDULER_IN_PROCESS`, `MALLOC_ARENA_MAX`, `PORT` | already set by the image / Render | | no |
 
-   **Set `GEMINI_API_KEY` and `GROQ_API_KEY`** (free keys): the committee needs at least one LLM provider, otherwise it falls back to templates. The slim image has no Tesseract, so it only refuses to send *screenshots* to a third party without server-side redaction; text-only committee calls (public facts) are fine. Choose a US region for both Render and Supabase (see above). Leave `CORS_ORIGINS` empty (same-origin proxy).
+   **Set `GEMINI_API_KEY` and `MISTRAL_API_KEY`** (free keys; Mistral: console.mistral.ai, Free mode, no card, secret; free-plan inputs may be used for training, we send public facts only; `GROQ_API_KEY` is optional): the committee needs at least one LLM provider, otherwise it falls back to templates. The slim image has no Tesseract, so it only refuses to send *screenshots* to a third party without server-side redaction; text-only committee calls (public facts) are fine. Choose a US region for both Render and Supabase (see above). Leave `CORS_ORIGINS` empty (same-origin proxy).
 3. The image's start command runs `python -m app.cli migrate` and then uvicorn with one worker. Health check path: `/api/health`.
 4. Note the service URL, e.g. `https://pm-api.onrender.com`.
 

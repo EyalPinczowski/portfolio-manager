@@ -1,5 +1,5 @@
-"""Gemini and Groq adapters over plain HTTPS. The `httpx.Client` is injectable (tests use a
-`MockTransport`), model ids come from settings (`gemini_model`, `groq_model`, or the startup probe's
+"""Gemini, Mistral and Groq adapters over plain HTTPS. The `httpx.Client` is injectable (tests use a
+`MockTransport`), model ids come from settings (`gemini_model`, `mistral_model`, `groq_model`, or the startup probe's
 fallback), keys come from settings and are never logged. Errors carry the HTTP status only."""
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from app.rag.tokens import estimate_tokens
 
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com"
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+MISTRAL_BASE_URL = "https://api.mistral.ai/v1"
 TEMPERATURE = 0.2
 
 
@@ -305,6 +306,76 @@ class GroqProvider(_HttpProvider):
         )  # fmt: skip
 
 
+class MistralProvider(_HttpProvider):
+    """Mistral La Plateforme (Free mode, no card). OpenAI-style chat completions; `json_schema`
+    strict when a schema is given, `json_object` (schema pasted in the prompt) if Mistral refuses
+    the schema with HTTP 400/422. Free-plan inputs may be used for training: only `PublicFacts`
+    are ever sent (portfolio data never goes to this provider: no `privacy` attribute)."""
+
+    name: ClassVar[str] = "mistral"
+
+    def _default_model(self) -> str:
+        return active_model("mistral", self.settings)
+
+    def _body(self, request: LLMRequest, model: str, *, schema_mode: bool) -> dict[str, Any]:
+        system = request.system
+        if request.json_schema is not None and not schema_mode:
+            system = (
+                f"{system}\n\nReply with one JSON object that follows this JSON schema, "
+                f"and nothing else:\n{json.dumps(request.json_schema)}"
+            ).strip()
+        body: dict[str, Any] = {
+            "model": model,
+            "messages": [
+                *([{"role": "system", "content": system}] if system else []),
+                {"role": "user", "content": request.prompt},
+            ],
+            "temperature": TEMPERATURE,
+            "max_tokens": self._max_tokens(request),
+        }
+        if request.json_schema is not None:
+            if schema_mode:
+                body["response_format"] = {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "answer",
+                        "strict": True,
+                        "schema": strict_schema(request.json_schema),
+                    },
+                }
+            else:
+                body["response_format"] = {"type": "json_object"}
+        return body
+
+    def _send(self, request: LLMRequest) -> LLMResponse:
+        key = self.settings.mistral_api_key
+        if not key:
+            raise LLMUnavailableError("mistral: no API key configured")
+        model = request.model or self.model
+        url = f"{MISTRAL_BASE_URL}/chat/completions"
+        headers = {"authorization": f"Bearer {key}", "content-type": "application/json"}
+        strict = request.json_schema is not None
+        try:
+            data = self._post(url, headers, self._body(request, model, schema_mode=strict))
+        except LLMError as exc:
+            if not strict or str(exc) not in ("mistral: HTTP 400", "mistral: HTTP 422"):
+                raise
+            strict = False  # the schema was refused: plain JSON mode with the schema in the prompt
+            data = self._post(url, headers, self._body(request, model, schema_mode=False))
+        try:
+            text = str(data["choices"][0]["message"]["content"] or "")
+        except (KeyError, IndexError, TypeError):
+            raise LLMError("mistral: empty response") from None
+        usage = data.get("usage")
+        usage = usage if isinstance(usage, dict) else {}
+        tin, tout = _int(usage.get("prompt_tokens")), _int(usage.get("completion_tokens"))
+        return LLMResponse(
+            text=text, provider=self.name, model=model,
+            tokens=_int(usage.get("total_tokens")) or tin + tout,
+            tokens_in=tin, tokens_out=tout, strict=strict,
+        )  # fmt: skip
+
+
 def build_providers(
     settings: Settings | None = None, client: httpx.Client | None = None
 ) -> list[LLMProvider]:
@@ -316,6 +387,8 @@ def build_providers(
     for name in s.llm_provider_order:
         if name == "gemini" and s.gemini_api_key:
             out.append(GeminiProvider(s, client=client))
+        elif name == "mistral" and s.mistral_api_key:
+            out.append(MistralProvider(s, client=client))
         elif name == "groq" and s.groq_api_key:
             out.append(GroqProvider(s, client=client))
     return out

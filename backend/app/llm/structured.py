@@ -204,7 +204,7 @@ def structured_call[T: BaseModel](
         # paid for again once the primary is back.
         pairs: list[tuple[str, str]] = [(p.name, model_of(p)) for p in chain]
         for name in s.llm_provider_order:
-            if name not in ("gemini", "groq"):
+            if name not in ("gemini", "mistral", "groq"):
                 continue
             extra = [
                 routes.get(name),
@@ -327,7 +327,12 @@ def structured_call[T: BaseModel](
     # ---- template: the default path ----
     if first_meant is None:
         name = next(iter(s.llm_provider_order), "template")
-        first_meant = (name, active_model(name, s) if name in ("gemini", "groq") else "template")  # type: ignore[arg-type]
+        first_meant = (
+            name,
+            active_model(name, s)  # type: ignore[arg-type]
+            if name in ("gemini", "mistral", "groq")
+            else "template",
+        )
         notes.append("no LLM provider is configured (missing key or llm_enabled=false)")
     record_usage(first_meant[0], first_meant[1], fallbacks=1, session_factory=session_factory)
     log.info("llm fallback to template for role %s (%s)", role, "; ".join(notes))
