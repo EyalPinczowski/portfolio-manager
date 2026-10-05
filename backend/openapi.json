@@ -2670,6 +2670,28 @@
         }
       }
     },
+    "/api/admin/llm-usage": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Llm Usage",
+        "description": "Today's (UTC) AI usage per provider plus the configured limits. Counters only: no prompts,\nquestions, user ids or emails.",
+        "operationId": "llm_usage_api_admin_llm_usage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmUsageOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/track-record": {
       "get": {
         "tags": [
@@ -7408,6 +7430,131 @@
           "ttl_minutes"
         ],
         "title": "LinkCodeOut"
+      },
+      "LlmModelUsage": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "requests": {
+            "type": "integer",
+            "title": "Requests"
+          },
+          "tokens": {
+            "type": "integer",
+            "title": "Tokens"
+          },
+          "fallbacks": {
+            "type": "integer",
+            "title": "Fallbacks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "requests",
+          "tokens",
+          "fallbacks"
+        ],
+        "title": "LlmModelUsage"
+      },
+      "LlmProviderUsage": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "requests": {
+            "type": "integer",
+            "title": "Requests"
+          },
+          "tokens": {
+            "type": "integer",
+            "title": "Tokens"
+          },
+          "fallbacks": {
+            "type": "integer",
+            "title": "Fallbacks"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/LlmModelUsage"
+            },
+            "type": "array",
+            "title": "Models"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "requests",
+          "tokens",
+          "fallbacks",
+          "models"
+        ],
+        "title": "LlmProviderUsage"
+      },
+      "LlmUsageOut": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "title": "Day"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/LlmProviderUsage"
+            },
+            "type": "array",
+            "title": "Providers"
+          },
+          "daily_budget": {
+            "type": "integer",
+            "title": "Daily Budget"
+          },
+          "batch_daily_fraction": {
+            "type": "number",
+            "title": "Batch Daily Fraction"
+          },
+          "user_daily_budget": {
+            "type": "integer",
+            "title": "User Daily Budget"
+          },
+          "requests_per_minute": {
+            "type": "integer",
+            "title": "Requests Per Minute"
+          },
+          "role_requests_per_minute": {
+            "type": "integer",
+            "title": "Role Requests Per Minute"
+          },
+          "user_requests_per_minute": {
+            "type": "integer",
+            "title": "User Requests Per Minute"
+          },
+          "tokens_in_out_recorded": {
+            "type": "boolean",
+            "title": "Tokens In Out Recorded"
+          },
+          "cache_hits_recorded": {
+            "type": "boolean",
+            "title": "Cache Hits Recorded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "providers",
+          "daily_budget",
+          "batch_daily_fraction",
+          "user_daily_budget",
+          "requests_per_minute",
+          "role_requests_per_minute",
+          "user_requests_per_minute",
+          "tokens_in_out_recorded",
+          "cache_hits_recorded"
+        ],
+        "title": "LlmUsageOut"
       },
       "LoginIn": {
         "properties": {

@@ -22,6 +22,7 @@ ROUTES: list[tuple[str, str, Any]] = [
     ("POST", "/api/admin/invites", {}),
     ("POST", "/api/admin/invites/revoke", {"code": "x"}),
     ("GET", "/api/admin/users", None),
+    ("GET", "/api/admin/llm-usage", None),
     ("POST", "/api/admin/users/1/disable", None),
     ("POST", "/api/admin/users/1/enable", None),
 ]
@@ -217,3 +218,28 @@ def test_audit_rows_exist_and_hold_no_personal_data(
     with new_session() as db:
         rows = db.exec(select(AuditLog)).all()
         assert len(rows) == 4 and all(r.actor_user_id is None for r in rows)
+
+
+def test_llm_usage_shape_and_no_user_data(signup: SignupFn) -> None:
+    from app.llm.ledger import quota_add, record_usage
+
+    record_usage("gemini", "m1", requests=3, tokens=120, fallbacks=1)
+    record_usage("gemini", "m2", requests=2, tokens=30)
+    quota_add("user:7", 4)  # per-user quota rows must not show up
+    admin = signup("boss@mail.com")
+    make_admin("boss@mail.com")
+    login(admin, "boss@mail.com")
+    r = admin.get("/api/admin/llm-usage")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert set(body) == {
+        "day", "providers", "daily_budget", "batch_daily_fraction", "user_daily_budget",
+        "requests_per_minute", "role_requests_per_minute", "user_requests_per_minute",
+        "tokens_in_out_recorded", "cache_hits_recorded",
+    }  # fmt: skip
+    assert [p["provider"] for p in body["providers"]] == ["gemini"]
+    g = body["providers"][0]
+    assert (g["requests"], g["tokens"], g["fallbacks"]) == (5, 150, 1)
+    assert [m["model"] for m in g["models"]] == ["m1", "m2"]
+    assert body["daily_budget"] == 900 and body["user_daily_budget"] == 60
+    assert "quota" not in r.text and "@" not in r.text

@@ -10,6 +10,9 @@ prompt whose fixed part alone exceeds the budget is refused. Chunks are cited by
 
 from __future__ import annotations
 
+import json
+import math
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -35,6 +38,47 @@ CITE_RULE = (
     "Cite the passage id in square brackets, like [c12], after every claim taken from a passage. "
     "If the passages do not cover something, say there is no data; never invent."
 )
+
+
+_STATIC_ROLES = ("company_profile", "news")  # they reason from passages, not from market numbers
+_DISTANCE = re.compile(r"\s*\([+-]?\d+(?:\.\d+)?%\)\s*$")
+
+
+def _sig(x: float, digits: int) -> float | int:
+    if x == 0:
+        return 0
+    return _plain(round(x, digits - 1 - math.floor(math.log10(abs(x)))))
+
+
+def _plain(x: float) -> float | int:
+    """41.0 -> 41, so the prompt shows the number the way a model would quote it."""
+    return int(x) if float(x).is_integer() else x
+
+
+def facts_block(role: str, facts: PublicFacts, settings: Settings | None = None) -> str:
+    """The facts as JSON text, stable across ticks so the LLM response cache can hit.
+
+    Profile and news see identity fields only. Bear and CIO see price (significant digits), score and
+    indicators (decimals), confidence (2 decimals) and the levels without their distance-to-price;
+    timestamps are dropped. Every number the model may quote is therefore in the prompt text."""
+    s = settings or get_settings()
+    keep = {"symbol", "name", "market", "asset_type", "sector", "country"}
+    if role not in _STATIC_ROLES:
+        keep |= {"currency", "price", "score", "confidence", "indicators", "levels", "reasons"}
+    d = facts.model_dump(exclude_none=True, include=keep)
+    if "price" in d:
+        d["price"] = _sig(d["price"], s.rag_facts_price_sig_digits)
+    if "score" in d:
+        d["score"] = _plain(round(d["score"], s.rag_facts_score_decimals))
+    if "confidence" in d:
+        d["confidence"] = _plain(round(d["confidence"], 2))
+    if "indicators" in d:
+        d["indicators"] = {
+            k: _plain(round(v, s.rag_facts_indicator_decimals)) for k, v in d["indicators"].items()
+        }
+    if "levels" in d:
+        d["levels"] = [_DISTANCE.sub("", lv) for lv in d["levels"]]
+    return json.dumps(d, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
 
 
 class PromptRejected(ValueError):
@@ -85,7 +129,7 @@ def build_prompt(
             ROLE_INSTRUCTIONS[role],
             CITE_RULE,
             UNTRUSTED_RULE,
-            "Facts: " + facts.model_dump_json(exclude_none=True),
+            "Facts: " + facts_block(role, facts, s),
             *report_lines,
             "Passages:",
         ]

@@ -723,6 +723,11 @@ class Settings(BaseSettings):
             "ask_portfolio": 2000,
         }
     )
+    # Cache-stable facts block in committee prompts: price keeps this many significant digits, score
+    # and indicators this many decimals, so a small tick gives the same prompt text (and a cache hit).
+    rag_facts_price_sig_digits: int = Field(default=3, ge=1, le=8)
+    rag_facts_score_decimals: int = Field(default=0, ge=0, le=3)
+    rag_facts_indicator_decimals: int = Field(default=1, ge=0, le=4)
     # Hook for optional local embeddings (e.g. multilingual-e5-small), off until keyword recall is
     # measured too low. Nothing reads it yet; see docs/rag-spec.md "Embeddings hook".
     rag_embeddings_enabled: bool = False

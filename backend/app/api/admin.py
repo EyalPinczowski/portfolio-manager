@@ -24,6 +24,7 @@ from app.auth.deps import AdminDep, DbDep, SettingsDep
 from app.auth.device import rotate_device_nonce
 from app.auth.ratelimit import admin_invite_limiter, enforce_limit
 from app.errors import ApiError
+from app.llm.ledger import requests_today, usage_for_day
 from app.models import AuditLog, AuthSession, Invite, User
 from app.strictjson import StrictJsonRoute
 from app.timeutil import as_utc, utcnow
@@ -194,3 +195,69 @@ def enable_user(user_id: int, admin: AdminDep, db: DbDep) -> AdminUserOut:
         record(db, admin, "user.enable", u.id)
         db.commit()
     return _user_out(u, _last_seen(db, user_id))
+
+
+# ---------------------------------------------------------------- LLM usage
+class LlmModelUsage(BaseModel):
+    model: str
+    requests: int
+    tokens: int  # total tokens recorded (the ledger keeps one total, not in/out)
+    fallbacks: int
+
+
+class LlmProviderUsage(BaseModel):
+    provider: str
+    requests: int
+    tokens: int
+    fallbacks: int
+    models: list[LlmModelUsage]
+
+
+class LlmUsageOut(BaseModel):
+    day: str  # UTC date, YYYY-MM-DD
+    providers: list[LlmProviderUsage]
+    daily_budget: int
+    batch_daily_fraction: float
+    user_daily_budget: int
+    requests_per_minute: int
+    role_requests_per_minute: int
+    user_requests_per_minute: int
+    # the ledger records neither a token split nor cache hits, so they are reported as unavailable
+    tokens_in_out_recorded: bool
+    cache_hits_recorded: bool
+
+
+@router.get("/llm-usage", response_model=LlmUsageOut)
+def llm_usage(_admin: AdminDep, settings: SettingsDep) -> LlmUsageOut:
+    """Today's (UTC) AI usage per provider plus the configured limits. Counters only: no prompts,
+    questions, user ids or emails."""
+    day = utcnow().date()
+    by: dict[str, list[LlmModelUsage]] = {}
+    for r in usage_for_day(day):
+        by.setdefault(r.provider, []).append(
+            LlmModelUsage(
+                model=r.model, requests=r.requests, tokens=r.tokens, fallbacks=r.fallbacks
+            )
+        )
+    providers = [
+        LlmProviderUsage(
+            provider=name,
+            requests=requests_today(name, day),
+            tokens=sum(m.tokens for m in models),
+            fallbacks=sum(m.fallbacks for m in models),
+            models=sorted(models, key=lambda m: m.model),
+        )
+        for name, models in sorted(by.items())
+    ]
+    return LlmUsageOut(
+        day=day.isoformat(),
+        providers=providers,
+        daily_budget=settings.llm_daily_budget,
+        batch_daily_fraction=settings.llm_batch_daily_fraction,
+        user_daily_budget=settings.llm_user_daily_budget,
+        requests_per_minute=settings.llm_requests_per_minute,
+        role_requests_per_minute=settings.llm_role_rpm,
+        user_requests_per_minute=settings.llm_user_rpm,
+        tokens_in_out_recorded=False,
+        cache_hits_recorded=False,
+    )
