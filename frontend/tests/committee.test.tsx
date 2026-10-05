@@ -98,3 +98,20 @@ describe("committee section", () => {
     }
   });
 });
+
+describe("committee run limit", () => {
+  it("shows the cap before a run and the runs left after it", async () => {
+    wrap("en", <CommitteeSection symbol="AAPL" />);
+    expect(screen.getByTestId("committee-runs-left")).toHaveTextContent("Up to 10 runs a day.");
+    fireEvent.click(screen.getByRole("button", { name: en.committee.run }));
+    expect(await screen.findByTestId("committee-risks")).toBeInTheDocument();
+    expect(screen.getByTestId("committee-runs-left")).toHaveTextContent("9 of 10 runs left today.");
+  });
+
+  it("a 429 shows the reset message and 0 runs left", async () => {
+    wrap("en", <CommitteeSection symbol="RATELIMIT" />);
+    fireEvent.click(screen.getByRole("button", { name: en.committee.run }));
+    expect(await screen.findByTestId("committee-problem-rate")).toHaveTextContent("resets within 24 hours");
+    expect(screen.getByTestId("committee-runs-left")).toHaveTextContent("0 of 10 runs left today.");
+  });
+});

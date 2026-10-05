@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { api, ApiError, type CommitteeOut, type CommitteeStance } from "@/lib/api";
-import { COMMITTEE_MAX_ADJUSTMENT } from "@/lib/config";
+import { COMMITTEE_MAX_ADJUSTMENT, COMMITTEE_RUNS_PER_DAY } from "@/lib/config";
 import { formatNumber } from "@/lib/format";
 
 type Problem = "rate" | "notFound" | "generic" | null;
@@ -103,19 +103,22 @@ function Report({ out }: { out: CommitteeOut }) {
 /** Investment Committee on demand: public data only, no verdict. Result kept in memory, never stored. */
 export function CommitteeSection({ symbol }: { symbol: string }) {
   const t = useTranslations("committee");
+  const locale = useLocale();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem>(null);
   const [out, setOut] = useState<CommitteeOut | null>(null);
+  const [left, setLeft] = useState<number | null>(null);
   const run = async () => {
     setBusy(true); setProblem(null);
-    try { setOut(await api.committee(symbol)); }
-    catch (err) { setOut(null); setProblem(err instanceof ApiError ? (err.status === 429 ? "rate" : err.status === 404 ? "notFound" : "generic") : "generic"); }
+    try { const o = await api.committee(symbol); setOut(o); setLeft(o.runs_left_today); }
+    catch (err) { setOut(null); if (err instanceof ApiError && err.status === 429) setLeft(0); setProblem(err instanceof ApiError ? (err.status === 429 ? "rate" : err.status === 404 ? "notFound" : "generic") : "generic"); }
     finally { setBusy(false); }
   };
   return (
     <section className="card space-y-3" aria-label={t("title")} aria-busy={busy} data-testid="committee">
       <h2 className="text-heading">{t("title")}</h2>
       <p className="text-sm text-muted">{t("intro")}</p>
+      <p className="text-caption text-muted" data-testid="committee-runs-left">{left === null ? t("runsPerDay", { n: formatNumber(COMMITTEE_RUNS_PER_DAY, locale, 0) }) : t("runsLeft", { left: formatNumber(left, locale, 0), n: formatNumber(out?.runs_per_day ?? COMMITTEE_RUNS_PER_DAY, locale, 0) })}</p>
       <button type="button" className="btn-primary" disabled={busy} onClick={() => void run()}>{busy ? t("running") : out ? t("rerun") : t("run")}</button>
       {busy && <p role="status" className="text-sm text-muted">{t("runningNote")}</p>}
       {problem && <p role="alert" className="text-loss" data-testid={`committee-problem-${problem}`}>{t(`problem.${problem}`)}</p>}

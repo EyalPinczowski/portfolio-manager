@@ -33,7 +33,7 @@ from app.analyze.service import MarketData, load_market, quote_row
 from app.api.exit_levels import _risk_for
 from app.api.schemas import BIG, Horizon
 from app.auth.deps import DbDep, SettingsDep, UserDep
-from app.auth.ratelimit import committee_limiter, enforce_limit
+from app.auth.ratelimit import committee_daily_limiter, committee_limiter, enforce_limit, too_many
 from app.committee.roles import run_committee
 from app.committee.schemas import CommitteeReport
 from app.config import DISCLAIMER
@@ -266,6 +266,8 @@ class CommitteeOut(BaseModel):
     cached: bool  # the chart data came from the analyze cache
     report: CommitteeReport
     llm_used: bool  # at least one role was answered by a model (or the response cache)
+    runs_left_today: int  # of `runs_per_day`, counting this one
+    runs_per_day: int
     launch_gate_open: bool
     launch_gate_reasons: list[str] = Field(default_factory=list)
     disclaimer: str = DISCLAIMER
@@ -289,9 +291,14 @@ def committee(
     cached by the LLM layer."""
     assert user.id is not None
     sym = _symbol(symbol)
-    enforce_limit(
-        committee_limiter, f"user:{user.id}", settings.committee_rate_limit_per_hour, 3600.0
-    )
+    key = f"user:{user.id}"
+    enforce_limit(committee_limiter, key, settings.committee_rate_limit_per_hour, 3600.0)
+    per_day = settings.committee_runs_per_user_per_day
+    wait = committee_daily_limiter.hit(key, per_day, 86400.0)
+    if wait:
+        raise too_many(
+            wait, f"Daily limit of {per_day} committee runs reached. It resets within 24 hours."
+        )
     sec, md = _market(db, sym, settings)
     scout = build_scout_report(
         sec,
@@ -310,6 +317,8 @@ def committee(
         generated_at=now,
         cached=md.cached,
         report=report,
+        runs_left_today=max(0, per_day - committee_daily_limiter.count(key, 86400.0)),
+        runs_per_day=per_day,
         llm_used=any(
             r.source != "template" for r in (report.profile, report.news, report.bear, report.cio)
         ),

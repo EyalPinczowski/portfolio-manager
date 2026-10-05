@@ -129,3 +129,27 @@ def test_committee_is_rate_limited_per_user(
     other = signup("b@mail.com")
     other.app.dependency_overrides[committee_providers] = lambda: []  # type: ignore[attr-defined]
     assert other.post("/api/analyze/AAPL/committee").status_code == 200  # the limit is per user
+
+
+def test_daily_cap_counts_every_tap_and_reports_runs_left(
+    c: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use(c, None)
+    monkeypatch.setenv("COMMITTEE_RUNS_PER_USER_PER_DAY", "3")
+    monkeypatch.setenv("COMMITTEE_RATE_LIMIT_PER_HOUR", "100")
+    get_settings.cache_clear()
+    left = []
+    for _ in range(3):
+        r = c.post("/api/analyze/AAPL/committee")  # the 2nd and 3rd are served from saved results
+        assert r.status_code == 200, r.text
+        assert r.json()["runs_per_day"] == 3
+        left.append(r.json()["runs_left_today"])
+    assert left == [2, 1, 0]
+    r = c.post("/api/analyze/AAPL/committee")
+    assert r.status_code == 429
+    assert "Daily limit of 3" in r.json()["detail"] and int(r.headers["Retry-After"]) > 0
+
+
+def test_default_caps_are_ten_a_day_and_five_an_hour() -> None:
+    s = get_settings()
+    assert s.committee_runs_per_user_per_day == 10 and s.committee_rate_limit_per_hour == 5

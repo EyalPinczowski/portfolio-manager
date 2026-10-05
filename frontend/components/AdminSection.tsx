@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { api, type AdminUser, type Invite } from "@/lib/api";
-import { formatDate } from "@/lib/format";
-import { useAdminInvites, useAdminUsers } from "@/lib/hooks";
+import { formatDate, formatNumber } from "@/lib/format";
+import { useAdminInvites, useAdminLlmUsage, useAdminUsers } from "@/lib/hooks";
 import { parseLocaleNumber } from "@/lib/number";
 import { GroupItem, SettingsGroup } from "./SettingsUI";
 
@@ -97,11 +97,32 @@ function Users() {
   );
 }
 
+/** Today's free-tier AI use against the daily budget. Totals only: no prompts, no user data. */
+function AiUsage() {
+  const t = useTranslations("prefs.admin.aiUsage");
+  const locale = useLocale();
+  const { data, error } = useAdminLlmUsage();
+  if (error) return <p role="alert" className="px-4 text-loss">{t("loadError")}</p>;
+  if (!data) return null;
+  const n = (v: number) => formatNumber(v, locale, 0);
+  return (
+    <SettingsGroup title={t("title")} footer={t("footer", { user: n(data.user_daily_budget), rpm: n(data.requests_per_minute) })} role="list">
+      {data.providers.length === 0 ? <li className="px-4 py-3 text-sm text-muted">{t("none")}</li> : data.providers.map((p) => (
+        <li key={p.provider} className="px-4 py-3 text-sm" data-testid="ai-usage-row">
+          <p className="font-semibold" dir="ltr">{p.provider}</p>
+          <p className="text-caption text-muted">{t("row", { requests: n(p.requests), budget: n(data.daily_budget), tokens: n(p.tokens), fallbacks: n(p.fallbacks) })}</p>
+        </li>
+      ))}
+      <li className="px-4 py-3 text-caption text-muted">{t("notRecorded")}</li>
+    </SettingsGroup>
+  );
+}
+
 /** Admin screen. A member gets 403 from the probe, so it shows a short "admins only" note and no data. */
 export function AdminScreen() {
   const t = useTranslations("prefs.admin");
   const { data, error } = useAdminUsers();
   if (error) return <p className="card" role="alert">{t("notAllowed")}</p>;
   if (!data) return null;
-  return <><Invites /><Users /></>;
+  return <><AiUsage /><Invites /><Users /></>;
 }

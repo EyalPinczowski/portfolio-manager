@@ -129,6 +129,13 @@ class CountLimiter:
             self._hits.put(key, q)
             return 0
 
+    def count(self, key: str, window: float) -> int:
+        """Attempts counted inside the window, without counting a new one."""
+        with self._lock:
+            now = self._clock()
+            q = self._hits.get(key)
+            return sum(1 for t in q if now - t <= window) if q else 0
+
     def clear(self) -> None:
         with self._lock:
             self._hits.clear()
@@ -147,7 +154,8 @@ telegram_link_limiter = CountLimiter()  # per Telegram chat: /start attempts
 admin_invite_limiter = CountLimiter()  # per admin: new invites
 fund_search_limiter = CountLimiter()  # per user: fund searches (each may call GemelNet)
 ask_limiter = CountLimiter()  # per user: ask-my-portfolio questions
-committee_limiter = CountLimiter()  # per user: committee runs (up to 4 LLM calls each)
+committee_limiter = CountLimiter()  # per user: committee runs per hour (up to 4 LLM calls each)
+committee_daily_limiter = CountLimiter()  # per user: committee runs per day
 
 
 def clear_all_limiters() -> None:
@@ -162,6 +170,7 @@ def clear_all_limiters() -> None:
     fund_search_limiter.clear()
     ask_limiter.clear()
     committee_limiter.clear()
+    committee_daily_limiter.clear()
 
 
 def too_many(retry_after: int, what: str = "Too many requests. Try again later.") -> HTTPException:

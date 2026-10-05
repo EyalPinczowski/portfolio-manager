@@ -39,7 +39,8 @@ Queue item 3 is done. Next is queue item 4 (Postgres run, Opus review, reminders
    - default portfolio (`default_portfolio_id`), screenshot reminder days (`screenshot_reminder_days`) and the backend app version in `/api/health` (these need new backend fields).
 
 ## Approved decisions (keep)
-- Approved 2026-10-05 ("Approve", reply to the explained list): paper resolver 60 min / 200 per run / 5 days gap; committee `committee_role_k`, CIO cap 15, max 8 claims, 20 runs/hour; Ask 4 tools per question, 30 holdings rows, 500 chars, 100 conversations, 60 questions/hour, 90-day history. Same message: keep the free-tier API and token use low (cache-stable prompts, usage view).
+- Approved 2026-10-05 ("Approve", reply to the explained list): paper resolver 60 min / 200 per run / 5 days gap; committee `committee_role_k`, CIO cap 15, max 8 claims; run caps changed 2026-10-05 to 5 an hour and 10 a day per user (user: limit committee runs on the free version); Ask 4 tools per question, 30 holdings rows, 500 chars, 100 conversations, 60 questions/hour, 90-day history. Same message: keep the free-tier API and token use low (cache-stable prompts, usage view).
+- Free APIs only for now; flag any non-free service before adding it.
 - RAG: chunk 300 tokens with 40 overlap, `rag_max_k` 12.
 - Role budgets: company_profile 2500, news 2000, bear 1500, cio 2000, ask_portfolio 2000.
 - TTLs: news 14d, transcript 120d, filing 400d, profile 365d.

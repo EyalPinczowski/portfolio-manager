@@ -49,6 +49,7 @@ export const useTelegramStatus = () => useSWR("telegram-status", () => api.teleg
 /** Admin probe: a member gets 403 (data undefined, error set), so the Admin section stays hidden. */
 export const useAdminUsers = () => useSWR("admin-users", () => api.adminUsers(), { revalidateOnFocus: false, shouldRetryOnError: false });
 export const useAdminInvites = (enabled: boolean) => useSWR(enabled ? "admin-invites" : null, () => api.adminInvites(), { revalidateOnFocus: false, shouldRetryOnError: false });
+export const useAdminLlmUsage = () => useSWR("admin-llm-usage", () => api.adminLlmUsage(), { revalidateOnFocus: false, shouldRetryOnError: false });
 export const useAlerts = () => useSWR("alerts", () => api.alerts(), cfg);
 /** Post-mortem of one portfolio and period (dates are ISO yyyy-mm-dd or null). On demand, not polled. */
 export const usePostmortem = (pid: number | null, start: string | null, end: string | null) =>

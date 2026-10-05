@@ -987,6 +987,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/llm-usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Llm Usage
+         * @description Today's (UTC) AI usage per provider plus the configured limits. Counters only: no prompts,
+         *     questions, user ids or emails.
+         */
+        get: operations["llm_usage_api_admin_llm_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/track-record": {
         parameters: {
             query?: never;
@@ -1591,6 +1612,10 @@ export interface components {
             report: components["schemas"]["CommitteeReport"];
             /** Llm Used */
             llm_used: boolean;
+            /** Runs Left Today */
+            runs_left_today: number;
+            /** Runs Per Day */
+            runs_per_day: number;
             /** Launch Gate Open */
             launch_gate_open: boolean;
             /** Launch Gate Reasons */
@@ -2598,6 +2623,53 @@ export interface components {
             ttl_minutes: number;
             /** Deep Link */
             deep_link?: string | null;
+        };
+        /** LlmModelUsage */
+        LlmModelUsage: {
+            /** Model */
+            model: string;
+            /** Requests */
+            requests: number;
+            /** Tokens */
+            tokens: number;
+            /** Fallbacks */
+            fallbacks: number;
+        };
+        /** LlmProviderUsage */
+        LlmProviderUsage: {
+            /** Provider */
+            provider: string;
+            /** Requests */
+            requests: number;
+            /** Tokens */
+            tokens: number;
+            /** Fallbacks */
+            fallbacks: number;
+            /** Models */
+            models: components["schemas"]["LlmModelUsage"][];
+        };
+        /** LlmUsageOut */
+        LlmUsageOut: {
+            /** Day */
+            day: string;
+            /** Providers */
+            providers: components["schemas"]["LlmProviderUsage"][];
+            /** Daily Budget */
+            daily_budget: number;
+            /** Batch Daily Fraction */
+            batch_daily_fraction: number;
+            /** User Daily Budget */
+            user_daily_budget: number;
+            /** Requests Per Minute */
+            requests_per_minute: number;
+            /** Role Requests Per Minute */
+            role_requests_per_minute: number;
+            /** User Requests Per Minute */
+            user_requests_per_minute: number;
+            /** Tokens In Out Recorded */
+            tokens_in_out_recorded: boolean;
+            /** Cache Hits Recorded */
+            cache_hits_recorded: boolean;
         };
         /** LoginIn */
         LoginIn: {
@@ -6083,6 +6155,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    llm_usage_api_admin_llm_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmUsageOut"];
                 };
             };
         };

@@ -326,6 +326,14 @@ describe("admin", () => {
     expect(screen.queryByText("dana@example.com")).toBeNull();
   });
 
+  it("admins see today's AI usage totals and that tokens and cache hits are not recorded", async () => {
+    wrap("en", <AdminScreen />);
+    const row = await screen.findByTestId("ai-usage-row");
+    expect(row).toHaveTextContent("gemini");
+    expect(row).toHaveTextContent("120 of 900 requests");
+    expect(screen.getByText(en.prefs.admin.aiUsage.notRecorded)).toBeInTheDocument();
+  });
+
   it("admins create, copy and revoke invites, and disable then enable a user, without any portfolio data", async () => {
     wrap("en", <AdminScreen />);
     const invites = await screen.findByRole("list", { name: en.prefs.admin.invites });

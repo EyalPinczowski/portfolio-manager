@@ -168,3 +168,9 @@ Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after a
 - Analyze result: `components/CommitteeSection.tsx` (run on tap; company profile, news, Bear risks with the CIO's answer, score nudge within the cap; "not yet validated" while the gate is closed; no verdict words).
 - Mock layer `lib/mock-ask.ts`; tests `tests/ask-page.test.tsx`, `tests/committee.test.tsx`, mock-contract cases, two e2e flows (light + dark).
 - Known gap: Ask and committee template text is English-only, also in Hebrew (queue item 5 option).
+
+## 2026-10-05 (free-tier token use + committee run caps)
+- Committee prompts are cache-stable (per-role fact blocks, rounded numbers, no timestamps); `GET /api/admin/llm-usage` and an "AI usage today" card in Settings → Admin (tokens and cache hits are not recorded).
+- Committee caps: 5 runs an hour and 10 a day per user; every tap counts; the screen shows runs left today and a reset message. Config: `committee_rate_limit_per_hour`, `committee_runs_per_user_per_day`.
+- Verified: ruff, mypy, pytest, frontend lint/tsc/vitest/build, mock e2e (light and dark), real-backend e2e. `docs/analysis-committee.md` "Cost and limits" updated with the real numbers.
+- Next: queue item 4 (Postgres run, Opus review, deploy host).

@@ -1155,7 +1155,15 @@
       "disableConfirm": "Disable {email}? They are signed out and cannot sign in until you enable them again.",
       "disableYes": "Yes, disable",
       "error": "That did not work. Try again.",
-      "loadError": "Could not load this section."
+      "loadError": "Could not load this section.",
+      "aiUsage": {
+        "title": "AI usage today",
+        "footer": "Free-tier limits: {rpm} requests a minute per provider, {user} a day per user.",
+        "none": "No AI requests today.",
+        "row": "{requests} of {budget} requests · {tokens} tokens · {fallbacks} fallbacks",
+        "notRecorded": "Input and output tokens and cache hits are not recorded.",
+        "loadError": "Could not load AI usage."
+      }
     },
     "hub": {
       "searchLabel": "Search settings",
@@ -1553,9 +1561,11 @@
     },
     "noCoverage": "not enough public data",
     "problem": {
-      "rate": "You have run the committee too many times this hour. Try again a little later.",
+      "rate": "You have reached the committee run limit for now. Try again later; the daily count resets within 24 hours.",
       "notFound": "This ticker was not found.",
       "generic": "The committee could not run. Try again."
-    }
+    },
+    "runsPerDay": "Up to {n} runs a day.",
+    "runsLeft": "{left} of {n} runs left today."
   }
 }

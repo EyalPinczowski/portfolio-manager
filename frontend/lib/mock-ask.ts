@@ -80,7 +80,7 @@ export function mockCommittee(symbol: string): CommitteeOut {
     ],
   };
   return {
-    symbol: sym, generated_at: AT, cached: false, llm_used: false, launch_gate_open: false,
+    symbol: sym, generated_at: AT, cached: false, llm_used: false, runs_left_today: 9, runs_per_day: 10, launch_gate_open: false,
     launch_gate_reasons: ["No passing backtest for the active weights yet.", "Paper trading: fewer than 4 weeks of results."],
     disclaimer: "Not financial advice.",
     report: {

@@ -43,3 +43,5 @@ export const apiBase = (): string => (process.env.NEXT_PUBLIC_API_URL ?? "").rep
 export const ASK_MAX_QUESTION_CHARS = 500;
 /** Investment Committee: the most the CIO may move the chart score, in points (mirrors backend `committee_cio_max_adjustment`). */
 export const COMMITTEE_MAX_ADJUSTMENT = 15;
+/** Shown before the first run; the server sends the real cap with every run (`runs_per_day`). */
+export const COMMITTEE_RUNS_PER_DAY = 10;

@@ -4229,6 +4229,14 @@
             "type": "boolean",
             "title": "Llm Used"
           },
+          "runs_left_today": {
+            "type": "integer",
+            "title": "Runs Left Today"
+          },
+          "runs_per_day": {
+            "type": "integer",
+            "title": "Runs Per Day"
+          },
           "launch_gate_open": {
             "type": "boolean",
             "title": "Launch Gate Open"
@@ -4253,6 +4261,8 @@
           "cached",
           "report",
           "llm_used",
+          "runs_left_today",
+          "runs_per_day",
           "launch_gate_open"
         ],
         "title": "CommitteeOut"

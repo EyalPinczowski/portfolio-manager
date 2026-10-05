@@ -752,7 +752,10 @@ class Settings(BaseSettings):
     ask_max_question_chars: int = Field(default=500, ge=20, le=4000)
     ask_max_conversations_per_user: int = Field(default=100, ge=1, le=10_000)
     ask_rate_limit_per_hour: int = Field(default=60, ge=1)  # per user
-    committee_rate_limit_per_hour: int = Field(default=20, ge=1)  # per user
+    committee_rate_limit_per_hour: int = Field(default=5, ge=1)  # per user
+    # Free-tier AI quota is shared: 4 model calls per run, so cap each user's taps per day.
+    # Every tap counts, including ones answered from saved results.
+    committee_runs_per_user_per_day: int = Field(default=10, ge=1)
     llm_cache_ttl_hours: float = 24.0 * 7
     llm_cache_ttl_news_hours: float = 6.0  # answers whose prompt depends on news go stale fast
     # Free-tier quotas are per day and shared by every user: reserve them. Per-minute sub-buckets

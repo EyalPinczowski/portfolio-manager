@@ -117,6 +117,7 @@ export type AskMessage = S["MessageOut"];
 export type AskConversation = S["ConversationOut"];
 export type AskConversationDetail = S["ConversationDetailOut"];
 export type CommitteeOut = S["CommitteeOut"];
+export type LlmUsage = S["LlmUsageOut"];
 export type CommitteeStance = S["RiskResponse"]["stance"];
 export type SearchHistoryItem = S["SearchHistoryOut"];
 export type WatchlistItem = S["WatchlistOut"];
@@ -308,7 +309,7 @@ export const api = {
   },
   askAboutStock: (symbol: string, b: { question: string; notes?: string | null }) =>
     post<AskOut>(`/analyze/${encodeURIComponent(symbol)}/ask`, b),
-  /** Investment Committee for any ticker: public data only, no verdict. 429 = per-user hourly limit. */
+  /** Investment Committee for any ticker: public data only, no verdict. 429 = per-user hourly or daily limit. */
   committee: (symbol: string) => post<CommitteeOut>(`/analyze/${encodeURIComponent(symbol)}/committee`),
   /** Ask my portfolio: read-only tools over the caller's own data. 429 = per-user hourly limit, 404 = unknown conversation or portfolio. */
   askPortfolio: (b: { question: string; conversation_id?: number | null; portfolio_id?: number | null }) => post<PortfolioAskOut>("/ask", b),
@@ -332,6 +333,7 @@ export const api = {
   adminUsers: () => get<AdminUser[]>("/admin/users"),
   adminDisableUser: (id: number) => post<AdminUser>(`/admin/users/${id}/disable`),
   adminEnableUser: (id: number) => post<AdminUser>(`/admin/users/${id}/enable`),
+  adminLlmUsage: () => get<LlmUsage>("/admin/llm-usage"),
   adminInvites: () => get<Invite[]>("/admin/invites"),
   adminCreateInvite: (days?: number | null) => post<Invite>("/admin/invites", { days: days ?? null }),
   adminRevokeInvite: (code: string) => post("/admin/invites/revoke", { code }),

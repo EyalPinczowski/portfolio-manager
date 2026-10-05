@@ -76,6 +76,13 @@ The idea from the article: give the agents **ready-made data tools** instead of 
 - Gemini free (~10 RPM) is fine for on-demand "Analyze a stock".
 - The **screener does NOT run the committee on the whole universe**. Deterministic scores rank ~800 symbols, and only the **top ~10 finalists** go through the committee, from a queue at no more than 8 RPM.
 - Results are cached for each symbol per data refresh. Groq is the fallback provider, and templates are the last resort.
+- **Real numbers (config in `backend/app/config.py`, free tier only):**
+  - Per provider: 8 requests a minute (`llm_requests_per_minute`) and 900 a day (`llm_daily_budget`), shared by everyone.
+  - Per user: 3 calls a minute and 60 a day (`llm_user_rpm`, `llm_user_daily_budget`), so a user could do about 15 full runs a day on quota alone.
+  - **Committee run caps:** 5 runs an hour and 10 a day per user (`committee_rate_limit_per_hour`, `committee_runs_per_user_per_day`). Every tap counts, including ones answered from saved results. The screen shows the runs left today and the 429 message says the count resets within 24 hours.
+  - **Cache:** role prompts are built from stable facts (profile and news get identity fields only; Bear and CIO get rounded price and score and no timestamps), so a price tick no longer changes the cache key and a repeat run costs no model calls.
+  - **Ask my portfolio costs 0 AI tokens:** no free provider is allowed to see portfolio data, so it always uses templates.
+  - **Visibility:** admins see today's requests, tokens and fallbacks per provider in Settings → Admin ("AI usage today"). Input/output tokens and cache hits are not recorded.
 
 ## Evaluation loop (`backend/evals/`)
 - **Scenario fixtures (≥15)**, each frozen data for `ScoutReport`, `ChartReport` and `NewsReport`:

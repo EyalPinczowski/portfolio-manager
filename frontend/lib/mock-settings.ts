@@ -109,6 +109,12 @@ export function mockSettingsRequest(method: string, p: string, b: Record<string,
   if (p.startsWith("/admin/")) {
     if (scenario === "member") throw new ApiError(403, "Forbidden");
     if (p === "/admin/users") return users;
+    if (p === "/admin/llm-usage") return {
+      day: "2026-10-05", daily_budget: 900, batch_daily_fraction: 0.6, user_daily_budget: 60,
+      requests_per_minute: 8, role_requests_per_minute: 5, user_requests_per_minute: 3,
+      tokens_in_out_recorded: false, cache_hits_recorded: false,
+      providers: [{ provider: "gemini", requests: 120, tokens: 84000, fallbacks: 3, models: [{ model: "gemini-flash", requests: 120, tokens: 84000, fallbacks: 3 }] }],
+    };
     if ((m = p.match(/^\/admin\/users\/(\d+)\/(disable|enable)$/)) && method === "POST") {
       const u = users.find((x) => x.id === Number(m![1]));
       if (!u) throw new ApiError(404, "Not found");
