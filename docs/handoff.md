@@ -15,8 +15,14 @@ Read this file, then `CLAUDE.md`, `docs/status.md` and `docs/reminders.md`, befo
 - The app is named **Holdwise** (green H mark on a rising line, green brand tokens; `frontend/components/Logo.tsx`, `public/icons/*.svg`, `scripts/gen-icons.mjs` rasterises the PWA PNGs).
 - Queue item 3 is done: Ask my portfolio (`/ask`, saved conversations, structured `needs_horizon`) and the Investment Committee on the Analyze result.
 - Backend: 1724+ passed, 33 skipped. Frontend vitest: 506 passed. Mock e2e (light + dark): 93 passed. `npm run e2e:real`: passed.
-- Alembic is at 0016 (ask history) and expand-only.
+- Alembic is at 0017 and expand-only.
 - After an API change: regenerate `backend/openapi.json`, then `cd frontend && npm run gen:api`.
+
+## Deploy state (2026-10-05)
+- Render (free, Docker `backend/Dockerfile.slim`) is live and healthy at `/api/health`; Supabase Postgres (session pooler, port 5432). Lesson: the Render Health Check Path must be exactly `/api/health` (a trailing dot caused two "timed out" deploys). `/api/health` and the Telegram webhook are open to proxy auth.
+- First admin: `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` on Render create it at start (`app.cli bootstrap-admin`); delete both after the first login.
+- Website: Cloudflare's Pages Git connect loops for this user, so the site deploys as the Worker `holdwise` from GitHub Actions (`.github/workflows/deploy-site.yml`, `frontend/wrangler.jsonc`, `frontend/worker/index.ts`). Needs repo secrets `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`; last run failed with auth error 10000 (token), user is recreating the token. Then set `API_ORIGIN` + secret `PROXY_SHARED_SECRET` on the Worker.
+- Still to set up, in order: log in via the Worker, `REQUIRE_PROXY_AUTH=true` on Render, UptimeRobot on `/api/health`, Turnstile, AI keys (Gemini, Mistral), Telegram webhook. Secrets never go in chat.
 
 ## First thing to do
 Queue item 3 is done. Next is queue item 4 (Postgres run, Opus review, reminders, host and deploy). The backtest is closed: the user accepted the result (`docs/product-decisions.md`, 2026-10-04) and wants no target, cap or stop changes.
@@ -32,7 +38,7 @@ Queue item 3 is done. Next is queue item 4 (Postgres run, Opus review, reminders
 1. ~~Backtest and tuning on real history~~ done; user accepted the result and relies on paper trading.
 2. ~~Step 5~~ done (2026-10-04). Was: review the dark-mode screenshots (send the user at most 2–3 that show problems). Add a Playwright pass against the real backend (mock Turnstile, import, null-price flows).
 3. ~~Ask route and UI, chat history, ask tools, committee on Analyze~~ done (2026-10-05).
-4. Postgres test run, then an Opus review before deploy, then `docs/reminders.md`, then choose a host and deploy.
+4. ~~Host and deploy backend~~ done; finish the website deploy and the setup list above, then `docs/reminders.md`.
 5. Optional, not yet accepted by the user:
    - codes so the English-only sentences translate in Hebrew: `skipped[].reason`, candidate notes, scale-out step reasons, fit `rules[].reason`;
    - Hebrew answers in Ask/committee templates (they are English-only now);

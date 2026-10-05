@@ -179,3 +179,9 @@ Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after a
 - Backend (e9c2629): real token use recorded (in/out/cached, cache hits; migration 0017), unchanged news reused up to 7 days, cross-provider cache reads, per-role output caps, strict Groq JSON, Groq tokens-per-minute guard, optional per-role model routing (`llm_role_models`, empty = off), fewer passages (CIO gets reports only), Groq fallback list fixed.
 - Frontend: admin "AI usage today" card shows the token split and cache hits.
 - Caveat: evals use a mock LLM, so real recall of cited facts is not measured; check the admin card after live use, and Gemini free limits stay unverified (see docs/reviews/token-saving-2026-10-05.md).
+
+## 2026-10-05 (deploy)
+- Built: token-saving items, pre-deploy fixes, Mistral as second provider, Hebrew broker-card parser, committee run caps (5/hour, 10/day).
+- Deploy: Render + Supabase live. Fixed: trailing dot in the Render health path; `SCHEDULER_START_DELAY_SECONDS` (120 in the slim image); `bootstrap-admin` command (env-var admin, idempotent, silent) with a test.
+- Website: Worker deploy (`frontend/worker/index.ts`, shared `lib/proxy-handler.ts`, `wrangler.jsonc` with `keep_vars`) and GitHub Actions workflow `deploy-site.yml` (skips without Cloudflare secrets). Vitest 519 passed. Waiting on the user's Cloudflare API token.
+
