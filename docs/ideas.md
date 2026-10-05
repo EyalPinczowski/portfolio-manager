@@ -31,3 +31,10 @@ These are suggestions from the phase reviews that the user didn't pick yet. Each
 | Compact facts block (drop `reasons` for Bear/CIO when indicators carry the same numbers, short keys) | [token saving review](reviews/token-saving-2026-10-05.md) | 50-150 tokens per Bear/CIO call; small |
 | Order passages best-first and best-last | [token saving review](reviews/token-saving-2026-10-05.md) | "Lost in the Middle": models use the start and end of the context best |
 | Screener batching of several finalists in one prompt (rejected) | [token saving review](reviews/token-saving-2026-10-05.md) | Conflicts with the one-symbol prompt rule (no cross-symbol leakage); Gemini Batch API is not on the free tier |
+
+## From the pre-deploy review (2026-10-05, chosen by the user for later)
+- **F1 Import from a broker CSV or PDF export** next to screenshots (no image at all; fits the "screenshots never kept" rule). Source: getquin AI document import.
+- **F2 "Why is it moving?"** on a big daily move, built from cached news chunks plus a template (RAG already exists).
+- **F4 Score-change alerts on the watchlist**, only on change (rule 5).
+- **F6 "Copy portfolio for my AI"**: privacy-safe export of symbols and weights; costs zero free-tier quota.
+- Not chosen yet: F3 insider-transaction notices, F5 dividend forecast chart, F7 read-only MCP endpoint, F8 outbound Bizportal/Funder links. Details in `docs/reviews/phase-pre-deploy-2026-10-05.md`.
