@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Portfolio Manager API",
+    "title": "Holdwise API",
     "description": "Phase 1 backend. Not financial advice.",
     "version": "0.1.0"
   },
@@ -1907,7 +1907,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__analyze__schemas__AskOut"
+                  "$ref": "#/components/schemas/AskOut"
                 }
               }
             }
@@ -1992,7 +1992,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__api__ask__AskOut"
+                  "$ref": "#/components/schemas/PortfolioAskOut"
                 }
               }
             }
@@ -3199,6 +3199,57 @@
           "question"
         ],
         "title": "AskIn"
+      },
+      "AskOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "grounded_in": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Grounded In"
+          },
+          "llm_used": {
+            "type": "boolean",
+            "title": "Llm Used",
+            "default": false
+          },
+          "notes_stored": {
+            "type": "boolean",
+            "title": "Notes Stored",
+            "default": false
+          },
+          "question_declined": {
+            "type": "boolean",
+            "title": "Question Declined",
+            "default": false
+          },
+          "privacy_note": {
+            "type": "string",
+            "title": "Privacy Note",
+            "default": "Your question and notes stay on the server and are never sent to a free AI provider."
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "answer",
+          "grounded_in"
+        ],
+        "title": "AskOut"
       },
       "AskQuestionIn": {
         "properties": {
@@ -7855,6 +7906,44 @@
         ],
         "title": "Pnl"
       },
+      "PortfolioAskOut": {
+        "properties": {
+          "conversation_id": {
+            "type": "integer",
+            "title": "Conversation Id"
+          },
+          "question": {
+            "$ref": "#/components/schemas/MessageOut"
+          },
+          "answer": {
+            "$ref": "#/components/schemas/MessageOut"
+          },
+          "declined": {
+            "type": "boolean",
+            "title": "Declined",
+            "default": false
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Not financial advice."
+          }
+        },
+        "type": "object",
+        "required": [
+          "conversation_id",
+          "question",
+          "answer"
+        ],
+        "title": "PortfolioAskOut"
+      },
       "PortfolioCreate": {
         "properties": {
           "name": {
@@ -12086,95 +12175,6 @@
           "rules"
         ],
         "title": "XrayRulesPatch"
-      },
-      "app__analyze__schemas__AskOut": {
-        "properties": {
-          "symbol": {
-            "type": "string",
-            "title": "Symbol"
-          },
-          "answer": {
-            "type": "string",
-            "title": "Answer"
-          },
-          "grounded_in": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Grounded In"
-          },
-          "llm_used": {
-            "type": "boolean",
-            "title": "Llm Used",
-            "default": false
-          },
-          "notes_stored": {
-            "type": "boolean",
-            "title": "Notes Stored",
-            "default": false
-          },
-          "question_declined": {
-            "type": "boolean",
-            "title": "Question Declined",
-            "default": false
-          },
-          "privacy_note": {
-            "type": "string",
-            "title": "Privacy Note",
-            "default": "Your question and notes stay on the server and are never sent to a free AI provider."
-          },
-          "disclaimer": {
-            "type": "string",
-            "title": "Disclaimer",
-            "default": "Not financial advice."
-          }
-        },
-        "type": "object",
-        "required": [
-          "symbol",
-          "answer",
-          "grounded_in"
-        ],
-        "title": "AskOut"
-      },
-      "app__api__ask__AskOut": {
-        "properties": {
-          "conversation_id": {
-            "type": "integer",
-            "title": "Conversation Id"
-          },
-          "question": {
-            "$ref": "#/components/schemas/MessageOut"
-          },
-          "answer": {
-            "$ref": "#/components/schemas/MessageOut"
-          },
-          "declined": {
-            "type": "boolean",
-            "title": "Declined",
-            "default": false
-          },
-          "notes": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Notes"
-          },
-          "disclaimer": {
-            "type": "string",
-            "title": "Disclaimer",
-            "default": "Not financial advice."
-          }
-        },
-        "type": "object",
-        "required": [
-          "conversation_id",
-          "question",
-          "answer"
-        ],
-        "title": "AskOut"
       }
     }
   }

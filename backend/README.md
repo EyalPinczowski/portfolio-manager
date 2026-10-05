@@ -1,4 +1,4 @@
-# Portfolio Manager: backend (Phase 1)
+# Holdwise: backend (Phase 1)
 
 FastAPI + SQLModel (SQLite or Postgres, Alembic migrations) API; the APScheduler jobs run as a
 separate process or inside the API (`SCHEDULER_IN_PROCESS=true`). See `../docs/phase-1-spec.md`

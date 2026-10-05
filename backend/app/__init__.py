@@ -1,1 +1,1 @@
-"""Portfolio Manager backend (Phase 1)."""
+"""Holdwise backend (Phase 1)."""

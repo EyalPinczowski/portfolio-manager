@@ -77,7 +77,7 @@ class ConversationDetailOut(ConversationOut):
     messages: list[MessageOut]
 
 
-class AskOut(BaseModel):
+class PortfolioAskOut(BaseModel):
     conversation_id: int
     question: MessageOut
     answer: MessageOut
@@ -115,14 +115,14 @@ def _not_found() -> ApiError:
     return ApiError(404, "conversation_not_found", "Conversation not found.")
 
 
-@router.post("/ask", response_model=AskOut)
+@router.post("/ask", response_model=PortfolioAskOut)
 def ask_question(
     body: AskQuestionIn,
     user: UserDep,
     db: DbDep,
     settings: SettingsDep,
     providers: list[LLMProvider] = ProvidersDep,
-) -> AskOut:
+) -> PortfolioAskOut:
     """Answer one question from read-only tools and store the exchange. A `conversation_id` that is
     not the caller's is a 404; so is a `portfolio_id` that is not the caller's."""
     assert user.id is not None
@@ -169,7 +169,7 @@ def ask_question(
     db.refresh(q)
     db.refresh(a)
     assert conv.id is not None
-    return AskOut(
+    return PortfolioAskOut(
         conversation_id=conv.id,
         question=_msg(q),
         answer=_msg(a),

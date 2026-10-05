@@ -660,6 +660,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/analyze/{symbol}/committee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Committee
+         * @description Run the Investment Committee (company profile, news, Bear, CIO) for any ticker.
+         *
+         *     Public data only: the roles see `PublicFacts` and retrieved public passages, never the user's
+         *     portfolio. There is no buy/sell verdict here: the CIO answers the Bear's risks and may nudge the
+         *     chart score within the configured cap, nothing more. Every role has a template fallback, so
+         *     this works with no AI key. Chart data is cached like the rest of Analyze, and model answers are
+         *     cached by the LLM layer.
+         */
+        post: operations["committee_api_analyze__symbol__committee_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Question
+         * @description Answer one question from read-only tools and store the exchange. A `conversation_id` that is
+         *     not the caller's is a 404; so is a `portfolio_id` that is not the caller's.
+         */
+        post: operations["ask_question_api_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ask/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Conversations */
+        get: operations["conversations_api_ask_conversations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ask/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Conversation */
+        get: operations["conversation_api_ask_conversations__conversation_id__get"];
+        put?: never;
+        post?: never;
+        /** Remove Conversation */
+        delete: operations["remove_conversation_api_ask_conversations__conversation_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/search-history": {
         parameters: {
             query?: never;
@@ -1156,6 +1238,36 @@ export interface components {
              */
             disclaimer: string;
         };
+        /** AskQuestionIn */
+        AskQuestionIn: {
+            /** Question */
+            question: string;
+            /** Conversation Id */
+            conversation_id?: number | null;
+            /** Portfolio Id */
+            portfolio_id?: number | null;
+        };
+        /** BearCase */
+        BearCase: {
+            /** Risks */
+            risks?: components["schemas"]["BearRisk"][];
+        };
+        /** BearRisk */
+        BearRisk: {
+            /** Text */
+            text: string;
+            /** Severity */
+            severity: number;
+            /** Chunk Ids */
+            chunk_ids?: number[];
+            /** Fact Refs */
+            fact_refs?: string[];
+            /**
+             * What Would Invalidate
+             * @default
+             */
+            what_would_invalidate: string;
+        };
         /** BenchmarkAggregate */
         BenchmarkAggregate: {
             /** Name */
@@ -1230,6 +1342,31 @@ export interface components {
             asset_types: ("stock" | "etf" | "crypto")[];
             /** Exclude Symbols */
             exclude_symbols?: string[];
+        };
+        /**
+         * CIOAssessment
+         * @description What the model returns. The adjusted score is computed by code, never by the model.
+         */
+        CIOAssessment: {
+            /** Adjustment */
+            adjustment: number;
+            /**
+             * Adjustment Reason
+             * @default
+             */
+            adjustment_reason: string;
+            /** Responses */
+            responses?: components["schemas"]["RiskResponse"][];
+        };
+        /** CIOResult */
+        CIOResult: {
+            /** Base Score */
+            base_score: number | null;
+            /** Adjustment */
+            adjustment: number;
+            /** Adjusted Score */
+            adjusted_score: number | null;
+            assessment: components["schemas"]["CIOAssessment"];
         };
         /** CachedQuoteOut */
         CachedQuoteOut: {
@@ -1425,6 +1562,99 @@ export interface components {
             /** Bars */
             bars: number;
             explanation: components["schemas"]["Explanation"];
+        };
+        /** Citation */
+        Citation: {
+            /** Chunk Id */
+            chunk_id: number;
+            /** Doc Type */
+            doc_type: string;
+            /** Source Url */
+            source_url: string;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+        };
+        /** CommitteeOut */
+        CommitteeOut: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Cached */
+            cached: boolean;
+            report: components["schemas"]["CommitteeReport"];
+            /** Llm Used */
+            llm_used: boolean;
+            /** Launch Gate Open */
+            launch_gate_open: boolean;
+            /** Launch Gate Reasons */
+            launch_gate_reasons?: string[];
+            /**
+             * Disclaimer
+             * @default Not financial advice.
+             */
+            disclaimer: string;
+        };
+        /** CommitteeReport */
+        CommitteeReport: {
+            /** Symbol */
+            symbol: string;
+            profile: components["schemas"]["RoleResult_CompanyProfile_"];
+            news: components["schemas"]["RoleResult_NewsReport_"];
+            bear: components["schemas"]["RoleResult_BearCase_"];
+            cio: components["schemas"]["RoleResult_CIOAssessment_"];
+            cio_score: components["schemas"]["CIOResult"];
+        };
+        /** CompanyProfile */
+        CompanyProfile: {
+            /** Claims */
+            claims?: components["schemas"]["ProfileClaim"][];
+        };
+        /** ConversationDetailOut */
+        ConversationDetailOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Portfolio Id */
+            portfolio_id?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Messages */
+            messages: components["schemas"]["MessageOut"][];
+        };
+        /** ConversationOut */
+        ConversationOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Portfolio Id */
+            portfolio_id?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** DividendsOut */
         DividendsOut: {
@@ -2435,6 +2665,34 @@ export interface components {
             /** Csrf Token */
             csrf_token: string;
         };
+        /** MessageOut */
+        MessageOut: {
+            /** Id */
+            id: number;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Content */
+            content: string;
+            /** Cites */
+            cites?: string[];
+            /** Tools Called */
+            tools_called?: string[];
+            /** Source */
+            source?: ("template" | "llm" | "cache") | null;
+            /**
+             * Declined
+             * @default false
+             */
+            declined: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /**
          * MissingInput
          * @description A signal or data field the Scout has nothing for: reported, never counted as neutral.
@@ -2475,6 +2733,24 @@ export interface components {
             /** Pct */
             pct: number;
         };
+        /** NewsItem */
+        NewsItem: {
+            /** Text */
+            text: string;
+            /**
+             * Tone
+             * @default neutral
+             * @enum {string}
+             */
+            tone: "positive" | "neutral" | "negative";
+            /** Chunk Ids */
+            chunk_ids?: number[];
+        };
+        /** NewsReport */
+        NewsReport: {
+            /** Items */
+            items?: components["schemas"]["NewsItem"][];
+        };
         /** NotificationOut */
         NotificationOut: {
             /** Id */
@@ -2506,6 +2782,25 @@ export interface components {
             usd: number;
             /** Pct */
             pct: number;
+        };
+        /** PortfolioAskOut */
+        PortfolioAskOut: {
+            /** Conversation Id */
+            conversation_id: number;
+            question: components["schemas"]["MessageOut"];
+            answer: components["schemas"]["MessageOut"];
+            /**
+             * Declined
+             * @default false
+             */
+            declined: boolean;
+            /** Notes */
+            notes?: string[];
+            /**
+             * Disclaimer
+             * @default Not financial advice.
+             */
+            disclaimer: string;
         };
         /** PortfolioCreate */
         PortfolioCreate: {
@@ -2695,6 +2990,18 @@ export interface components {
             change_pct?: number | null;
             /** Is Fresh */
             is_fresh: boolean;
+        };
+        /** ProfileClaim */
+        ProfileClaim: {
+            /**
+             * Topic
+             * @enum {string}
+             */
+            topic: "business" | "segments" | "management" | "competitors";
+            /** Text */
+            text: string;
+            /** Chunk Ids */
+            chunk_ids?: number[];
         };
         /** ProposedChange */
         ProposedChange: {
@@ -2923,6 +3230,20 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** RiskResponse */
+        RiskResponse: {
+            /** Risk Index */
+            risk_index: number;
+            /**
+             * Stance
+             * @enum {string}
+             */
+            stance: "rebutted" | "accepted" | "unresolved";
+            /** Reason */
+            reason: string;
+            /** Chunk Ids */
+            chunk_ids?: number[];
+        };
         /** RiskToStop */
         RiskToStop: {
             /** Native */
@@ -2935,6 +3256,134 @@ export interface components {
             pct_of_position: number;
             /** Pct Of Portfolio */
             pct_of_portfolio?: number | null;
+        };
+        /** RoleResult[BearCase] */
+        RoleResult_BearCase_: {
+            /** Role */
+            role: string;
+            value: components["schemas"]["BearCase"];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "llm" | "cache" | "template";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "no_coverage";
+            /** Confidence */
+            confidence: number;
+            /** Citations */
+            citations?: components["schemas"]["Citation"][];
+            /**
+             * Prompt Tokens
+             * @default 0
+             */
+            prompt_tokens: number;
+            /**
+             * Budget
+             * @default 0
+             */
+            budget: number;
+            /** Notes */
+            notes?: string[];
+        };
+        /** RoleResult[CIOAssessment] */
+        RoleResult_CIOAssessment_: {
+            /** Role */
+            role: string;
+            value: components["schemas"]["CIOAssessment"];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "llm" | "cache" | "template";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "no_coverage";
+            /** Confidence */
+            confidence: number;
+            /** Citations */
+            citations?: components["schemas"]["Citation"][];
+            /**
+             * Prompt Tokens
+             * @default 0
+             */
+            prompt_tokens: number;
+            /**
+             * Budget
+             * @default 0
+             */
+            budget: number;
+            /** Notes */
+            notes?: string[];
+        };
+        /** RoleResult[CompanyProfile] */
+        RoleResult_CompanyProfile_: {
+            /** Role */
+            role: string;
+            value: components["schemas"]["CompanyProfile"];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "llm" | "cache" | "template";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "no_coverage";
+            /** Confidence */
+            confidence: number;
+            /** Citations */
+            citations?: components["schemas"]["Citation"][];
+            /**
+             * Prompt Tokens
+             * @default 0
+             */
+            prompt_tokens: number;
+            /**
+             * Budget
+             * @default 0
+             */
+            budget: number;
+            /** Notes */
+            notes?: string[];
+        };
+        /** RoleResult[NewsReport] */
+        RoleResult_NewsReport_: {
+            /** Role */
+            role: string;
+            value: components["schemas"]["NewsReport"];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "llm" | "cache" | "template";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "no_coverage";
+            /** Confidence */
+            confidence: number;
+            /** Citations */
+            citations?: components["schemas"]["Citation"][];
+            /**
+             * Prompt Tokens
+             * @default 0
+             */
+            prompt_tokens: number;
+            /**
+             * Budget
+             * @default 0
+             */
+            budget: number;
+            /** Notes */
+            notes?: string[];
         };
         /**
          * RowConflict
@@ -5003,6 +5452,150 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AskOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    committee_api_analyze__symbol__committee_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitteeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ask_question_api_ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskQuestionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioAskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    conversations_api_ask_conversations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationOut"][];
+                };
+            };
+        };
+    };
+    conversation_api_ask_conversations__conversation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_conversation_api_ask_conversations__conversation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

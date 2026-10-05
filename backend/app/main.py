@@ -77,7 +77,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     production = settings.env == "production"  # no interactive docs or schema endpoint there
     app = FastAPI(
-        title="Portfolio Manager API",
+        title="Holdwise API",
         version="0.1.0",
         description="Phase 1 backend. Not financial advice.",
         openapi_url=None if production else "/api/openapi.json",
