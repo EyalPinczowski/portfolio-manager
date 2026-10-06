@@ -197,3 +197,17 @@ describe("Meitav Trade layout, behaviours", () => {
     });
   });
 });
+
+describe("Meitav Trade layout, full portfolio screen", () => {
+  const card = (lines: string[]) => lines.join("\n");
+
+  it("makes no row from the summary header and starts the list at the section bar", () => {
+    const { rows } = parseScreenshotText(card(["מיטב:טרייד", "תיק אישי", "₪187,654.32", "שינוי יומי ₪3.12", "שינוי מעלות ₪31,276.40", "יתרות ₪-611.20 $4,120.55", "האחזקות שלי", "ניירות זרים", "NYSE • VNTQ", "84.15", "$1,683.00"]));
+    expect(rows.map((r) => r.symbol)).toEqual(["VNTQ"]);
+  });
+
+  it("reads a bad thousands mark and strips a leading ellipsis", () => {
+    const { rows } = parseScreenshotText(card(["NASDAQ • CEGX", "289.13", "...Cornerstone Power", "$2.891.30"]));
+    expect(rows[0]).toMatchObject({ value: 2891.3, quantity: 10, name: "Cornerstone Power" });
+  });
+});

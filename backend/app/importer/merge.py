@@ -4,7 +4,8 @@ A card that is in two screenshots (the last card of one image is the first of th
 **never summed**:
 
 - identical price and value: one row, flag `duplicate_removed`;
-- one copy is cut off (no price or value): the complete copy wins, `duplicate_removed`;
+- one copy is cut off (no price or value, or the same price without the P&L % at the card's
+  bottom): the complete copy wins, `duplicate_removed`, no conflict;
 - both complete but different: one row (the later screenshot, which is fresher), flag `conflict`,
   and the other copy's numbers in `row.conflict`.
 """
@@ -26,6 +27,12 @@ def _close(a: float | None, b: float | None) -> bool:
 
 def _complete(r: ParsedRow) -> bool:
     return r.value is not None and r.price is not None
+
+
+def _cut_off_copy(a: ParsedRow, b: ParsedRow) -> bool:
+    """`a` is a cut-off copy of `b`: the same price, but the bottom of the card (the P&L %, so the
+    cost) was not on that screen, and its value may be half read. Not a real disagreement."""
+    return _close(a.price, b.price) and a.cost is None and b.cost is not None
 
 
 def same_card(a: ParsedRow, b: ParsedRow) -> bool:
@@ -62,7 +69,14 @@ def merge_screenshots(
                 rows.append(r.model_copy(deep=True))
                 continue
             old = rows[at]
-            if (
+            if _complete(old) and _complete(r) and _cut_off_copy(old, r):
+                win = r.model_copy(deep=True, update={"index": old.index})
+                win.name = r.name or old.name
+                rows[at] = _with_flag(win, "duplicate_removed")
+            elif _complete(old) and _complete(r) and _cut_off_copy(r, old):
+                old.name = old.name or r.name
+                _with_flag(old, "duplicate_removed")
+            elif (
                 _complete(old)
                 and _complete(r)
                 and not (_close(old.price, r.price) and _close(old.value, r.value))

@@ -64,3 +64,12 @@ card never takes a name, number or figure from its neighbour.
 Real Tesseract output (merged or split lines beyond the variants above), a left column that is separated from
 its cards entirely (all prices first, then all names), a value whose `$`/`₪` was lost by OCR, and non-Meitav
 layouts. The tests in `meitav-layout.test.ts` cover a few of those edge cases inline.
+
+## Cases `full_portfolio_summary_header` and `overlap_three_screens_cut_cards` (Update 11)
+
+Invented data. The first screen of the full portfolio has a summary header (title, total, daily change, change from
+cost, balances, cash-breakdown bar, `האחזקות שלי`, sort, tabs) above a `ניירות זרים` bar; it must make no row, and a
+simple card is only accepted once the list has started (a card or a section bar). Also: names equal to the ticker,
+leading-ellipsis names, warrant/rights prices with a value under 1 (quantity empty, `quantity_uncertain`), a value
+read as `2.891.30` (= 2,891.30). The second case is three overlapping screens whose last card is cut off (no value,
+or a half-read value without the P&L %); the complete copy wins with `duplicate_removed`, no `conflict`.

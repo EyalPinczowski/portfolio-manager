@@ -381,6 +381,316 @@
           }
         ]
       }
+    },
+    {
+      "id": "full_portfolio_summary_header",
+      "description": "Full-portfolio screen: a summary header (title, total, daily change, change from cost, balances, a cash breakdown bar, `האחזקות שלי`, sort, the tabs) above a `ניירות זרים` section bar, then cards. Names equal to the ticker, names cut off with a leading ellipsis, tiny warrant and rights prices (quantity cannot be inferred), a value with a bad thousands mark (`2.891.30`), a TASE fund and a simple card after the `אחר` bar. The header must make no row.",
+      "images": {
+        "in_order": [
+          "11:41\n00:18\n86%\nמיטב:טרייד\nתיק אישי\n₪123,456.78\nשינוי יומי ₪3.21\n(0%)\nשינוי מעלות ₪12,345.67\n(11.11%)\nיתרות ₪-100.50\n$2,222.33\nפירוט מזומן ובטחונות\nהאחזקות שלי\nמיון\nהכל\nני\"ע זרים\nקרנות\nניירות זרים\nNASDAQ • ZQQ\n612.4\nZQQ\n0%\n8.5% ↑ $4,899.20\nNYSE • SPYZ\n710.5\nSPYZ\n0%\n-3.2% ↓ $3,552.50\nNASDAQ • CEGX\n289.13\nCornerstone Power Corp\n0%\n-3.9% ↓ $2.891.30\nNYSE • ITAX\n218.45\n...Ishares Example Aerospace & De\n0%\n-7.3% ↓ $2,621.40\nNASDAQ • WRNW\n0.057\nZenith Systems Warrant\n0%\n$0.01\nNASDAQ • WRNL\n0.091\nZenith Systems Rights\n0%\n$0.05\nNASDAQ • SPXV\n133.7\n…Space Venture Technolo\n0%\n9.4% ↑ $2,005.5\nקרן סל\n2,500 99דמה.XTF\n+0.20%\nTLV • 1234599 מספר ני\"ע\n5.50% ↑ ₪12,500.00\nאחר\n150.2\nחיסכון כחול 7\n₪150.2\nהוראות\nניירות במעקב\nמסחר\nהתיק שלי\nראשי"
+        ],
+        "shuffled_columns": [
+          "11:41\nמיטב:טרייד\n123,456.78₪\nתיק אישי\n₪3.21\n(0%)\nשינוי יומי\n₪12,345.67\n(11.11%)\nשינוי מעלות\n$2,222.33\n-100.50₪\nיתרות\nפירוט מזומן ובטחונות\nמיון\nהאחזקות שלי\nקרנות\nני\"ע זרים\nהכל\nניירות זרים\nNASDAQ • ZQQ\nZQQ\n↑ 8.5%\n4,899.20$\n612.4\n0%\nNYSE • SPYZ\nSPYZ\n↓ -3.2%\n3,552.50$\n710.5\n0%\nNASDAQ • CEGX\nCornerstone Power Corp\n↓ -3.9%\n2.891.30$\n289.13\n0%\nNYSE • ITAX\n...Ishares Example Aerospace & De\n↓ -7.3%\n2,621.40$\n218.45\n0%\nNASDAQ • WRNW\nZenith Systems Warrant\n0.01$\n0.057\n0%\nNASDAQ • WRNL\nZenith Systems Rights\n0.05$\n0.091\n0%\nNASDAQ • SPXV\n…Space Venture Technolo\n↑ 9.4%\n2,005.5$\n133.7\n0%\nקרן סל\n99דמה.XTF\n2,500\n+0.20%\nTLV • 1234599 מספר ני\"ע\n₪12,500.00\n↑ 5.50%\nאחר\nחיסכון כחול 7\n150.2\n₪150.2\nהוראות\nניירות במעקב\nמסחר\nהתיק שלי\nראשי"
+        ],
+        "hebrew_reversed": [
+          "11:41\nףירט:בטימ\nישיא קית\n₪123,456.78\nימוי יוניש\n₪3.21\n%(0)\nתולעמ יוניש\n₪12,345.67\n%(11.11)\nתורתי\n₪-100.50\n$2,222.33\nתונחטבו ןמזמ טורפ\nילש תוקזחאה\nןויימ\nלכה\nםירז ע\"ינ\nתונרק\nםירז תוריינ\nZQQ • NASDAQ\nZQQ\n612.4\n%0\n$4,899.20 ↑ %8.5\nSPYZ • NYSE\nSPYZ\n710.5\n%0\n$3,552.50 ↓ %3.2-\nCEGX • NASDAQ\nCornerstone Power Corp\n289.13\n%0\n$2.891.30 ↓ %3.9-\nITAX • NYSE\n...Ishares Example Aerospace & De\n218.45\n%0\n$2,621.40 ↓ %7.3-\nWRNW • NASDAQ\nZenith Systems Warrant\n0.057\n%0\n$0.01\nWRNL • NASDAQ\nZenith Systems Rights\n0.091\n%0\n$0.05\nSPXV • NASDAQ\n…Space Venture Technolo\n133.7\n%0\n$2,005.5 ↑ %9.4\nלס ןרק\n2,500\n99דמה.XTF\n%0.20+\n1234599 • TLV ע\"ינ רפסמ\n₪12,500.00 ↑ %5.50\nרחא\n150.2\n7 לוחכ ןוכסיח\n150.2₪\nתוארוה\nבקעמב תוריינ\nרחסמ\nילש קיתה\nישאר"
+        ]
+      },
+      "expected": {
+        "layout": "meitav_trade",
+        "rows": [
+          {
+            "name": "ZQQ",
+            "symbol": "ZQQ",
+            "tase_number": null,
+            "quantity": 8,
+            "price": 612.4,
+            "value": 4899.2,
+            "cost": 564.424,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "SPYZ",
+            "symbol": "SPYZ",
+            "tase_number": null,
+            "quantity": 5,
+            "price": 710.5,
+            "value": 3552.5,
+            "cost": 733.9876,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "Cornerstone Power Corp",
+            "symbol": "CEGX",
+            "tase_number": null,
+            "quantity": 10,
+            "price": 289.13,
+            "value": 2891.3,
+            "cost": 300.8637,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "Ishares Example Aerospace & De",
+            "symbol": "ITAX",
+            "tase_number": null,
+            "quantity": 12,
+            "price": 218.45,
+            "value": 2621.4,
+            "cost": 235.6526,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "Zenith Systems Warrant",
+            "symbol": "WRNW",
+            "tase_number": null,
+            "quantity": null,
+            "price": 0.057,
+            "value": 0.01,
+            "cost": null,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "quantity_uncertain"
+            ]
+          },
+          {
+            "name": "Zenith Systems Rights",
+            "symbol": "WRNL",
+            "tase_number": null,
+            "quantity": null,
+            "price": 0.091,
+            "value": 0.05,
+            "cost": null,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "quantity_uncertain"
+            ]
+          },
+          {
+            "name": "Space Venture Technolo",
+            "symbol": "SPXV",
+            "tase_number": null,
+            "quantity": 15,
+            "price": 133.7,
+            "value": 2005.5,
+            "cost": 122.2121,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "99דמה.XTF",
+            "symbol": null,
+            "tase_number": "1234599",
+            "quantity": 500,
+            "price": 2500,
+            "value": 12500.0,
+            "cost": 2369.6682,
+            "currency": "ILS",
+            "unit": "agorot",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "חיסכון כחול 7",
+            "symbol": null,
+            "tase_number": null,
+            "quantity": 1,
+            "price": 150.2,
+            "value": 150.2,
+            "cost": null,
+            "currency": "ILS",
+            "unit": "ILS",
+            "flags": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "overlap_three_screens_cut_cards",
+      "description": "Three scrolled screens of the full portfolio. The last card of each is cut off at the bottom (CEGX has no value; LLYX has a half-read value and no P&L %) and whole at the top of the next. The complete copy wins, nothing is summed, no conflict.",
+      "images": {
+        "in_order": [
+          "11:41\n00:18\n86%\nמיטב:טרייד\nתיק אישי\n₪123,456.78\nשינוי יומי ₪3.21\n(0%)\nשינוי מעלות ₪12,345.67\n(11.11%)\nיתרות ₪-100.50\n$2,222.33\nפירוט מזומן ובטחונות\nהאחזקות שלי\nמיון\nהכל\nני\"ע זרים\nקרנות\nניירות זרים\nNASDAQ • ZQQ\n612.4\nZQQ\n0%\n8.5% ↑ $4,899.20\nNYSE • SPYZ\n710.5\nSPYZ\n0%\n-3.2% ↓ $3,552.50\nNASDAQ • CEGX\n289.13\nCornerstone Power Corp\n0%",
+          "11:41\nמיטב:טרייד\nNASDAQ • CEGX\n289.13\nCornerstone Power Corp\n0%\n-3.9% ↓ $2.891.30\nNYSE • ITAX\n218.45\n...Ishares Example Aerospace & De\n0%\n-7.3% ↓ $2,621.40\nNYSE • LLYX\n982.35\nExample Pharma & Co\n0%\n$6,876.4",
+          "11:41\nמיטב:טרייד\nNYSE • LLYX\n982.35\nExample Pharma & Co\n0%\n6.2% ↑ $6,876.45\nNASDAQ • WRNW\n0.057\nZenith Systems Warrant\n0%\n$0.01\nNASDAQ • WRNL\n0.091\nZenith Systems Rights\n0%\n$0.05\nNASDAQ • SPXV\n133.7\n…Space Venture Technolo\n0%\n9.4% ↑ $2,005.5\nקרן סל\n2,500 99דמה.XTF\n+0.20%\nTLV • 1234599 מספר ני\"ע\n5.50% ↑ ₪12,500.00\nאחר\n150.2\nחיסכון כחול 7\n₪150.2\nהוראות\nניירות במעקב\nמסחר\nהתיק שלי\nראשי"
+        ],
+        "shuffled_columns": [
+          "11:41\nמיטב:טרייד\n123,456.78₪\nתיק אישי\n₪3.21\n(0%)\nשינוי יומי\n₪12,345.67\n(11.11%)\nשינוי מעלות\n$2,222.33\n-100.50₪\nיתרות\nפירוט מזומן ובטחונות\nמיון\nהאחזקות שלי\nקרנות\nני\"ע זרים\nהכל\nניירות זרים\nNASDAQ • ZQQ\nZQQ\n↑ 8.5%\n4,899.20$\n612.4\n0%\nNYSE • SPYZ\nSPYZ\n↓ -3.2%\n3,552.50$\n710.5\n0%\nNASDAQ • CEGX\nCornerstone Power Corp\n↓ -3.9%\n289.13\n0%",
+          "11:41\nמיטב:טרייד\nNASDAQ • CEGX\nCornerstone Power Corp\n↓ -3.9%\n2.891.30$\n289.13\n0%\nNYSE • ITAX\n...Ishares Example Aerospace & De\n↓ -7.3%\n2,621.40$\n218.45\n0%\nNYSE • LLYX\nExample Pharma & Co\n6,876.4$\n982.35\n0%",
+          "11:41\nמיטב:טרייד\nNYSE • LLYX\nExample Pharma & Co\n↑ 6.2%\n6,876.45$\n982.35\n0%\nNASDAQ • WRNW\nZenith Systems Warrant\n0.01$\n0.057\n0%\nNASDAQ • WRNL\nZenith Systems Rights\n0.05$\n0.091\n0%\nNASDAQ • SPXV\n…Space Venture Technolo\n↑ 9.4%\n2,005.5$\n133.7\n0%\nקרן סל\n99דמה.XTF\n2,500\n+0.20%\nTLV • 1234599 מספר ני\"ע\n₪12,500.00\n↑ 5.50%\nאחר\nחיסכון כחול 7\n150.2\n₪150.2\nהוראות\nניירות במעקב\nמסחר\nהתיק שלי\nראשי"
+        ],
+        "hebrew_reversed": [
+          "11:41\nףירט:בטימ\nישיא קית\n₪123,456.78\nימוי יוניש\n₪3.21\n%(0)\nתולעמ יוניש\n₪12,345.67\n%(11.11)\nתורתי\n₪-100.50\n$2,222.33\nתונחטבו ןמזמ טורפ\nילש תוקזחאה\nןויימ\nלכה\nםירז ע\"ינ\nתונרק\nםירז תוריינ\nZQQ • NASDAQ\nZQQ\n612.4\n%0\n$4,899.20 ↑ %8.5\nSPYZ • NYSE\nSPYZ\n710.5\n%0\n$3,552.50 ↓ %3.2-\nCEGX • NASDAQ\nCornerstone Power Corp\n289.13\n%0",
+          "11:41\nףירט:בטימ\nCEGX • NASDAQ\nCornerstone Power Corp\n289.13\n%0\n$2.891.30 ↓ %3.9-\nITAX • NYSE\n...Ishares Example Aerospace & De\n218.45\n%0\n$2,621.40 ↓ %7.3-\nLLYX • NYSE\nExample Pharma & Co\n982.35\n%0\n$6,876.4",
+          "11:41\nףירט:בטימ\nLLYX • NYSE\nExample Pharma & Co\n982.35\n%0\n$6,876.45 ↑ %6.2\nWRNW • NASDAQ\nZenith Systems Warrant\n0.057\n%0\n$0.01\nWRNL • NASDAQ\nZenith Systems Rights\n0.091\n%0\n$0.05\nSPXV • NASDAQ\n…Space Venture Technolo\n133.7\n%0\n$2,005.5 ↑ %9.4\nלס ןרק\n2,500\n99דמה.XTF\n%0.20+\n1234599 • TLV ע\"ינ רפסמ\n₪12,500.00 ↑ %5.50\nרחא\n150.2\n7 לוחכ ןוכסיח\n150.2₪\nתוארוה\nבקעמב תוריינ\nרחסמ\nילש קיתה\nישאר"
+        ]
+      },
+      "expected": {
+        "layout": "meitav_trade",
+        "rows": [
+          {
+            "name": "ZQQ",
+            "symbol": "ZQQ",
+            "tase_number": null,
+            "quantity": 8,
+            "price": 612.4,
+            "value": 4899.2,
+            "cost": 564.424,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "SPYZ",
+            "symbol": "SPYZ",
+            "tase_number": null,
+            "quantity": 5,
+            "price": 710.5,
+            "value": 3552.5,
+            "cost": 733.9876,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "Cornerstone Power Corp",
+            "symbol": "CEGX",
+            "tase_number": null,
+            "quantity": 10,
+            "price": 289.13,
+            "value": 2891.3,
+            "cost": 300.8637,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred",
+              "duplicate_removed"
+            ]
+          },
+          {
+            "name": "Ishares Example Aerospace & De",
+            "symbol": "ITAX",
+            "tase_number": null,
+            "quantity": 12,
+            "price": 218.45,
+            "value": 2621.4,
+            "cost": 235.6526,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "Example Pharma & Co",
+            "symbol": "LLYX",
+            "tase_number": null,
+            "quantity": 7,
+            "price": 982.35,
+            "value": 6876.45,
+            "cost": 925.0,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred",
+              "duplicate_removed"
+            ]
+          },
+          {
+            "name": "Zenith Systems Warrant",
+            "symbol": "WRNW",
+            "tase_number": null,
+            "quantity": null,
+            "price": 0.057,
+            "value": 0.01,
+            "cost": null,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "quantity_uncertain"
+            ]
+          },
+          {
+            "name": "Zenith Systems Rights",
+            "symbol": "WRNL",
+            "tase_number": null,
+            "quantity": null,
+            "price": 0.091,
+            "value": 0.05,
+            "cost": null,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "quantity_uncertain"
+            ]
+          },
+          {
+            "name": "Space Venture Technolo",
+            "symbol": "SPXV",
+            "tase_number": null,
+            "quantity": 15,
+            "price": 133.7,
+            "value": 2005.5,
+            "cost": 122.2121,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "99דמה.XTF",
+            "symbol": null,
+            "tase_number": "1234599",
+            "quantity": 500,
+            "price": 2500,
+            "value": 12500.0,
+            "cost": 2369.6682,
+            "currency": "ILS",
+            "unit": "agorot",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "חיסכון כחול 7",
+            "symbol": null,
+            "tase_number": null,
+            "quantity": 1,
+            "price": 150.2,
+            "value": 150.2,
+            "cost": null,
+            "currency": "ILS",
+            "unit": "ILS",
+            "flags": []
+          }
+        ]
+      }
     }
   ]
 }

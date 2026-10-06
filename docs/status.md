@@ -231,3 +231,8 @@ Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after a
 - Import review: a TASE-number row without a symbol shows a search hint and the unmatched flag says why.
 - Checks: backend 1907 passed / 35 skipped, ruff/format/mypy clean; frontend 696 vitest, e2e 105 + real 1, build ok.
 - Step 1 (Israeli directory from TASE Data Hub) waits for the user: product registration ("Securities - Basic" may be paid; request goes to TASE's data sales team), then `TASE_API_KEY` on Render and a sample of the "Traded Securities List" answer (`GET /v1/basic-securities/trade-securities-list/{year}/{month}/{day}`, base `https://datawise.tase.co.il`, headers `accept`, `accept-language: he-IL`, `apikey`; limit 10 requests per 2 s).
+
+## 2026-10-06 (Update 11: Meitav full-portfolio screens)
+- Meitav parser (server and device, same logic): the summary header (`תיק אישי`, daily change, total gain, balance, tabs, `האחזקות שלי`, `מיון`) never starts a card; simple (no exchange line, no P&L %) cards are only read once the list has started (first anchored card or section bar); `ניירות זרים` is a section bar; `3.211.44` reads as 3,211.44; the merge keeps the complete copy of a cut-off card (same price, no P&L %) with `duplicate_removed` and no conflict. New invented fixture cases `full_portfolio_summary_header` and `overlap_three_screens_cut_cards` (3 OCR variants each).
+- Checks: backend 1916 passed / 35 skipped, ruff/format/mypy clean; frontend 704 vitest, e2e 105 + real 1, build ok.
+- Open idea: compare the rows' total with the header total (needs the FX rate).

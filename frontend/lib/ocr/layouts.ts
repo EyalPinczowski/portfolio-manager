@@ -44,6 +44,11 @@ const close = (a: number | null, b: number | null): boolean =>
   a === null || b === null ? a === b : Math.abs(a - b) <= 1e-9 + 1e-6 * Math.max(Math.abs(a), Math.abs(b));
 const complete = (r: ImportRow): boolean => r.value !== null && r.value !== undefined && r.price !== null && r.price !== undefined;
 
+/** `a` is a cut-off copy of `b`: the same price, but the card's bottom (the P&L %, so the cost) was not on that screen. */
+function cutOffCopy(a: ImportRow, b: ImportRow): boolean {
+  return close(a.price ?? null, b.price ?? null) && a.cost == null && b.cost != null;
+}
+
 function same(a: ImportRow, b: ImportRow): boolean {
   if (a.symbol && b.symbol) return a.symbol === b.symbol;
   if (a.tase_number && b.tase_number) return a.tase_number === b.tase_number;
@@ -68,7 +73,13 @@ export function mergeScreenshots(parts: ParsedRows[]): ParsedRows {
       if (at < 0) { rows.push({ ...r }); meta.push({ ...m }); return; }
       const old = rows[at];
       const oldMeta = meta[at];
-      if (complete(old) && complete(r) && !(close(old.price ?? null, r.price ?? null) && close(old.value ?? null, r.value ?? null))) {
+      if (complete(old) && complete(r) && cutOffCopy(old, r)) {
+        rows[at] = { ...r, name: r.name || old.name };
+        meta[at] = { ...m, duplicate_removed: true };
+      } else if (complete(old) && complete(r) && cutOffCopy(r, old)) {
+        rows[at] = { ...old, name: old.name || r.name };
+        meta[at] = { ...oldMeta, duplicate_removed: true };
+      } else if (complete(old) && complete(r) && !(close(old.price ?? null, r.price ?? null) && close(old.value ?? null, r.value ?? null))) {
         rows[at] = { ...r, name: r.name || old.name };
         meta[at] = { ...m, conflict: { price: old.price ?? null, value: old.value ?? null } };
       } else if (!complete(old) && complete(r)) {

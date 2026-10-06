@@ -253,3 +253,33 @@ def test_no_amount_no_card_for_the_status_bar_and_header() -> None:
         card("11:41", "מיטב:טרייד", "NYSE • VNTQ", "84.15", "$1,683.00")
     )
     assert len(rows) == 1 and rows[0].symbol == "VNTQ"
+
+
+def test_summary_header_lines_never_become_rows() -> None:
+    _, rows = parse_screenshot_text(
+        card(
+            "מיטב:טרייד",
+            "תיק אישי",
+            "₪187,654.32",
+            "שינוי יומי ₪3.12",
+            "שינוי מעלות ₪31,276.40",
+            "יתרות ₪-611.20 $4,120.55",
+            "האחזקות שלי",
+            "ניירות זרים",
+            "NYSE • VNTQ",
+            "84.15",
+            "$1,683.00",
+        )
+    )
+    assert [r.symbol for r in rows] == ["VNTQ"]
+
+
+def test_a_simple_card_needs_the_list_to_have_started() -> None:
+    from app.importer.meitav import parse_meitav_text
+
+    assert parse_meitav_text("שם כלשהו\n₪100.00\n10") is None
+
+
+def test_a_value_with_a_bad_thousands_mark_and_a_leading_ellipsis() -> None:
+    r = one(card("NASDAQ • CEGX", "289.13", "...Cornerstone Power", "$2.891.30"))
+    assert r.value == 2891.3 and r.quantity == 10 and r.name == "Cornerstone Power"

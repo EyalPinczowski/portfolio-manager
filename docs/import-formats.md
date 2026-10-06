@@ -69,3 +69,11 @@ Status (2026-10-06): **built** as `ibi_cards` (`backend/app/importer/ibi.py`, po
 - **Detection:** a number next to `יחידות` (`10 יחידות`, or `יחידות 10` when OCR reverses it). Each such line anchors one card; the card is the few lines around it (one line, or stacked in any order).
 - **Rules:** quantity = the number next to `יחידות`; price = the nearest decimal that is not a signed amount; `$` on the day amount = USD; `₪` = ILS, with unit `agorot` when the amount fits `quantity x price/100 x chip` better than `quantity x price x chip`, else `ILS`; no amount sign = guess from the name (ticker = USD, Hebrew name = ILS). Value and cost stay empty. Every row keeps `currency_changed`, so the user confirms currency and unit before saving.
 - **Example (invented):** `ABCD 12 יחידות 41.35 +0.80% +$3.97` gives quantity 12, price 41.35, USD. `הראל פיננסים 3 יחידות 98,400.00 +1.20% +₪35.42` gives quantity 3, price 98,400.00, ILS in agorot.
+
+### Full portfolio screen (Update 11)
+
+The first screen has a summary header (`תיק אישי`, total, `שינוי יומי`, `שינוי מעלות`, `יתרות`, `פירוט מזומן ובטחונות`,
+`האחזקות שלי`, `מיון`, tabs `הכל / ני"ע זרים / קרנות`) and a section bar `ניירות זרים`. Those words never start a card;
+a simple card (no exchange line) is only read after the first anchored card or section bar. `2.891.30` reads as 2,891.30;
+a leading `…` in a name is dropped; a card cut off at the bottom of one screen is replaced by the complete copy from the
+next (same price, no P&L % on the cut copy) without a conflict.

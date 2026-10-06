@@ -20,7 +20,12 @@ const TASE_NO = "\\d{6,8}";
 const ARROWS = /[↑↓▲▼⬆⬇△▽⇧⇩⬈⬊↗↘]/u;
 const revStr = (s: string): string => Array.from(s).reverse().join("");
 /** Section header words (letters only), as printed and as a right-to-left line may come out reversed. */
-const SECTION_HEADERS = new Set(["קרןסל", "קרנותסל", "אחר", "מניות", "תעודותסל", "קרנותנאמנות"].flatMap((h) => [h, revStr(h), "ןרקלס", "תונרקלס"]));
+const SECTION_HEADERS = new Set(["קרןסל", "קרנותסל", "אחר", "מניות", "תעודותסל", "קרנותנאמנות", "ניירותזרים"].flatMap((h) => [h, revStr(h), "ןרקלס", "תונרקלס", "םירזתוריינ", "תוריינםירז", "זריםניירות"]));
+/** Summary header and list furniture of the full portfolio screen (letters only, as printed and reversed): they never
+ *  start a card, whatever amount sits on the same line. */
+const FURNITURE: string[][] = [["תיק", "אישי"], ["שינוי", "יומי"], ["שינוי", "מעלות"], ["יתרות"], ["פירוט", "מזומן", "ובטחונות"], ["האחזקות", "שלי"], ["מיון"], ["הכל"], ["ניע", "זרים"], ["קרנות"], ["מיטב", "טרייד"], ["מיטב"], ["טרייד"]];
+const furnitureForms = (w: string[]): string[] => [w.join(""), revStr(w.join("")), [...w].reverse().join(""), w.map(revStr).join("")];
+const FURNITURE_TOKENS = new Set(FURNITURE.flatMap(furnitureForms));
 /** Bottom navigation words (Hebrew app tab bar), as printed and reversed. */
 const NAV_TOKENS = new Set(["הוראות", "ניירות", "במעקב", "מסחר", "התיק", "שלי", "ראשי", "בית", "תיק", "שוק", "עוד"].flatMap((w) => [w, revStr(w)]));
 
@@ -75,18 +80,19 @@ export function detectMeitav(text: string): boolean {
 }
 
 interface Block { anchor: Anchor; lines: string[]; hasAmount: boolean }
-interface Entry { text: string; kind: "line" | "section" | "nav"; anchors: Anchor[]; labeled: boolean }
+interface Entry { text: string; kind: "line" | "section" | "furniture" | "nav"; anchors: Anchor[]; labeled: boolean }
 
 /** OCR often prints a minus as an en/em dash or a Unicode hyphen: a dash glued to a digit or % is a minus. */
 const MINUS_RE = /(?<!\d)[−–—‐‑](?=[\d%])/g;
 const SIMPLE: Anchor = { start: 0, end: 0, exchange: "", ticker: "", strict: false };
-const NUM_G = "\\d[\\d,]*(?:\\.\\d+)?";
+const NUM_G = "\\d[\\d,]*(?:\\.\\d+)*";
 
 const hasAmount = (s: string): boolean => AMOUNT_PRESENT.test(s);
 const isTextLine = (s: string): boolean => (s.replace(new RegExp(NUM_G, "g"), " ").match(/\p{L}/gu) ?? []).length >= 3;
 /** A figure-only line that can be a price: no letters, no amount, no percent. */
 const isPriceLine = (s: string): boolean => !isTextLine(s) && !hasAmount(s) && !s.includes("%") && /\d/.test(s);
 const isPercentLine = (s: string): boolean => s.includes("%") && !isTextLine(s) && !hasAmount(s);
+const isFurnitureLine = (line: string): boolean => FURNITURE_TOKENS.has(line.replace(/[^\p{L}]/gu, ""));
 const isNavLine = (line: string): boolean => {
   if (/[\d$₪%]/.test(line)) return false;
   const words = line.match(/\p{L}+/gu) ?? [];
@@ -99,6 +105,7 @@ function prepare(text: string): Entry[] {
     let line = raw.replace(MINUS_RE, "-").replace(/−/g, "-").trim();
     if (!line) continue;
     if (isSectionLine(line)) { out.push({ text: line, kind: "section", anchors: [], labeled: false }); continue; }
+    if (isFurnitureLine(line)) { out.push({ text: line, kind: "furniture", anchors: [], labeled: false }); continue; }
     if (isNavLine(line)) { out.push({ text: line, kind: "nav", anchors: [], labeled: false }); continue; }
     let anchors = findAnchors(line);
     let labeled = false;
@@ -176,13 +183,15 @@ function toBlocks(text: string): Block[] {
   const blocks: Block[] = [];
   let cur: Block | null = null;
   let orphans: string[] = [];
+  let started = false; // the list has started: a card or a section bar was seen
   const flush = () => {
-    for (const g of simpleCards(orphans)) blocks.push({ anchor: SIMPLE, lines: g, hasAmount: true });
+    // Text above the list (summary header, totals, tabs) is never a simple card.
+    if (started) for (const g of simpleCards(orphans)) blocks.push({ anchor: SIMPLE, lines: g, hasAmount: true });
     orphans = [];
   };
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
-    if (e.kind !== "line") { flush(); cur = null; continue; }
+    if (e.kind !== "line") { flush(); cur = null; started = started || e.kind === "section"; continue; }
     if (claimed.has(i)) continue;
     if (e.anchors.length === 0) {
       const closed = cur !== null && !!cur.anchor.labeled && cur.hasAmount;
@@ -196,6 +205,7 @@ function toBlocks(text: string): Block[] {
       continue;
     }
     flush();
+    started = true;
     for (let j = 0; j < e.anchors.length; j++) {
       const a = e.anchors[j];
       const from = j === 0 ? 0 : a.start;
@@ -211,8 +221,11 @@ function toBlocks(text: string): Block[] {
   return blocks;
 }
 
-const NUM = "\\d[\\d,]*(?:\\.\\d+)?";
-const toNum = (raw: string): number => Number(raw.replace(/,/g, "").replace(/[.,]+$/, ""));
+const NUM = "\\d[\\d,]*(?:\\.\\d+)*"; // `2.891.30`: the earlier dots are thousands marks
+const toNum = (raw: string): number => {
+  const parts = raw.replace(/,/g, "").replace(/[.,]+$/, "").split(".");
+  return Number(parts.length > 2 ? `${parts.slice(0, -1).join("")}.${parts[parts.length - 1]}` : parts.join("."));
+};
 const decimals = (raw: string): number => (/\.(\d+)$/.exec(raw.replace(/[.,]+$/, ""))?.[1].length ?? 0);
 const blank = (s: string, from: number, to: number): string => s.slice(0, from) + " ".repeat(to - from) + s.slice(to);
 

@@ -28,13 +28,46 @@ STRICT_BULLET = "[•·●∙▪*|]"
 LOOSE_BULLET = "[•·●∙▪*|:+–—-]"
 TICKER = "[A-Z][A-Z0-9]{0,5}(?:[.-][A-Z]{1,2})?"
 TASE_NO = "[0-9]{6,8}"
-NUM = r"[0-9][0-9,]*(?:\.[0-9]+)?"
+NUM = r"[0-9][0-9,]*(?:\.[0-9]+)*"  # `2.891.30`: the earlier dots are thousands marks
 ARROWS = frozenset("↑↓▲▼⬆⬇△▽⇧⇩⬈⬊↗↘")
 US_EXCHANGES = ("NASDAQ", "NYSE", "AMEX")
 
 # Section header words (letters only), as printed and as a right-to-left line may come out.
-_HEADERS = ("קרןסל", "קרנותסל", "אחר", "מניות", "תעודותסל", "קרנותנאמנות")
-SECTION_HEADERS = frozenset(w for h in _HEADERS for w in (h, h[::-1], "ןרקלס", "תונרקלס"))
+_HEADERS = ("קרןסל", "קרנותסל", "אחר", "מניות", "תעודותסל", "קרנותנאמנות", "ניירותזרים")
+SECTION_HEADERS = frozenset(
+    w
+    for h in _HEADERS
+    for w in (h, h[::-1], "ןרקלס", "תונרקלס", "םירזתוריינ", "תוריינםירז", "זריםניירות")
+)
+# Summary header and list furniture of the full portfolio screen (letters only, as printed and
+# reversed): they never start a card, whatever amount sits on the same line.
+_FURNITURE = (
+    ("תיק", "אישי"),
+    ("שינוי", "יומי"),
+    ("שינוי", "מעלות"),
+    ("יתרות",),
+    ("פירוט", "מזומן", "ובטחונות"),
+    ("האחזקות", "שלי"),
+    ("מיון",),
+    ("הכל",),
+    ("ניע", "זרים"),
+    ("קרנות",),
+    ("מיטב", "טרייד"),
+    ("מיטב",),
+    ("טרייד",),
+)
+
+
+def _furniture_forms(words: tuple[str, ...]) -> list[str]:
+    return [
+        "".join(words),
+        "".join(words)[::-1],
+        "".join(reversed(words)),
+        "".join(w[::-1] for w in words),
+    ]
+
+
+FURNITURE_TOKENS = frozenset(f for words in _FURNITURE for f in _furniture_forms(words))
 # Bottom navigation words (Hebrew app tab bar), as printed and reversed.
 _NAV = ("הוראות", "ניירות", "במעקב", "מסחר", "התיק", "שלי", "ראשי", "בית", "תיק", "שוק", "עוד")
 NAV_TOKENS = frozenset(w for n in _NAV for w in (n, n[::-1]))
@@ -131,7 +164,7 @@ class _Block:
 @dataclass
 class _Entry:
     text: str
-    kind: str  # "line", "section" (grey bar) or "nav" (bottom navigation)
+    kind: str  # "line", "section" (grey bar), "furniture" (summary header) or "nav" (bottom bar)
     anchors: list[Anchor]
     labeled: bool = False
 
@@ -164,6 +197,10 @@ def _is_percent_line(s: str) -> bool:
     return "%" in s and not _is_text_line(s) and not _has_amount(s)
 
 
+def _is_furniture_line(line: str) -> bool:
+    return "".join(ch for ch in line if ch.isalpha()) in FURNITURE_TOKENS
+
+
 def _is_nav_line(line: str) -> bool:
     if any(ch.isdigit() or ch in "$₪%" for ch in line):
         return False
@@ -179,6 +216,9 @@ def _prepare(text: str) -> list[_Entry]:
             continue
         if _is_section_line(line):
             out.append(_Entry(line, "section", []))
+            continue
+        if _is_furniture_line(line):
+            out.append(_Entry(line, "furniture", []))
             continue
         if _is_nav_line(line):
             out.append(_Entry(line, "nav", []))
@@ -260,16 +300,20 @@ def _to_blocks(text: str) -> list[_Block]:
     blocks: list[_Block] = []
     cur: _Block | None = None
     orphans: list[str] = []
+    started = False  # the list has started: a card or a section bar was seen
 
     def flush() -> None:
         nonlocal orphans
-        blocks.extend(_Block(_SIMPLE, g, True) for g in _simple_cards(orphans))
+        # Text above the list (summary header, totals, tabs) is never a simple card.
+        if started:
+            blocks.extend(_Block(_SIMPLE, g, True) for g in _simple_cards(orphans))
         orphans = []
 
     for i, e in enumerate(entries):
         if e.kind != "line":
             flush()
             cur = None
+            started = started or e.kind == "section"
             continue
         if i in claimed:
             continue
@@ -283,6 +327,7 @@ def _to_blocks(text: str) -> list[_Block]:
                 orphans.append(e.text)
             continue
         flush()
+        started = True
         for j, a in enumerate(e.anchors):
             start = 0 if j == 0 else a.start
             end = e.anchors[j + 1].start if j + 1 < len(e.anchors) else len(e.text)
@@ -297,7 +342,10 @@ def _to_blocks(text: str) -> list[_Block]:
 
 
 def _to_num(raw: str) -> float:
-    return float(raw.replace(",", "").rstrip(".,"))
+    parts = raw.replace(",", "").rstrip(".,").split(".")
+    if len(parts) > 2:  # `2.891.30`: the earlier dots are thousands marks
+        parts = ["".join(parts[:-1]), parts[-1]]
+    return float(".".join(parts))
 
 
 def _decimals(raw: str) -> int:
