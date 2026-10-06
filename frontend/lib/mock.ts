@@ -80,6 +80,7 @@ const PORTFOLIOS: Portfolio[] = [
 const valueIls = (s: Seed) => s.qty * s.price * (s.cur === "USD" ? FX : 1);
 const costIls = (s: Seed) => (s.cost === null ? null : s.qty * s.cost * (s.cur === "USD" ? FX : 1));
 
+const costCurs = new Map<number, "ILS" | "USD">();
 function holdingsFor(pid: number): Holding[] {
   const seeds = SEEDS.filter((s) => s.pid === pid);
   const total = seeds.reduce((a, s) => a + valueIls(s), 0);
@@ -98,6 +99,7 @@ function holdingsFor(pid: number): Holding[] {
         flags: s.fund.manual !== null ? ["monthly_data_only", "no_price_manual_value"] : ["monthly_data_only", "no_price_manual_value", s.fund.costOnly ? "cost_only" : "no_value"],
         credit: "Data: GemelNet (Ministry of Finance), personal non-commercial use.",
       } } : {}),
+      avg_cost: s.cost, cost_currency: s.cost === null ? null : costCurs.get(s.id) ?? s.cur,
       weight_pct: (v / total) * 100, horizon: s.horizon,
       stop_tp_status: s.horizon ? "missing" : "needs_horizon",
       score_card: {
@@ -424,8 +426,17 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
   }
   if (p === "/portfolios/combined/summary") return summaryFor("combined");
   if ((m = p.match(/^\/portfolios\/(\d+)\/summary$/))) return summaryFor(Number(m[1]));
+  if ((m = p.match(/^\/portfolios\/(\d+)\/holdings\/(\d+)$/)) && method === "DELETE") {
+    const i = SEEDS.findIndex((x) => x.id === Number(m![2]) && x.pid === Number(m![1]));
+    if (i < 0) throw new ApiError(404, "Holding not found");
+    SEEDS.splice(i, 1);
+    return undefined;
+  }
   if ((m = p.match(/^\/portfolios\/(\d+)\/holdings\/(\d+)$/)) && method === "PATCH") {
     const s = SEEDS.find((x) => x.id === Number(m![2]));
+    if (s && typeof b.quantity === "number") s.qty = b.quantity;
+    if (s && "avg_cost" in b) s.cost = typeof b.avg_cost === "number" ? b.avg_cost : null;
+    if (s && (b.cost_currency === "ILS" || b.cost_currency === "USD")) costCurs.set(s.id, b.cost_currency);
     if (s && "horizon" in b) s.horizon = (b.horizon as Horizon | null) ?? null;
     if (s?.fund && typeof b.manual_value_ils === "number") { s.fund.manual = b.manual_value_ils; s.price = b.manual_value_ils; s.fund.asOf = typeof b.manual_value_as_of === "string" ? b.manual_value_as_of : s.fund.asOf; }
     return holdingsFor(Number(m[1])).find((h) => h.id === Number(m![2]));

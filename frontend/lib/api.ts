@@ -32,7 +32,7 @@ export type RiskPreset = { name: string } & RiskFilter;
 export type Portfolio = Narrow<S["PortfolioOut"], { base_currency: "ILS" | "USD"; risk_filter: RiskFilter | null }>;
 export type ScoreCardMini = S["ScoreCardMini"];
 export type HoldingCreate = S["HoldingCreate"];
-export type Holding = Narrow<S["HoldingOut"], { asset_type: AssetType; market: MarketKey }>;
+export type Holding = Narrow<S["HoldingOut"], { asset_type: AssetType; market: MarketKey }> & { portfolio_id?: number };
 
 /** The typed "Why?" (every field after `summary` is optional: score cards cached before v1 lack them). */
 export type Explanation = S["Explanation"];
@@ -264,8 +264,10 @@ export const api = {
   holdings: (id: number) => get<Holding[]>(`/portfolios/${id}/holdings`),
   /** Manual entry (no screenshot). 409 = already in the portfolio, 422 = invalid symbol or number, 429 = rate limit. */
   addHolding: (pid: number, b: HoldingCreate) => post<Holding>(`/portfolios/${pid}/holdings`, b),
-  patchHolding: (pid: number, hid: number, b: Pick<S["HoldingPatch"], "horizon" | "quantity" | "manual_value_ils" | "manual_value_as_of" | "fund_name" | "track">) =>
+  patchHolding: (pid: number, hid: number, b: Pick<S["HoldingPatch"], "horizon" | "quantity" | "avg_cost" | "cost_currency" | "manual_value_ils" | "manual_value_as_of" | "fund_name" | "track">) =>
     patch<Holding>(`/portfolios/${pid}/holdings/${hid}`, b),
+  /** Remove a holding by hand (204). 404 = not yours / not found. */
+  deleteHolding: (pid: number, hid: number) => del<void>(`/portfolios/${pid}/holdings/${hid}`),
   /** Upcoming ex/pay dates, per-symbol statuses and a 12-month income estimate (an estimate, never a promise). */
   dividends: (pid: number) => get<Dividends>(`/portfolios/${pid}/dividends`),
   /** Israeli funds (GemelNet). `data_status` says why a list is empty: no_data / unavailable / rate_limited. */

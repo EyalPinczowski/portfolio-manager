@@ -211,6 +211,8 @@ The panel and the review share a filter bar. Changing a filter recalculates the 
 | **6 months** | Weekly, weekly ATR | ~2× weekly ATR, SMA 100 / weekly swing low | Analyst mean/high target, 3R, Fibonacci extensions |
 | **1 year+** | Weekly / monthly | Below SMA 200 / major multi-month support | Analyst high target, long-term resistance, trailing only |
 
+Holdings can also be added, edited (quantity, average cost, cost currency, holding period) and removed by hand, without a screenshot; removing always asks first.
+
 **There is no default holding period. The app always asks.** When you add a holding (or confirm it from a screenshot), the app asks "How long do you plan to hold this?". No stop-loss or take-profit is calculated until you answer. In the full portfolio review, holdings without an answer are listed first with a quick picker. Each holding keeps its own answer, e.g. a long-term core position next to a 1-month trade, and you can change it at any time. A filter can override all of them at once for a "what if" view.
 
 **2. Risk level.** You choose how much risk you accept, and there are several ways to set it:

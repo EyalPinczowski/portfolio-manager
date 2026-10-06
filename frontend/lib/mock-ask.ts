@@ -64,7 +64,24 @@ export function mockAskDelete(id: number): undefined {
   return undefined;
 }
 
-const role = <T,>(name: string, value: T) => ({ role: name, value, source: "template" as const, status: "ok" as const, confidence: 0.5, citations: [], prompt_tokens: 0, budget: 0, notes: [] });
+const role = <T,>(name: string, value: T, source: "llm" | "cache" | "template" = "llm", status: "ok" | "no_coverage" = "ok") => ({ role: name, value, source, status, confidence: 0.5, citations: [], prompt_tokens: 0, budget: 0, notes: [] });
+
+/** The basic-summary case: no AI model, no profile, no news, few checks with data (an ETF, for example). */
+export function mockCommitteeEmpty(symbol: string): CommitteeOut {
+  const base = mockCommittee(symbol);
+  const empty = { adjustment: 0, adjustment_reason: "", adjustment_code: "no_adjustment", responses: [] };
+  return {
+    ...base, llm_used: false, data_completeness_pct: 19, data_completeness_low: true,
+    report: {
+      symbol: base.symbol,
+      profile: role("company_profile", { claims: [] }, "template", "no_coverage"),
+      news: role("news", { items: [] }, "template", "no_coverage"),
+      bear: role("bear", { risks: [{ code: "no_chart_signal", text: "", severity: 2, chunk_ids: [], fact_refs: ["score"], what_would_invalidate: "" }] }, "template"),
+      cio: role("cio", empty, "template"),
+      cio_score: { base_score: null, adjustment: 0, adjusted_score: null, assessment: empty },
+    },
+  } as CommitteeOut;
+}
 
 export function mockCommittee(symbol: string): CommitteeOut {
   const sym = symbol.toUpperCase();
@@ -72,16 +89,18 @@ export function mockCommittee(symbol: string): CommitteeOut {
   if (sym === "NOTFOUNDX") throw new ApiError(404, "Symbol not found");
   const assessment = {
     adjustment: -4,
-    adjustment_reason: "Two of the three risks stay open, so the chart score is lowered a little.",
+    adjustment_code: "", adjustment_reason: "Two of the three risks stay open, so the chart score is lowered a little.",
     responses: [
-      { risk_index: 0, stance: "rebutted" as const, reason: "Revenue is spread over several regions, which limits the effect of one market.", chunk_ids: [] },
-      { risk_index: 1, stance: "accepted" as const, reason: "Debt is above the sector median and rates are still high.", chunk_ids: [] },
-      { risk_index: 2, stance: "unresolved" as const, reason: "The filing does not say how much of the revenue comes from the largest customer.", chunk_ids: [] },
+      { code: "", risk_index: 0, stance: "rebutted" as const, reason: "Revenue is spread over several regions, which limits the effect of one market.", chunk_ids: [] },
+      { code: "", risk_index: 1, stance: "accepted" as const, reason: "Debt is above the sector median and rates are still high.", chunk_ids: [] },
+      { code: "", risk_index: 2, stance: "unresolved" as const, reason: "The filing does not say how much of the revenue comes from the largest customer.", chunk_ids: [] },
     ],
   };
   return {
-    symbol: sym, generated_at: AT, cached: false, llm_used: false, runs_left_today: 9, runs_per_day: 10, launch_gate_open: false,
-    launch_gate_reasons: ["No passing backtest for the active weights yet.", "Paper trading: fewer than 4 weeks of results."],
+    symbol: sym, generated_at: AT, cached: false, llm_used: true, runs_left_today: 9, runs_per_day: 10, launch_gate_open: false,
+    launch_gate_reasons: ["No backtest has been run for the active weights configuration.", "Paper trading has run 1.0 of 4 required weeks."],
+    launch_gate_codes: [{ code: "no_backtest", params: {} }, { code: "paper_weeks", params: { weeks_running: 1, weeks: 4, recorded: 3 } }],
+    data_completeness_pct: 82, data_completeness_low: false,
     disclaimer: "Not financial advice.",
     report: {
       symbol: sym,
@@ -95,9 +114,9 @@ export function mockCommittee(symbol: string): CommitteeOut {
         { text: "A new product line was announced for next year.", tone: "neutral" as const, chunk_ids: [] },
       ] }),
       bear: role("bear", { risks: [
-        { text: "Revenue depends on a small number of markets.", severity: 3, chunk_ids: [], fact_refs: [], what_would_invalidate: "Growth outside the main markets above 20% for two quarters." },
-        { text: "Debt is high compared with the sector.", severity: 4, chunk_ids: [], fact_refs: [], what_would_invalidate: "" },
-        { text: "One customer may account for a large share of revenue.", severity: 2, chunk_ids: [], fact_refs: [], what_would_invalidate: "" },
+        { code: "", text: "Revenue depends on a small number of markets.", severity: 3, chunk_ids: [], fact_refs: [], what_would_invalidate: "Growth outside the main markets above 20% for two quarters." },
+        { code: "", text: "Debt is high compared with the sector.", severity: 4, chunk_ids: [], fact_refs: [], what_would_invalidate: "" },
+        { code: "", text: "One customer may account for a large share of revenue.", severity: 2, chunk_ids: [], fact_refs: [], what_would_invalidate: "" },
       ] }),
       cio: role("cio", assessment),
       cio_score: { base_score: 31.5, adjustment: -4, adjusted_score: 27.5, assessment },

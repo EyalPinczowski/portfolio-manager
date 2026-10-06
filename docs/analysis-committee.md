@@ -136,3 +136,9 @@ The idea from the article: give the agents **ready-made data tools** instead of 
 
   Expected wait: about 6–10 weeks. Until then, the app shows the live paper track record. The thresholds live in config.
 - No connection to a real brokerage at any point. The app only suggests trades.
+
+## Deep review output contract (Update 12, 2026-10-06)
+- **Codes, not sentences.** Template output (`committee/roles.py`) and launch-gate reasons shown in the committee carry a stable `code` plus `params`; the frontend maps them through next-intl (`committee.risk.*`, `committee.gateReason.*`, he and en). Template risk codes: `no_chart_signal`, `negative_chart_score` (`BearRisk.code`, `text` empty). `CIOAssessment.adjustment_code` is `no_adjustment` for the template. `CommitteeOut.launch_gate_codes` carries `{code, params}` (the English `launch_gate_reasons` stays for old clients). Model-written text has no code and is shown as written.
+- **No circular template answers.** The template Bear no longer raises "signal confidence is low"; the template CIO returns no responses, so it never accepts a template risk. Model answers must have text (empty-text risks or replies fail the check and fall back to the template).
+- **Data completeness** (`CommitteeOut.data_completeness_pct`, `data_completeness_low`, threshold `committee_low_completeness`, default 0.5) is the share of chart-signal weight that had data, not model certainty. It is shown once, as a percentage.
+- **UI:** if profile and news are both `no_coverage` and every role is a template, one card is shown. Otherwise empty profile and news sections are hidden, and one banner replaces per-section template chips.

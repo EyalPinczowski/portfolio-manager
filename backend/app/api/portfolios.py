@@ -160,6 +160,8 @@ def holding_outs(
                 pnl=pnl,  # type: ignore[arg-type]
                 weight_pct=round(v.value_ils / total * 100.0, 2) if total else 0.0,
                 horizon=h.horizon,  # type: ignore[arg-type]
+                avg_cost=h.avg_cost,
+                cost_currency=h.cost_currency,
                 stop_tp_status=(
                     "no_levels"
                     if fund is not None

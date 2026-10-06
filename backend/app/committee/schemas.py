@@ -45,8 +45,12 @@ class NewsReport(BaseModel):
 
 
 class BearRisk(BaseModel):
+    """`code` is set only by the template: a stable id the UI translates while
+    `text` stays empty. A model-written risk has text and no code."""
+
     model_config = STRICT
-    text: str = Field(min_length=1, max_length=600)
+    code: str = Field(default="", max_length=60)
+    text: str = Field(default="", max_length=600)
     severity: int = Field(ge=1, le=5)
     chunk_ids: list[int] = Field(default_factory=list, max_length=8)
     fact_refs: list[str] = Field(default_factory=list, max_length=8)  # keys of the PublicFacts used
@@ -62,7 +66,8 @@ class RiskResponse(BaseModel):
     model_config = STRICT
     risk_index: int = Field(ge=0)
     stance: Stance
-    reason: str = Field(min_length=1, max_length=600)
+    code: str = Field(default="", max_length=60)  # template only; the UI translates it
+    reason: str = Field(default="", max_length=600)
     chunk_ids: list[int] = Field(default_factory=list, max_length=8)
 
 
@@ -72,6 +77,7 @@ class CIOAssessment(BaseModel):
     model_config = STRICT
     adjustment: float = Field(ge=-100, le=100)  # tightened to the configured cap after parsing
     adjustment_reason: str = Field(default="", max_length=600)
+    adjustment_code: str = Field(default="", max_length=60)  # template only
     responses: list[RiskResponse] = Field(default_factory=list, max_length=MAX_LIST)
 
 

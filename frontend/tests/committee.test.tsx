@@ -14,7 +14,7 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 
 import { api, ApiError } from "@/lib/api";
-import { mockCommittee } from "@/lib/mock-ask";
+import { mockCommittee, mockCommitteeEmpty } from "@/lib/mock-ask";
 import { CommitteeSection, estimateProgress } from "@/components/CommitteeSection";
 import { AnalyzeResult } from "@/components/AnalyzeResult";
 
@@ -136,6 +136,63 @@ describe("committee section", () => {
       expect(report).toBeInTheDocument();
       unmount();
     }
+  });
+});
+
+describe("committee readable output", () => {
+  const runWith = async (loc: "en" | "he", m: typeof en, out: Awaited<ReturnType<typeof api.committee>>) => {
+    vi.spyOn(api, "committee").mockResolvedValue(out);
+    wrap(loc, <CommitteeSection symbol="SPCX" />);
+    openPanel(m);
+    fireEvent.click(screen.getByRole("button", { name: m.committee.run }));
+    return screen.findByTestId("committee-report");
+  };
+
+  it.each([["en", en], ["he", he]] as const)("nothing to review: one short card with the percentage, no empty sections (%s)", async (loc, m) => {
+    const report = await runWith(loc, m, mockCommitteeEmpty("SPCX"));
+    const card = within(report).getByTestId("committee-empty");
+    expect(card).toHaveTextContent(m.committee.emptyTitle);
+    expect(card).toHaveTextContent("19%");
+    expect(card).toHaveTextContent(m.committee.emptyDo);
+    for (const id of ["committee-profile", "committee-news", "committee-risks", "committee-nudge", "committee-completeness"]) expect(within(report).queryByTestId(id)).toBeNull();
+    expect(within(report).getByTestId("committee-banner")).toHaveTextContent(m.committee.templateOnly); // one banner, no per-section chips
+    expect(report.textContent).not.toMatch(/Template|תבנית/);
+  });
+
+  it("basic summary with some content: banner once, completeness line once, empty profile and news hidden, no echo reply", async () => {
+    const empty = mockCommitteeEmpty("SPCX");
+    const out = { ...empty, report: { ...empty.report, profile: { ...empty.report.profile, status: "ok" as const } } };
+    const report = await runWith("en", en, out);
+    expect(within(report).queryByTestId("committee-empty")).toBeNull();
+    expect(within(report).getByTestId("committee-completeness")).toHaveTextContent("Only 19% of the checks had data.");
+    expect(within(report).queryByTestId("committee-profile")).toBeNull();
+    expect(within(report).queryByTestId("committee-news")).toBeNull();
+    const risks = within(report).getAllByTestId("committee-risk");
+    expect(risks).toHaveLength(1);
+    expect(risks[0]).toHaveTextContent(en.committee.risk.no_chart_signal);
+    expect(risks[0]).toHaveTextContent("Importance 2 of 5");
+    expect(within(risks[0]).queryByTestId("committee-answer")).toBeNull();
+    expect(within(report).getByTestId("committee-nudge")).toHaveTextContent(en.committee.nudgeNone);
+  });
+
+  it.each([["en", en], ["he", he]] as const)("renamed labels and translated gate reasons, no raw English in Hebrew (%s)", async (loc, m) => {
+    const report = await runWith(loc, m, mockCommittee("AMD"));
+    expect(within(report).getByTestId("committee-risks")).toHaveTextContent(m.committee.risksTitle);
+    expect(within(report).getAllByTestId("committee-answer")[0]).toHaveTextContent(m.committee.cioAnswer);
+    expect(within(report).getAllByTestId("committee-risk")[0]).toHaveTextContent(m.committee.severity.replace("{n}", "3"));
+    expect(within(report).getByTestId("committee-nudge")).toHaveTextContent(m.committee.nudgeTitle);
+    const gate = within(report).getByTestId("committee-gate");
+    expect(gate).toHaveTextContent(m.committee.gateReason.no_backtest);
+    expect(gate).not.toHaveTextContent("No backtest has been run for the active weights");
+    if (loc === "he") expect(gate.textContent).not.toMatch(/[A-Za-z]{4,}/);
+  });
+
+  it("English labels read plainly", () => {
+    expect(en.committee.risksTitle).toBe("Risks to watch");
+    expect(en.committee.cioAnswer).toBe("Reviewer's reply");
+    expect(en.committee.severity).toBe("Importance {n} of 5");
+    expect(en.committee.nudgeTitle).toBe("Effect on the score");
+    expect(en.committee.nudgeNone).toBe("The review did not change the score");
   });
 });
 

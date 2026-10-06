@@ -261,6 +261,11 @@ def committee_providers(settings: SettingsDep) -> list[LLMProvider]:
     return build_providers(settings)
 
 
+class GateReasonOut(BaseModel):
+    code: str
+    params: dict[str, float | str] = Field(default_factory=dict)
+
+
 class CommitteeOut(BaseModel):
     symbol: str
     generated_at: datetime
@@ -270,7 +275,10 @@ class CommitteeOut(BaseModel):
     runs_left_today: int  # of `runs_per_day`, counting this one
     runs_per_day: int
     launch_gate_open: bool
-    launch_gate_reasons: list[str] = Field(default_factory=list)
+    launch_gate_reasons: list[str] = Field(default_factory=list)  # English, kept for old clients
+    launch_gate_codes: list[GateReasonOut] = Field(default_factory=list)  # the UI translates these
+    data_completeness_pct: int = Field(ge=0, le=100)  # share of chart checks that had data
+    data_completeness_low: bool  # below `committee_low_completeness`
     disclaimer: str = DISCLAIMER
 
 
@@ -335,4 +343,7 @@ def committee(
         ),
         launch_gate_open=status.open,
         launch_gate_reasons=status.reasons,
+        launch_gate_codes=[GateReasonOut(code=g.code, params=g.params) for g in status.codes],
+        data_completeness_pct=round(facts.confidence * 100),
+        data_completeness_low=facts.confidence < settings.committee_low_completeness,
     )

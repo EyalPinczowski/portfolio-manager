@@ -272,6 +272,8 @@ class HoldingOut(BaseModel):
     pnl: Pnl | None = None
     weight_pct: float
     horizon: Horizon | None = None
+    avg_cost: float | None = None  # per unit, in cost_currency; null when not set
+    cost_currency: str | None = None
     stop_tp_status: Literal["missing", "needs_horizon", "no_levels"]  # no_levels: a fund
     score_card: ScoreCardMini
     price_stale: bool = False

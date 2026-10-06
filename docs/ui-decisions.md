@@ -25,3 +25,9 @@ Settings looks and behaves like the phone's own Settings app (`components/Settin
 - **Simple choices** (language, appearance, currency, number format, week start) are check lists on their own page and save at once. Idea alerts keep "nothing chosen" (no defaults, "Not set"). Time fields are native time inputs in a row.
 - **Destructive actions** (sign out, delete account, disconnect Telegram) are red rows at the bottom of their group and always ask in a bottom sheet first; export and delete also ask for the password.
 - Every group has a small grey footer for explanations. All text is he/en with identical keys; no buy/sell/hold wording (a test checks both languages).
+
+## Edit and remove a holding by hand (Update 14)
+- Every holding card (`HoldingsList.tsx`) and the holding page (`HoldingPage.tsx`) has **Edit** and **Remove** (`components/HoldingActions.tsx`), so a holding can be changed with no screenshot. The buttons sit outside the card link (no button inside a link) and use the plain secondary style, with the holding's name in the accessible label.
+- **Edit** opens a modal with quantity, average cost (may be cleared), cost currency and holding period, using the same validation as the add form. It calls `PATCH /portfolios/{id}/holdings/{hid}`. The holding period is only sent if the user changed it, and "Decide later" stays an option (never a default).
+- **Remove** always asks first ("Remove {name}?") and only then calls `DELETE`. Nothing is saved or deleted without the user's own action. Quantity 0 is not allowed on edit; removing is the delete.
+- `HoldingOut` now carries `avg_cost` and `cost_currency`. All text is he/en (`holdingEdit` block); modals trap focus, close on Escape and work in RTL and at phone width.

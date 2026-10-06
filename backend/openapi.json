@@ -3400,11 +3400,17 @@
       },
       "BearRisk": {
         "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Code",
+            "default": ""
+          },
           "text": {
             "type": "string",
             "maxLength": 600,
-            "minLength": 1,
-            "title": "Text"
+            "title": "Text",
+            "default": ""
           },
           "severity": {
             "type": "integer",
@@ -3438,10 +3444,10 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "text",
           "severity"
         ],
-        "title": "BearRisk"
+        "title": "BearRisk",
+        "description": "`code` is set only by the template: a stable id the UI translates while\n`text` stays empty. A model-written risk has text and no code."
       },
       "BenchmarkAggregate": {
         "properties": {
@@ -3702,6 +3708,12 @@
             "type": "string",
             "maxLength": 600,
             "title": "Adjustment Reason",
+            "default": ""
+          },
+          "adjustment_code": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Adjustment Code",
             "default": ""
           },
           "responses": {
@@ -4400,6 +4412,23 @@
             "type": "array",
             "title": "Launch Gate Reasons"
           },
+          "launch_gate_codes": {
+            "items": {
+              "$ref": "#/components/schemas/GateReasonOut"
+            },
+            "type": "array",
+            "title": "Launch Gate Codes"
+          },
+          "data_completeness_pct": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Data Completeness Pct"
+          },
+          "data_completeness_low": {
+            "type": "boolean",
+            "title": "Data Completeness Low"
+          },
           "disclaimer": {
             "type": "string",
             "title": "Disclaimer",
@@ -4415,7 +4444,9 @@
           "llm_used",
           "runs_left_today",
           "runs_per_day",
-          "launch_gate_open"
+          "launch_gate_open",
+          "data_completeness_pct",
+          "data_completeness_low"
         ],
         "title": "CommitteeOut"
       },
@@ -6197,6 +6228,33 @@
         ],
         "title": "GateProgress"
       },
+      "GateReasonOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Params"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "GateReasonOut"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -6588,6 +6646,28 @@
               }
             ],
             "title": "Horizon"
+          },
+          "avg_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Cost"
+          },
+          "cost_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Currency"
           },
           "stop_tp_status": {
             "type": "string",
@@ -9969,11 +10049,17 @@
             ],
             "title": "Stance"
           },
+          "code": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Code",
+            "default": ""
+          },
           "reason": {
             "type": "string",
             "maxLength": 600,
-            "minLength": 1,
-            "title": "Reason"
+            "title": "Reason",
+            "default": ""
           },
           "chunk_ids": {
             "items": {
@@ -9988,8 +10074,7 @@
         "type": "object",
         "required": [
           "risk_index",
-          "stance",
-          "reason"
+          "stance"
         ],
         "title": "RiskResponse"
       },

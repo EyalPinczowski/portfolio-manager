@@ -227,6 +227,16 @@ const toNum = (raw: string): number => {
   return Number(parts.length > 2 ? `${parts.slice(0, -1).join("")}.${parts[parts.length - 1]}` : parts.join("."));
 };
 const decimals = (raw: string): number => (/\.(\d+)$/.exec(raw.replace(/[.,]+$/, ""))?.[1].length ?? 0);
+// A price glued to a name by RTL layout (`3,481 <name>`): digits with a thousands comma or a decimal
+// part, so a bare 5-9 digit security number and names like `S&P 500` or `TA-125` stay intact.
+const PRICE_TOKEN = "(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+\\.\\d+)";
+const NAME_PRICE_LEAD = new RegExp(`^[₪$]?\\s?${PRICE_TOKEN}[₪$]?\\s+(?=\\S)`);
+const NAME_PRICE_TRAIL = new RegExp(`(?<=\\S)\\s+[₪$]?\\s?${PRICE_TOKEN}[₪$]?$`);
+const cleanName = (w: string): string => {
+  const name = w.replace(/[^\p{L}\p{N}\s.&'’"\-–,/()…]/gu, " ").replace(/^[\s.…\-–,]+|[\s\-–,]+$/gu, "").replace(/\s+/g, " ");
+  const stripped = name.replace(NAME_PRICE_LEAD, "").replace(NAME_PRICE_TRAIL, "");
+  return /\p{L}/u.test(stripped) ? stripped : name;
+};
 const blank = (s: string, from: number, to: number): string => s.slice(0, from) + " ".repeat(to - from) + s.slice(to);
 
 interface Amt { value: number; raw: string; symbol: "$" | "₪"; line: number; pos: number }
@@ -378,7 +388,7 @@ function parseBlock(b: Block): { row: ImportRow; meta: RowMeta } {
     if (!l.text) continue;
     let w = l.work;
     if (price && price.line === lines.indexOf(l)) w = blank(w, price.start, price.end);
-    name = w.replace(/[^\p{L}\p{N}\s.&'’"\-–,/()…]/gu, " ").replace(/^[\s.…\-–,]+|[\s\-–,]+$/gu, "").replace(/\s+/g, " ");
+    name = cleanName(w);
     if (name) break;
   }
   if (!name) name = hasSymbol ? b.anchor.ticker : "";

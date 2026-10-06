@@ -77,3 +77,5 @@ The first screen has a summary header (`תיק אישי`, total, `שינוי י�
 a simple card (no exchange line) is only read after the first anchored card or section bar. `2.891.30` reads as 2,891.30;
 a leading `…` in a name is dropped; a card cut off at the bottom of one screen is replaced by the complete copy from the
 next (same price, no P&L % on the cut copy) without a conflict.
+
+- Meitav Trade fund cards: a price glued to the start or end of a name line by RTL OCR (`3,481 <name>`) is stripped when it has a thousands comma or decimal part; bare 5-9 digit TASE numbers and digits inside names (`S&P 500`, `TA-125`, `125`) are kept (server `importer/meitav.py` and device `lib/ocr/meitav.ts` identical; fixture case `price_glued_to_fund_name`).

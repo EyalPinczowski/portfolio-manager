@@ -91,6 +91,34 @@ def test_cio_over_cap_adjustment_rejected(corpus: Session, cfg: Settings) -> Non
     assert res.source == "template" and res.value.adjustment == 0.0
 
 
+def test_template_cio_does_not_answer_or_accept_a_template_risk(
+    corpus: Session, cfg: Settings
+) -> None:
+    f = facts(score=None, confidence=0.1)
+    br = bear(corpus, f, providers=[], settings=cfg, now=NOW)
+    assert br.source == "template" and br.value.risks
+    assert not any(
+        "confidence" in r.code or r.code == "low_data_completeness" for r in br.value.risks
+    )
+    assert {r.code for r in br.value.risks if r.code} == {"no_chart_signal"}
+    assert all(not r.text for r in br.value.risks if r.code)  # a code, not an English sentence
+    res = cio(corpus, f, br.value, providers=[], settings=cfg, now=NOW)
+    assert res.source == "template" and res.value.responses == []
+    assert res.value.adjustment_code == "no_adjustment" and not res.value.adjustment_reason
+    assert not any(r.stance == "accepted" for r in res.value.responses)
+
+
+def test_launch_gate_reasons_have_codes() -> None:
+    from app.launchgate import LaunchGate
+
+    st = LaunchGate().evaluate()
+    assert len(st.codes) == len(st.reasons) > 0
+    assert {c.code for c in st.codes} <= {
+        "no_backtest", "backtest_weights_changed", "backtest_failed", "paper_not_started",
+        "paper_weeks", "paper_errors", "paper_resolved", "paper_no_result", "paper_not_beating",
+    }  # fmt: skip
+
+
 def test_cio_cannot_adjust_without_a_score(corpus: Session, cfg: Settings) -> None:
     f = facts(score=None, confidence=0.0)
     res = cio(corpus, f, BearCase(), providers=[MockLLM("no_score")], settings=cfg, now=NOW)

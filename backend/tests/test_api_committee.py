@@ -61,6 +61,14 @@ def test_without_a_provider_every_role_uses_its_template(c: TestClient) -> None:
     for role in ("profile", "news", "bear", "cio"):
         assert rep[role]["source"] == "template"
     assert rep["cio_score"]["adjusted_score"] is not None
+    # codes, not English sentences; the template CIO never answers (so never "accepts") a risk
+    assert rep["cio"]["value"]["adjustment_code"] == "no_adjustment"
+    assert rep["cio"]["value"]["responses"] == [] and rep["cio_score"]["adjustment"] == 0
+    assert not any(r["code"] == "low_data_completeness" for r in rep["bear"]["value"]["risks"])
+    assert all(r["code"] or r["text"] for r in rep["bear"]["value"]["risks"])
+    assert 0 <= body["data_completeness_pct"] <= 100
+    assert isinstance(body["data_completeness_low"], bool)
+    assert body["launch_gate_codes"] and all(g["code"] for g in body["launch_gate_codes"])
     assert body["disclaimer"] == "Not financial advice."
 
 

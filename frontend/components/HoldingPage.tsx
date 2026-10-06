@@ -4,11 +4,12 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSWRConfig } from "swr";
 import { api, type Horizon } from "@/lib/api";
 import { DASH, formatMoney, formatWeight } from "@/lib/format";
-import { useAlerts, useScorecard } from "@/lib/hooks";
-import { Link } from "@/i18n/navigation";
+import { useAlerts, useHoldings, useScorecard } from "@/lib/hooks";
+import { Link, useRouter } from "@/i18n/navigation";
 import { AppShell } from "./AppShell";
 import { ExitLevelsPanel } from "./ExitLevelsPanel";
 import { ExplanationView } from "./ExplanationView";
+import { HoldingActions } from "./HoldingActions";
 
 const HORIZONS: Horizon[] = ["1w", "1m", "3m", "6m", "1y"];
 
@@ -19,6 +20,8 @@ function Body({ hid }: { hid: number }) {
   const sc = useScorecard(hid);
   const { mutate: globalMutate } = useSWRConfig();
   const alerts = useAlerts();
+  const router = useRouter();
+  const own = useHoldings(sc.data?.portfolio_id ?? null, undefined);
   const [open, setOpen] = useState(false);
   const [op, setOp] = useState<"above" | "below">("above");
   const [price, setPrice] = useState("");
@@ -30,6 +33,7 @@ function Body({ hid }: { hid: number }) {
   if (!d) return <p role="status">{c("loading")}</p>;
   const name = locale === "he" ? d.name_he : d.name_en;
   const cur = d.symbol.endsWith(".TA") || d.symbol.startsWith("GEMEL-") ? "ILS" : "USD";
+  const held = (own.data ?? []).find((x) => x.id === d.holding_id);
   const mine = (alerts.data ?? []).filter((a) => a.symbol === d.symbol);
 
   const setHorizon = async (h: Horizon) => {
@@ -52,6 +56,7 @@ function Body({ hid }: { hid: number }) {
         <Link href="/" className="text-sm text-brand-text hover:underline">← {c("back")}</Link>
         <h1 className="text-2xl font-bold">{name}</h1>
         <p className="text-sm text-muted" dir="ltr">{d.symbol}</p>
+        {held && <div className="mt-2"><HoldingActions h={held} portfolioId={d.portfolio_id} name={name} onRemoved={() => router.push("/")} /></div>}
       </div>
 
       <section className="card space-y-3" aria-label={t("scoreCard")}>

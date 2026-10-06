@@ -176,3 +176,27 @@ def test_patch_and_delete_of_a_holding_still_work_and_are_owner_scoped(signup: S
     assert b.delete(f"/api/portfolios/{pa}/holdings/{hid}").status_code == 404
     assert a.delete(f"/api/portfolios/{pa}/holdings/{hid}").status_code == 204
     assert a.get(f"/api/portfolios/{pa}/holdings").json() == []
+
+
+def test_holding_out_carries_avg_cost_and_cost_currency_and_a_patch_can_clear_the_cost(
+    signup: SignupFn,
+) -> None:
+    a = signup("a@mail.com")
+    pa = make_portfolio(a)
+    created = add(a, pa, symbol="AAPL", quantity=2, avg_cost=150.5, cost_currency="USD").json()
+    assert created["avg_cost"] == 150.5 and created["cost_currency"] == "USD"
+    hid = created["id"]
+    listed = a.get(f"/api/portfolios/{pa}/holdings").json()[0]
+    assert listed["avg_cost"] == 150.5 and listed["cost_currency"] == "USD"
+    r = a.patch(
+        f"/api/portfolios/{pa}/holdings/{hid}",
+        json={"quantity": 3, "avg_cost": 140, "cost_currency": "ILS"},
+    )
+    assert r.status_code == 200
+    assert (r.json()["quantity"], r.json()["avg_cost"], r.json()["cost_currency"]) == (
+        3,
+        140,
+        "ILS",
+    )
+    cleared = a.patch(f"/api/portfolios/{pa}/holdings/{hid}", json={"avg_cost": None}).json()
+    assert cleared["avg_cost"] is None and cleared["horizon"] is None  # no default horizon

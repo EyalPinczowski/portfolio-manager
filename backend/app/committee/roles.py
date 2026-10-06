@@ -35,7 +35,6 @@ from app.committee.schemas import (
     NewsItem,
     NewsReport,
     ProfileClaim,
-    RiskResponse,
     RoleResult,
 )
 from app.config import Settings, get_settings
@@ -159,57 +158,21 @@ def _news_template(hits: Sequence[Hit]) -> NewsReport:
 
 
 def _bear_template(facts: PublicFacts, hits: Sequence[Hit]) -> BearCase:
+    """Codes, not sentences: the UI translates them. Low data completeness is not a risk here (the
+    report shows it once as a plain line), so a template risk never needs a template answer."""
     risks: list[BearRisk] = []
     if facts.score is None:
-        risks.append(
-            BearRisk(
-                text="No chart signal has enough data, so the picture is incomplete.",
-                severity=2,
-                fact_refs=["score"],
-                what_would_invalidate="More price history becoming available.",
-            )
-        )
+        risks.append(BearRisk(code="no_chart_signal", severity=2, fact_refs=["score"]))
     elif facts.score < 0:
-        risks.append(
-            BearRisk(
-                text="The combined chart score is negative.",
-                severity=3,
-                fact_refs=["score"],
-                what_would_invalidate="The chart score turning positive.",
-            )
-        )
-    if facts.confidence < 0.5:
-        risks.append(
-            BearRisk(
-                text="Signal confidence is low.",
-                severity=2,
-                fact_refs=["confidence"],
-                what_would_invalidate="Confidence rising as more data arrives.",
-            )
-        )
+        risks.append(BearRisk(code="negative_chart_score", severity=3, fact_refs=["score"]))
     for h in hits[:2]:
-        risks.append(
-            BearRisk(
-                text=_first_sentence(h.text), severity=2, chunk_ids=[h.chunk_id],
-                what_would_invalidate="A later filing or news item that contradicts this.",
-            )
-        )  # fmt: skip
+        risks.append(BearRisk(text=_first_sentence(h.text), severity=2, chunk_ids=[h.chunk_id]))
     return BearCase(risks=risks)
 
 
 def _cio_template(bear: BearCase) -> CIOAssessment:
-    return CIOAssessment(
-        adjustment=0.0,
-        adjustment_reason="No adjustment: the deterministic score stands.",
-        responses=[
-            RiskResponse(
-                risk_index=i,
-                stance="unresolved",
-                reason="No assessment available; left unresolved.",
-            )
-            for i in range(len(bear.risks))
-        ],
-    )
+    """No adjustment and no answers: a template cannot assess a risk, so it never "accepts" one."""
+    return CIOAssessment(adjustment=0.0, adjustment_code="no_adjustment", responses=[])
 
 
 # ------------------------------------------------------------------ the shared runner
@@ -381,6 +344,7 @@ def bear(
             and all(i in allowed for i in r.chunk_ids)
             and all(k in fact_keys for k in r.fact_refs)
         ][: s.committee_max_claims]
+        keep = [r for r in keep if r.text.strip()]  # a model-written risk needs text
         keep.sort(key=lambda r: -r.severity)
         texts = [t for r in keep for t in (r.text, r.what_would_invalidate) if t]
         if not keep or not _clean_text(texts, b.text):
@@ -419,6 +383,8 @@ def cio(
         if sorted(r.risk_index for r in v.responses) != list(range(len(bear_case.risks))):
             return None  # every Bear risk answered exactly once
         if any(not all(i in allowed for i in r.chunk_ids) for r in v.responses):
+            return None
+        if any(not r.reason.strip() for r in v.responses):
             return None
         texts = [v.adjustment_reason, *(r.reason for r in v.responses)]
         extra = f" {abs(v.adjustment):g} {cap:g} " + " ".join(str(i) for i in range(20))

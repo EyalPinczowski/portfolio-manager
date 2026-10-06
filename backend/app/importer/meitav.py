@@ -513,9 +513,18 @@ _NAME_KEEP = set(".&'’\"-–,/()…")
 _NAME_EDGES = re.compile(r"^[\s.…\-–,]+|[\s\-–,]+$")
 
 
+# A price glued to a name by RTL layout (`3,481 <name>`): digits with a thousands comma or a decimal
+# part, so a bare 5-9 digit security number and names like `S&P 500` or `TA-125` stay intact.
+_PRICE_TOKEN = r"(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+\.\d+)"
+_NAME_PRICE_LEAD = re.compile(rf"^[₪$]?\s?{_PRICE_TOKEN}[₪$]?\s+(?=\S)")
+_NAME_PRICE_TRAIL = re.compile(rf"(?<=\S)\s+[₪$]?\s?{_PRICE_TOKEN}[₪$]?$")
+
+
 def _clean_name(w: str) -> str:
     kept = "".join(ch if (ch.isalnum() or ch.isspace() or ch in _NAME_KEEP) else " " for ch in w)
-    return re.sub(r"\s+", " ", _NAME_EDGES.sub("", kept))
+    name = re.sub(r"\s+", " ", _NAME_EDGES.sub("", kept))
+    stripped = _NAME_PRICE_TRAIL.sub("", _NAME_PRICE_LEAD.sub("", name))
+    return stripped if any(ch.isalpha() for ch in stripped) else name
 
 
 @dataclass

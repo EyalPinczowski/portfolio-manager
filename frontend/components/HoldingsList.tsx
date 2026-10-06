@@ -6,6 +6,7 @@ import { holdingHref } from "@/lib/routes";
 import { Link } from "@/i18n/navigation";
 import { ChevronIcon } from "./icons";
 import { PnlText } from "./Pnl";
+import { HoldingActions } from "./HoldingActions";
 
 const finite = (n: number | null | undefined): n is number => typeof n === "number" && Number.isFinite(n);
 
@@ -66,10 +67,11 @@ export function HoldingCard({ h }: { h: Holding }) {
   const hasPrice = finite(h.price) && h.price > 0;
   const hasPnl = !!h.pnl && (finite(h.pnl.ils) || finite(h.pnl.pct));
   return (
+    <div className="flex h-full flex-col gap-2">
     <Link
       href={holdingHref(h.id)}
       aria-label={t("open", { name })}
-      className="card flex h-full flex-col gap-2 hover:border-brand"
+      className="card flex flex-1 flex-col gap-2 hover:border-brand"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -102,6 +104,8 @@ export function HoldingCard({ h }: { h: Holding }) {
         </span>
       </div>
     </Link>
+    {h.portfolio_id !== undefined && <HoldingActions h={h} portfolioId={h.portfolio_id} name={name} />}
+    </div>
   );
 }
 

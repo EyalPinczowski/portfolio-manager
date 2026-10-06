@@ -820,6 +820,9 @@ class Settings(BaseSettings):
         }
     )
     committee_cio_max_adjustment: float = Field(default=15.0, ge=0, le=100)
+    committee_low_completeness: float = Field(
+        default=0.5, ge=0, le=1
+    )  # below this the report says so
     committee_max_claims: int = Field(default=5, ge=1, le=30)
     ask_max_tools_per_question: int = Field(default=4, ge=1, le=10)
     ask_max_holdings_rows: int = Field(default=30, ge=1, le=200)

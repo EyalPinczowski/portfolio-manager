@@ -691,6 +691,40 @@
           }
         ]
       }
+    },
+    {
+      "id": "price_glued_to_fund_name",
+      "description": "An invented TASE fund card whose OCR glued its price (3,481) to the name line, once at the start (left-to-right) and once at the end (reversed RTL line). The price token is stripped from the name; digits that belong to a name (125) stay.",
+      "images": {
+        "in_order": [
+          "12:41\n85%\nתיק ההשקעות שלי\nקרן סל\nTLV • 2345678 3,481\n3,481 קרן טכנו דמה 125\n-0.40%\n+3.00% ↑ @ ₪17,405.00\nבית    תיק    שוק    עוד"
+        ],
+        "shuffled_columns": [
+          "12:41\n85%\nתיק ההשקעות שלי\nקרן סל\nTLV • 2345678\n-0.40%\n↑ +3.00% ₪17,405.00\n3,481\n3,481 קרן טכנו דמה 125\nבית    תיק    שוק    עוד"
+        ],
+        "hebrew_reversed": [
+          "12:41\n85%\nילש תועקשהה קית\nלס ןרק\n2345678 • TLV\n125 המד ונכט ןרק 3,481\n3,481\n%0.40-\n17,405.00₪ @ %3.00\nבית    תיק    שוק    עוד"
+        ]
+      },
+      "expected": {
+        "layout": "meitav_trade",
+        "rows": [
+          {
+            "name": "קרן טכנו דמה 125",
+            "symbol": null,
+            "tase_number": "2345678",
+            "quantity": 500,
+            "price": 3481,
+            "value": 17405.0,
+            "cost": 3379.6117,
+            "currency": "ILS",
+            "unit": "agorot",
+            "flags": [
+              "cost_inferred"
+            ]
+          }
+        ]
+      }
     }
   ]
 }

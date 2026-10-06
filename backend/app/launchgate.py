@@ -68,9 +68,18 @@ def weights_fingerprint(weights: dict[str, float]) -> str:
 
 
 @dataclass(frozen=True)
+class GateReasonCode:
+    """A stable code plus plain params, so a UI can translate the reason itself."""
+
+    code: str
+    params: dict[str, float | str]
+
+
+@dataclass(frozen=True)
 class GateStatus:
     open: bool
     reasons: list[str]
+    codes: list[GateReasonCode] = field(default_factory=list)
 
 
 class LaunchGate:
@@ -87,44 +96,76 @@ class LaunchGate:
     def evaluate(self) -> GateStatus:
         s = self.settings
         reasons: list[str] = []
+        codes: list[GateReasonCode] = []
+
+        def add(text: str, code: str, **params: float | str) -> None:
+            reasons.append(text)
+            codes.append(GateReasonCode(code, params))
+
         if s.launch_require_backtest:
             record = self.backtests.latest()
             if record is None:
-                reasons.append("No backtest has been run for the active weights configuration.")
+                add("No backtest has been run for the active weights configuration.", "no_backtest")
             elif record.weights_hash != weights_fingerprint(s.signal_weights):
-                reasons.append(
-                    "The latest backtest was run with different weights than the active ones."
+                add(
+                    "The latest backtest was run with different weights than the active ones.",
+                    "backtest_weights_changed",
                 )
             elif not record.passed:
-                reasons.append("The backtest for the active weights configuration did not pass.")
+                add(
+                    "The backtest for the active weights configuration did not pass.",
+                    "backtest_failed",
+                )
         m = self.paper.metrics()
         if m is None:
-            reasons.append(
+            add(
                 f"Paper trading has not started: it needs {s.launch_paper_min_weeks} weeks without "
-                f"critical errors and {s.launch_paper_min_resolved_calls} calls resolved at 1 month."
+                f"critical errors and {s.launch_paper_min_resolved_calls} calls resolved at 1 month.",
+                "paper_not_started",
+                weeks=s.launch_paper_min_weeks,
+                calls=s.launch_paper_min_resolved_calls,
             )
         else:
             if m.weeks_running < s.launch_paper_min_weeks:
-                reasons.append(
+                add(
                     f"Paper trading has run {m.weeks_running:.1f} of {s.launch_paper_min_weeks} required weeks "
-                    f"({m.calls_recorded} call(s) recorded)."
+                    f"({m.calls_recorded} call(s) recorded).",
+                    "paper_weeks",
+                    weeks_running=round(m.weeks_running, 1),
+                    weeks=s.launch_paper_min_weeks,
+                    recorded=m.calls_recorded,
                 )
             if m.critical_errors > s.launch_paper_max_critical_errors:
-                reasons.append(
-                    f"Paper trading had {m.critical_errors} critical error(s); none are allowed."
+                add(
+                    f"Paper trading had {m.critical_errors} critical error(s); none are allowed.",
+                    "paper_errors",
+                    errors=m.critical_errors,
                 )
             if m.resolved_calls_1m < s.launch_paper_min_resolved_calls:
-                reasons.append(
+                add(
                     f"Only {m.resolved_calls_1m} of {s.launch_paper_min_resolved_calls} required calls "
-                    f"are resolved at 1 month ({m.calls_recorded} recorded)."
+                    f"are resolved at 1 month ({m.calls_recorded} recorded).",
+                    "paper_resolved",
+                    resolved=m.resolved_calls_1m,
+                    needed=s.launch_paper_min_resolved_calls,
+                    recorded=m.calls_recorded,
                 )
             for bench in s.launch_paper_must_beat:
                 edge = m.excess_return_pct.get(bench)
                 if edge is None:
-                    reasons.append(f"Paper trading has no result against {bench} yet.")
+                    add(
+                        f"Paper trading has no result against {bench} yet.",
+                        "paper_no_result",
+                        bench=bench,
+                    )
                 elif edge <= 0:
-                    reasons.append(f"Paper trading does not beat {bench} ({edge:+.1f}%).")
-        return GateStatus(open=not reasons, reasons=reasons)
+                    add(
+                        f"Paper trading does not beat {bench} ({edge:+.1f}%).",
+                        "paper_not_beating",
+                        bench=bench,
+                        edge=round(edge, 1),
+                    )
+        return GateStatus(open=not reasons, reasons=reasons, codes=codes)
 
     def release(
         self,

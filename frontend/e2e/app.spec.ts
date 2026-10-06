@@ -286,6 +286,27 @@ for (const locale of LOCALES) {
       errs.expectNone();
     });
 
+    test("edit and remove a holding by hand (no screenshot)", async ({ page }) => {
+      const errs = watchErrors(page);
+      await open(page, locale, "/");
+      const edits = page.locator("button", { hasText: new RegExp(`^${m("holdingEdit.edit")}$`) });
+      await expect(edits.first()).toBeVisible();
+      const n = await edits.count();
+      await edits.first().click();
+      const dlg = page.getByRole("dialog");
+      await expect(dlg).toBeVisible();
+      await dlg.getByLabel(m("addHolding.cost"), { exact: false }).fill("");
+      await dlg.getByRole("button", { name: m("holdingEdit.save") }).click();
+      await expect(dlg).toBeHidden();
+      await page.locator("button", { hasText: new RegExp(`^${m("holdingEdit.remove")}$`) }).first().click();
+      await expect(page.getByRole("dialog")).toBeVisible();
+      await page.getByRole("button", { name: m("holdingEdit.removeConfirm") }).click();
+      await expect(page.getByRole("dialog")).toBeHidden();
+      await expect(edits).toHaveCount(n - 1);
+      await checkScreen(page, locale);
+      errs.expectNone();
+    });
+
     test("welcome tour: appears on first entrance, can be skipped, and is reopened from settings", async ({ page }) => {
       const errs = watchErrors(page);
       await page.addInitScript(() => {

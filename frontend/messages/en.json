@@ -604,6 +604,29 @@
     "nudge": "It has been a while. Your holdings may have changed.",
     "cta": "Update from screenshots"
   },
+  "holdingEdit": {
+    "edit": "Edit",
+    "remove": "Remove",
+    "editAria": "Edit {name}",
+    "removeAria": "Remove {name}",
+    "editTitle": "Edit {name}",
+    "intro": "Change what you own by hand. Nothing is saved until you press Save.",
+    "costHint": "Clear the cost to remove it; the app then shows no profit or loss for this holding. Israeli stocks: enter shekels, not agorot.",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "error": {
+      "quantity": "Enter a quantity above zero.",
+      "cost": "The cost is not a valid number.",
+      "rate": "Too many changes. Try again in a little while.",
+      "notFound": "This holding was not found. Refresh the page.",
+      "generic": "Could not save the changes. Try again."
+    },
+    "removeTitle": "Remove {name}?",
+    "removeBody": "{name} will be removed from this portfolio. Its history of past changes stays in your records. You can add it again later.",
+    "removeConfirm": "Yes, remove",
+    "removing": "Removing…",
+    "removeError": "Could not remove the holding. Try again."
+  },
   "addHolding": {
     "open": "Add a holding manually",
     "title": "Add a holding",
@@ -1685,17 +1708,14 @@
   },
   "committee": {
     "title": "Deep review",
-    "intro": "A deeper read on public information: company profile, news, and the risks a skeptical analyst raises, each answered by the CIO. It never gives a verdict, and it cannot move the score by more than a small cap.",
     "run": "Start deep review",
     "rerun": "Run again",
     "running": "Running…",
-    "runningNote": "The committee is reading the public information. This can take a moment.",
     "gateTitle": "Not yet validated",
     "gateBody": "Scores are experimental until a backtest and paper trading validate them. This is neutral analysis to research, not an instruction to trade.",
     "llmUsed": "Some parts were written by an AI model from public data only.",
-    "templateOnly": "Written from templates, with no AI model.",
+    "templateOnly": "AI models are not connected right now, so this is a basic summary.",
     "profileTitle": "Company profile",
-    "noProfile": "No company profile was found for this stock.",
     "topic": {
       "business": "Business",
       "segments": "Segments",
@@ -1703,34 +1723,48 @@
       "competitors": "Competitors"
     },
     "newsTitle": "Recent news",
-    "noNews": "No recent news was found.",
     "tone": {
       "positive": "Positive tone",
       "neutral": "Neutral tone",
       "negative": "Negative tone"
     },
-    "risksTitle": "Risks the Bear analyst raised",
-    "risksNote": "Each risk is followed by the CIO's answer: answered, accepted as a real risk, or still open.",
+    "risksTitle": "Risks to watch",
+    "risksNote": "Each risk is followed by the reviewer's reply: answered, accepted as a real risk, or still open.",
+    "risk": {
+      "no_chart_signal": "There is not enough price history yet, so the chart picture is incomplete.",
+      "negative_chart_score": "The combined chart score is negative."
+    },
+    "completeness": "Only {pct}% of the checks had data.",
+    "emptyTitle": "Not enough public information to review this stock yet",
+    "emptyWhy": "No company profile and no recent news were found, and only {pct}% of the checks had data.",
+    "emptyDo": "For now, use the chart analysis above. You can try again later, when more public information is available.",
+    "gateReason": {
+      "no_backtest": "No backtest has been run yet for the current settings.",
+      "backtest_weights_changed": "The latest backtest used different weights than the current ones.",
+      "backtest_failed": "The backtest for the current settings did not pass.",
+      "paper_not_started": "Paper trading has not started. It needs {weeks} weeks and {calls} resolved calls.",
+      "paper_weeks": "Paper trading has run {weeks_running} of {weeks} required weeks.",
+      "paper_errors": "Paper trading had {errors} critical errors; none are allowed.",
+      "paper_resolved": "Only {resolved} of {needed} required calls are resolved at 1 month.",
+      "paper_no_result": "Paper trading has no result against {bench} yet.",
+      "paper_not_beating": "Paper trading does not beat {bench} ({edge}%).",
+      "unknown": "A launch condition is not met yet."
+    },
     "noRisks": "No risks were raised.",
-    "severity": "Severity {n} of 5",
+    "severity": "Importance {n} of 5",
     "invalidate": "What would show it wrong",
-    "cioAnswer": "CIO answer",
+    "cioAnswer": "Reviewer's reply",
     "stance": {
       "rebutted": "Answered",
       "accepted": "Accepted",
       "unresolved": "Still open",
       "unanswered": "No answer"
     },
-    "nudgeTitle": "Score nudge",
-    "nudgeBody": "The CIO may move the chart score by at most {cap} points. This time: {adjustment}.",
+    "nudgeTitle": "Effect on the score",
+    "nudgeNone": "The review did not change the score",
+    "nudgeBody": "The review may move the chart score by at most {cap} points. This time: {adjustment}.",
     "baseScore": "Chart score",
-    "adjustedScore": "Score after the nudge",
-    "source": {
-      "llm": "AI model",
-      "cache": "Saved AI answer",
-      "template": "Template"
-    },
-    "noCoverage": "not enough public data",
+    "adjustedScore": "Score after the review",
     "problem": {
       "rate": "You have reached the committee run limit for now. Try again later; the daily count resets within 24 hours.",
       "notFound": "This ticker was not found.",

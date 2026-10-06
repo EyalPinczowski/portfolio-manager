@@ -1308,9 +1308,21 @@ export interface components {
             /** Risks */
             risks?: components["schemas"]["BearRisk"][];
         };
-        /** BearRisk */
+        /**
+         * BearRisk
+         * @description `code` is set only by the template: a stable id the UI translates while
+         *     `text` stays empty. A model-written risk has text and no code.
+         */
         BearRisk: {
-            /** Text */
+            /**
+             * Code
+             * @default
+             */
+            code: string;
+            /**
+             * Text
+             * @default
+             */
             text: string;
             /** Severity */
             severity: number;
@@ -1411,6 +1423,11 @@ export interface components {
              * @default
              */
             adjustment_reason: string;
+            /**
+             * Adjustment Code
+             * @default
+             */
+            adjustment_code: string;
             /** Responses */
             responses?: components["schemas"]["RiskResponse"][];
         };
@@ -1683,6 +1700,12 @@ export interface components {
             launch_gate_open: boolean;
             /** Launch Gate Reasons */
             launch_gate_reasons?: string[];
+            /** Launch Gate Codes */
+            launch_gate_codes?: components["schemas"]["GateReasonOut"][];
+            /** Data Completeness Pct */
+            data_completeness_pct: number;
+            /** Data Completeness Low */
+            data_completeness_low: boolean;
             /**
              * Disclaimer
              * @default Not financial advice.
@@ -2249,6 +2272,15 @@ export interface components {
             /** Recorded */
             recorded: number;
         };
+        /** GateReasonOut */
+        GateReasonOut: {
+            /** Code */
+            code: string;
+            /** Params */
+            params?: {
+                [key: string]: number | string;
+            };
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2369,6 +2401,10 @@ export interface components {
             weight_pct: number;
             /** Horizon */
             horizon?: ("1w" | "1m" | "3m" | "6m" | "1y") | null;
+            /** Avg Cost */
+            avg_cost?: number | null;
+            /** Cost Currency */
+            cost_currency?: string | null;
             /**
              * Stop Tp Status
              * @enum {string}
@@ -3421,7 +3457,15 @@ export interface components {
              * @enum {string}
              */
             stance: "rebutted" | "accepted" | "unresolved";
-            /** Reason */
+            /**
+             * Code
+             * @default
+             */
+            code: string;
+            /**
+             * Reason
+             * @default
+             */
             reason: string;
             /** Chunk Ids */
             chunk_ids?: number[];

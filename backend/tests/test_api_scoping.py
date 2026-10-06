@@ -285,3 +285,19 @@ def test_fund_holdings_and_dividends_are_owner_scoped(signup: SignupFn) -> None:
     export = b.post("/api/me/export", json={"password": "correct horse battery"}).json()
     assert [f["manual_value_ils"] for f in export["portfolios"][0]["fund_holdings"]] == [None]
     assert a.get(f"/api/portfolios/{pid}/holdings").json()[0]["value_ils"] == 5000.0
+
+
+def test_manual_edit_and_remove_of_a_holding_are_owner_scoped(signup: SignupFn) -> None:
+    a, b = signup("ea@mail.com"), signup("eb@mail.com")
+    pid = a.post("/api/portfolios", json={"name": "A", "base_currency": "ILS"}).json()["id"]
+    bpid = b.post("/api/portfolios", json={"name": "B", "base_currency": "ILS"}).json()["id"]
+    h = a.post(
+        f"/api/portfolios/{pid}/holdings", json={"symbol": "AAPL", "quantity": 2, "avg_cost": 100}
+    ).json()
+    assert h["avg_cost"] == 100
+    for pth in (pid, bpid):
+        body = {"quantity": 9, "avg_cost": 1, "cost_currency": "USD"}
+        assert b.patch(f"/api/portfolios/{pth}/holdings/{h['id']}", json=body).status_code == 404
+        assert b.delete(f"/api/portfolios/{pth}/holdings/{h['id']}").status_code == 404
+    again = a.get(f"/api/portfolios/{pid}/holdings").json()[0]
+    assert again["quantity"] == 2 and again["avg_cost"] == 100

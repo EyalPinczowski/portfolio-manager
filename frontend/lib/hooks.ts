@@ -21,7 +21,7 @@ export function useHoldings(id: PortfolioRef | null, portfolios: Portfolio[] | u
   return useSWR<Holding[]>(
     ids && ids.length > 0 ? ["holdings", ...ids] : null,
     async () => {
-      const lists = await Promise.all((ids ?? []).map((i) => api.holdings(i)));
+      const lists = await Promise.all((ids ?? []).map(async (i) => (await api.holdings(i)).map((h) => ({ ...h, portfolio_id: i }))));
       const all = lists.flat();
       if (id !== "combined") return all;
       const total = all.reduce((a, h) => a + h.value_ils, 0) || 1;
