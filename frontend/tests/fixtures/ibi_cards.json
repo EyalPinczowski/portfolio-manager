@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "note": "Synthetic, invented names and numbers in the layout of the IBI app. Shared by tests/ibi-layout.test.ts and backend/tests/test_ibi_parser.py.",
+  "cases": [
+    {
+      "id": "mixed_list",
+      "images": {
+        "in_order": "תיק ההשקעות שלי\nטרייד 123456\nמחיר אחרון\nרווח/הפסד יו\nVNQX 12 יחידות 41.35 +0.80% +$3.97\nQQQM 5.25 יחידות 180.20 -0.45% -$4.26\nהראל פיננסים 3 יחידות 98,400.00 +1.20% +₪35.42\nתכ.תא90 50 יחידות 2,310.00 -0.40% -₪4.62\nקרן דוגמה 40 יחידות 25.40 +1.00% +₪10.16\nמרכז ידע\nהוראות\nשוק\nהתיק שלי",
+        "hebrew_reversed": "תיק ההשקעות שלי\nטרייד 123456\nמחיר אחרון\nרווח/הפסד יו\nVNQX יחידות 12 41.35 +0.80% +$3.97\nQQQM יחידות 5.25 180.20 -0.45% -$4.26\nהראל פיננסים יחידות 3 98,400.00 +1.20% +₪35.42\nתכ.תא90 יחידות 50 2,310.00 -0.40% -₪4.62\nקרן דוגמה יחידות 40 25.40 +1.00% +₪10.16\nמרכז ידע\nהוראות\nשוק\nהתיק שלי",
+        "stacked": "תיק ההשקעות שלי\nטרייד 123456\nמחיר אחרון\nרווח/הפסד יו\n+$3.97\n41.35\n+0.80%\nVNQX\n12 יחידות\n-$4.26\n180.20\n-0.45%\nQQQM\n5.25 יחידות\n+₪35.42\n98,400.00\n+1.20%\nהראל\nפיננסים\n3 יחידות\n-₪4.62\n2,310.00\n-0.40%\nתכ.תא90\n50 יחידות\n+₪10.16\n25.40\n+1.00%\nקרן דוגמה\n40 יחידות\nמרכז ידע\nהוראות\nשוק\nהתיק שלי",
+        "shuffled_units_first": "תיק ההשקעות שלי\nטרייד 123456\nמחיר אחרון\nרווח/הפסד יו\n12 יחידות\nVNQX\n+0.80%\n41.35\n+$3.97\n5.25 יחידות\nQQQM\n-0.45%\n180.20\n-$4.26\n3 יחידות\nהראל פיננסים\n+1.20%\n98,400.00\n+₪35.42\n50 יחידות\nתכ.תא90\n-0.40%\n2,310.00\n-₪4.62\n40 יחידות\nקרן דוגמה\n+1.00%\n25.40\n+₪10.16\nמרכז ידע\nהוראות\nשוק\nהתיק שלי",
+        "shuffled_units_last": "תיק ההשקעות שלי\nטרייד 123456\nמחיר אחרון\nרווח/הפסד יו\n41.35\n+$3.97\n+0.80%\nVNQX\nיחידות 12\n180.20\n-$4.26\n-0.45%\nQQQM\nיחידות 5.25\n98,400.00\n+₪35.42\n+1.20%\nהראל פיננסים\nיחידות 3\n2,310.00\n-₪4.62\n-0.40%\nתכ.תא90\nיחידות 50\n25.40\n+₪10.16\n+1.00%\nקרן דוגמה\nיחידות 40\nמרכז ידע\nהוראות\nשוק\nהתיק שלי"
+      },
+      "expected": {
+        "layout": "ibi_cards",
+        "rows": [
+          {
+            "name": "VNQX",
+            "symbol": "VNQX",
+            "quantity": 12,
+            "price": 41.35,
+            "currency": "USD",
+            "unit": "USD",
+            "value": null,
+            "cost": null,
+            "flags": [
+              "currency_changed"
+            ]
+          },
+          {
+            "name": "QQQM",
+            "symbol": "QQQM",
+            "quantity": 5.25,
+            "price": 180.2,
+            "currency": "USD",
+            "unit": "USD",
+            "value": null,
+            "cost": null,
+            "flags": [
+              "currency_changed"
+            ]
+          },
+          {
+            "name": "הראל פיננסים",
+            "symbol": null,
+            "quantity": 3,
+            "price": 98400.0,
+            "currency": "ILS",
+            "unit": "agorot",
+            "value": null,
+            "cost": null,
+            "flags": [
+              "currency_changed"
+            ]
+          },
+          {
+            "name": "תכ.תא90",
+            "symbol": null,
+            "quantity": 50,
+            "price": 2310.0,
+            "currency": "ILS",
+            "unit": "agorot",
+            "value": null,
+            "cost": null,
+            "flags": [
+              "currency_changed"
+            ]
+          },
+          {
+            "name": "קרן דוגמה",
+            "symbol": null,
+            "quantity": 40,
+            "price": 25.4,
+            "currency": "ILS",
+            "unit": "ILS",
+            "value": null,
+            "cost": null,
+            "flags": [
+              "currency_changed"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

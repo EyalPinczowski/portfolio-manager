@@ -221,3 +221,7 @@ Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after a
 - Importer: a typed or picked `XXX.TA` on an ILS row is accepted as an unverified user-scoped security (like the USD rule); an extra manual row at a new index validates and confirms like screenshot rows.
 - Frontend: `SymbolSearch.tsx` (symbol box dropdown) in the import review and `AddHoldingForm`; "+ Add a stock" in the review; `mergeServer` keeps `exchange` and never overwrites a symbol typed during a resync.
 - Checks: backend 1893 passed / 35 skipped, ruff/format/mypy clean; frontend 678 vitest, e2e 105 + real 1 (real run adds MSFT by hand), build ok.
+
+## 2026-10-06 (Update 9: IBI broker layout)
+- New import layout `ibi_cards` (IBI app, dark, "תיק ההשקעות שלי"): `backend/app/importer/ibi.py` and `frontend/lib/ocr/ibi.ts` with the shared invented fixture `frontend/tests/fixtures/ibi_cards.json` (5 OCR variants). A number next to `יחידות` anchors a card; quantity from it; price = nearest decimal; `$` on the day amount → USD; `₪` → ILS, `agorot` when the day amount fits quantity × price/100 × chip; value and cost null; every row keeps `currency_changed`. Detection order: Meitav, IBI, `כמות` cards. Header blur fraction 0.12. `docs/import-formats.md` has the IBI section (invented numbers only).
+- Checks: backend 1901 passed / 35 skipped, ruff/format/mypy clean; frontend 688 vitest, e2e 105 + real 1, build ok.

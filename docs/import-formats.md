@@ -51,3 +51,14 @@ Screenshot not kept (security rule); only the layout is recorded here, with inve
 ### What a dedicated layout needs (`hebrew_broker_cards`)
 Detect `כמות` followed by a number; take quantity from it, the nearest decimal number as price; strip `כמות` from the name; never treat a leading number inside a Hebrew name as a quantity; leave currency to the symbol lookup (US ticker → USD, `MTF` / Hebrew fund → ILS) and ask the user to confirm it. 
 Status (2026-10-05): **built** as `hebrew_broker_cards` (`backend/app/importer/hebrew_cards.py`, port `frontend/lib/ocr/hebrewCards.ts`, shared fixture `frontend/tests/fixtures/hebrew_broker_cards.json`, tests on both sides). Handles the one-line and the stacked (price, chip, name, `כמות N`) forms. Value and cost stay null; every row carries `currency_changed`, so the user must confirm the currency before saving. A card with `כמות N` above the price and name is not supported.
+
+## IBI (`ibi_cards`, "תיק ההשקעות שלי")
+
+Status (2026-10-06): **built** as `ibi_cards` (`backend/app/importer/ibi.py`, port `frontend/lib/ocr/ibi.ts`, shared fixture `frontend/tests/fixtures/ibi_cards.json`, tests on both sides). The numbers below are invented.
+
+- **Layout:** dark theme, one card per holding. Right side: the symbol (`ABCD`) or a Hebrew name with a small flag, then `N יחידות` (units; fractions such as `6.47` occur). Left side: the last price (`41.35`), a coloured day-change chip (`+0.80%`) and the day's profit or loss with a currency sign (`+$3.97`, `-₪4.62`). There is no total value, cost or currency column. The title carries an account number, so the header band is blurred before OCR (default fraction) and no digit run from it is kept.
+- **Hebrew names contain digits:** `תכ.תא90` (a TA index tracker). The number is part of the name, never the quantity.
+- **TASE prices are in agorot:** 50 units at `2,310.00` with a day amount of `-₪4.62` and a chip of `-0.40%` fits `50 x 23.10 x 0.40%`, not `50 x 2,310 x 0.40%`.
+- **Detection:** a number next to `יחידות` (`10 יחידות`, or `יחידות 10` when OCR reverses it). Each such line anchors one card; the card is the few lines around it (one line, or stacked in any order).
+- **Rules:** quantity = the number next to `יחידות`; price = the nearest decimal that is not a signed amount; `$` on the day amount = USD; `₪` = ILS, with unit `agorot` when the amount fits `quantity x price/100 x chip` better than `quantity x price x chip`, else `ILS`; no amount sign = guess from the name (ticker = USD, Hebrew name = ILS). Value and cost stay empty. Every row keeps `currency_changed`, so the user confirms currency and unit before saving.
+- **Example (invented):** `ABCD 12 יחידות 41.35 +0.80% +$3.97` gives quantity 12, price 41.35, USD. `הראל פיננסים 3 יחידות 98,400.00 +1.20% +₪35.42` gives quantity 3, price 98,400.00, ILS in agorot.

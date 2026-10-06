@@ -6,6 +6,7 @@ import { OCR_LAYOUTS, type LayoutId } from "../config";
 import type { ImportRow } from "../api";
 import { namesMatch } from "./hebrew";
 import { detectHebrewCards, parseHebrewCardsText } from "./hebrewCards";
+import { detectIbi, parseIbiText } from "./ibi";
 import { detectMeitav, parseMeitavText } from "./meitav";
 import { parseOcrText } from "./parse";
 import type { ParsedRows, RowMeta } from "./types";
@@ -16,6 +17,7 @@ export const headerFractionFor = (choice: LayoutChoice): number => OCR_LAYOUTS[c
 
 export function detectLayout(text: string): LayoutId {
   if (detectMeitav(text)) return "meitav_trade";
+  if (detectIbi(text)) return "ibi_cards";
   return detectHebrewCards(text) ? "hebrew_broker_cards" : "generic";
 }
 
@@ -28,6 +30,10 @@ export function parseScreenshotText(text: string, choice: LayoutChoice = "auto")
   }
   if (layout === "hebrew_broker_cards") {
     const rows = parseHebrewCardsText(text);
+    if (rows.length > 0) return { layout, rows, meta: rows.map(() => ({})) };
+  }
+  if (layout === "ibi_cards") {
+    const rows = parseIbiText(text);
     if (rows.length > 0) return { layout, rows, meta: rows.map(() => ({})) };
   }
   const rows = parseOcrText(text);

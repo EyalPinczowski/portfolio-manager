@@ -10,6 +10,7 @@ from typing import Literal
 
 from app.config import Settings, get_settings
 from app.importer.hebrew_cards import detect_hebrew_cards, parse_hebrew_cards_text
+from app.importer.ibi import detect_ibi, parse_ibi_text
 from app.importer.meitav import detect_meitav, parse_meitav_text
 from app.importer.merge import merge_screenshots
 from app.importer.parse import (
@@ -21,7 +22,7 @@ from app.importer.parse import (
 )
 from app.providers.base import OcrResult
 
-LayoutId = Literal["generic", "meitav_trade", "hebrew_broker_cards"]
+LayoutId = Literal["generic", "meitav_trade", "hebrew_broker_cards", "ibi_cards"]
 
 
 def header_fraction_for(layout: LayoutId, settings: Settings | None = None) -> float:
@@ -35,6 +36,8 @@ def header_fraction_for(layout: LayoutId, settings: Settings | None = None) -> f
 def detect_layout(text: str) -> LayoutId:
     if detect_meitav(text):
         return "meitav_trade"
+    if detect_ibi(text):
+        return "ibi_cards"
     return "hebrew_broker_cards" if detect_hebrew_cards(text) else "generic"
 
 
@@ -53,6 +56,10 @@ def parse_screenshot_text(
         rows = parse_hebrew_cards_text(text)
         if rows:
             return "hebrew_broker_cards", rows
+    if chosen == "ibi_cards":
+        rows = parse_ibi_text(text)
+        if rows:
+            return "ibi_cards", rows
     rows = parse_ocr_text(text, s)
     flag_total_mismatch(rows, detect_total(text))  # generic tables only: card layouts differ
     return "generic", rows
