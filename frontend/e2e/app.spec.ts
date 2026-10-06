@@ -3,6 +3,11 @@ import { checkScreen, expectDir, LOCALES, msg, open, shot, watchErrors, type Loc
 
 const heading = (page: Page, text: string) => page.getByRole("heading", { name: text, exact: true }).first();
 
+// The welcome tour is marked seen up front so it does not cover the other flows; its own test removes the mark.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("pm.tour.v1", "1"));
+});
+
 for (const locale of LOCALES) {
   test.describe(`flows (${locale})`, () => {
     const m = (k: string, v?: Record<string, string | number>) => msg(locale, k, v);
@@ -249,13 +254,15 @@ for (const locale of LOCALES) {
     test("analyze: investment committee report", async ({ page }, info) => {
       const errs = watchErrors(page);
       await open(page, locale, "/analyze/?symbol=NVDA");
-      const section = page.getByTestId("committee");
+      const fab = page.getByTestId("committee-fab");
+      await expect(fab).toBeVisible();
+      await fab.click();
+      const section = page.getByRole("dialog", { name: m("committee.title") });
       await expect(section).toBeVisible();
       await section.getByRole("button", { name: m("committee.run"), exact: true }).click();
       await expect(page.getByTestId("committee-report")).toBeVisible();
       await expect(page.getByTestId("committee-risk")).toHaveCount(3);
       await expect(page.getByTestId("committee-gate")).toBeVisible();
-      await section.scrollIntoViewIfNeeded();
       await checkScreen(page, locale);
       await shot(page, info, `committee-${locale}`);
       errs.expectNone();
@@ -276,6 +283,29 @@ for (const locale of LOCALES) {
       await expect(dlg.getByText(m("funds.noPrice").slice(0, 20), { exact: false }).first()).toBeVisible();
       await expect(dlg.getByRole("button", { name: m("funds.addThis") })).toBeVisible();
       await shot(page, info, `fund-detail-${locale}`);
+      errs.expectNone();
+    });
+
+    test("welcome tour: appears on first entrance, can be skipped, and is reopened from settings", async ({ page }) => {
+      const errs = watchErrors(page);
+      await page.addInitScript(() => {
+        if (!window.sessionStorage.getItem("tour.cleared")) { window.sessionStorage.setItem("tour.cleared", "1"); window.localStorage.removeItem("pm.tour.v1"); }
+      });
+      await page.goto(`/${locale}/`);
+      const dialog = page.getByRole("dialog", { name: m("tour.title") });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByText(m("tour.slides.welcome.title"))).toBeVisible();
+      await checkScreen(page, locale);
+      await dialog.getByRole("button", { name: m("tour.next") }).click();
+      await expect(dialog.getByText(m("tour.slides.portfolio.title"))).toBeVisible();
+      await dialog.getByRole("button", { name: m("tour.skip") }).click();
+      await expect(dialog).toBeHidden();
+      await page.reload();
+      await expect(page.getByText(m("holdings.title"), { exact: true })).toBeVisible();
+      await expect(dialog).toBeHidden();
+      await open(page, locale, "/settings/");
+      await page.getByText(m("tour.settingsRow"), { exact: true }).click();
+      await expect(dialog).toBeVisible();
       errs.expectNone();
     });
 

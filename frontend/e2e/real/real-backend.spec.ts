@@ -85,6 +85,12 @@ test("real backend: challenge, first portfolio, import, null-price paths", async
   await page.getByLabel(m("terms.checkbox")).check();
   await accept.click();
 
+  // 1c. The welcome tour opens once after the terms; it can always be skipped.
+  const tour = page.getByRole("dialog", { name: m("tour.title") });
+  await expect(tour).toBeVisible();
+  await tour.getByRole("button", { name: m("tour.skip") }).click();
+  await expect(tour).toBeHidden();
+
   // 2. First portfolio.
   await expect(page.getByText(m("createPortfolio.title"))).toBeVisible();
   await checkScreen(page, "en");
@@ -111,6 +117,14 @@ test("real backend: challenge, first portfolio, import, null-price paths", async
   await expect(card("NVDA")).toContainText(m("holdings.noData"));
   await expect(card("NVDA")).not.toContainText("$0.00");
   await checkScreen(page, "en");
+
+  // 4b. The setup is required before other pages open: a risk level, then a holding period for each
+  // holding (suggested with a reason, never pre-selected; the user taps to use it).
+  await page.getByRole("radio", { name: new RegExp(`^${m("settings.presets.balanced")}(?!-)`) }).check();
+  await page.getByRole("button", { name: m("guide.riskSave") }).click();
+  await expect(page.getByText(m("guide.suggest.reason.stockMid")).first()).toBeVisible();
+  await page.getByRole("button", { name: m("guide.suggest.useAll") }).click();
+  await expect(page.getByText(m("guide.suggest.reason.stockMid"))).toHaveCount(0);
 
   // 5. NVDA holding page: after choosing a holding period, exit levels explain why there are none.
   await card("NVDA").getByRole("link").first().click();

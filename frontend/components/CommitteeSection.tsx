@@ -1,9 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { api, ApiError, type CommitteeOut, type CommitteeStance } from "@/lib/api";
 import { COMMITTEE_MAX_ADJUSTMENT, COMMITTEE_RUNS_PER_DAY } from "@/lib/config";
 import { formatNumber } from "@/lib/format";
+import { Modal } from "./Modal";
 
 type Problem = "rate" | "notFound" | "generic" | null;
 const Txt = ({ children }: { children: string }) => <bdi dir="auto">{children}</bdi>;
@@ -100,29 +101,85 @@ function Report({ out }: { out: CommitteeOut }) {
   );
 }
 
-/** Investment Committee on demand: public data only, no verdict. Result kept in memory, never stored. */
+const STAGES = [
+  { key: "profile", until: 4 },
+  { key: "news", until: 9 },
+  { key: "risks", until: 15 },
+  { key: "summary", until: Infinity },
+] as const;
+/** Estimated progress: rises with elapsed seconds, flattens out and never reaches 100 until the reply arrives. */
+export function estimateProgress(seconds: number): number { return Math.min(95, 95 * (1 - Math.exp(-seconds / 14))); }
+const stageFor = (seconds: number) => STAGES.find((s) => seconds < s.until)!.key;
+
+/** Deep review (the investment committee) on demand: a floating button that opens a side panel. Public data only, no verdict. State lives here, so closing the panel keeps the run going. */
 export function CommitteeSection({ symbol }: { symbol: string }) {
+  return <DeepReview key={symbol} symbol={symbol} />; // a new ticker starts clean
+}
+
+function DeepReview({ symbol }: { symbol: string }) {
   const t = useTranslations("committee");
   const locale = useLocale();
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [seconds, setSeconds] = useState(0);
   const [problem, setProblem] = useState<Problem>(null);
   const [out, setOut] = useState<CommitteeOut | null>(null);
   const [left, setLeft] = useState<number | null>(null);
+  const runId = useRef(0);
+  useEffect(() => {
+    if (!busy) return;
+    const started = Date.now();
+    const id = setInterval(() => setSeconds((Date.now() - started) / 1000), 250);
+    return () => clearInterval(id);
+  }, [busy]);
   const run = async () => {
-    setBusy(true); setProblem(null);
-    try { const o = await api.committee(symbol); setOut(o); setLeft(o.runs_left_today); }
-    catch (err) { setOut(null); if (err instanceof ApiError && err.status === 429) setLeft(0); setProblem(err instanceof ApiError ? (err.status === 429 ? "rate" : err.status === 404 ? "notFound" : "generic") : "generic"); }
-    finally { setBusy(false); }
+    const mine = ++runId.current;
+    setBusy(true); setProblem(null); setSeconds(0);
+    try { const o = await api.committee(symbol); if (mine !== runId.current) return; setOut(o); setLeft(o.runs_left_today); }
+    catch (err) {
+      if (mine !== runId.current) return;
+      setOut(null); if (err instanceof ApiError && err.status === 429) setLeft(0);
+      setProblem(err instanceof ApiError ? (err.status === 429 ? "rate" : err.status === 404 ? "notFound" : "generic") : "generic");
+    } finally { if (mine === runId.current) setBusy(false); }
   };
+  const pct = Math.round(estimateProgress(seconds));
   return (
-    <section className="card space-y-3" aria-label={t("title")} aria-busy={busy} data-testid="committee">
-      <h2 className="text-heading">{t("title")}</h2>
-      <p className="text-sm text-muted">{t("intro")}</p>
-      <p className="text-caption text-muted" data-testid="committee-runs-left">{left === null ? t("runsPerDay", { n: formatNumber(COMMITTEE_RUNS_PER_DAY, locale, 0) }) : t("runsLeft", { left: formatNumber(left, locale, 0), n: formatNumber(out?.runs_per_day ?? COMMITTEE_RUNS_PER_DAY, locale, 0) })}</p>
-      <button type="button" className="btn-primary" disabled={busy} onClick={() => void run()}>{busy ? t("running") : out ? t("rerun") : t("run")}</button>
-      {busy && <p role="status" className="text-sm text-muted">{t("runningNote")}</p>}
-      {problem && <p role="alert" className="text-loss" data-testid={`committee-problem-${problem}`}>{t(`problem.${problem}`)}</p>}
-      {out && <Report out={out} />}
-    </section>
+    <>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-label={busy ? `${t("open")} (${t("busyBadge")})` : t("open")}
+        data-testid="committee-fab"
+        onClick={() => setOpen(true)}
+        className="fixed bottom-[calc(var(--tabbar-h)+var(--safe-b)+5.5rem)] end-4 z-30 flex h-12 min-w-12 items-center justify-center gap-2 rounded-full bg-brand px-3 text-brand-on shadow-lg hover:bg-brand-hover md:bottom-6 md:px-4"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+        <span className="hidden text-sm font-semibold md:inline">{t("title")}</span>
+        {busy && <span aria-hidden="true" data-testid="committee-fab-busy" className="h-3 w-3 animate-pulse rounded-full bg-brand-on" />}
+      </button>
+      {open && (
+        <Modal title={t("title")} onClose={() => setOpen(false)}>
+          <div className="space-y-3" aria-busy={busy} data-testid="committee">
+            <p className="text-sm text-muted">{t("explainReads")}</p>
+            <p className="text-sm text-muted">{t("explainNotAdvice")}</p>
+            <p className="text-caption text-muted" data-testid="committee-runs-left">{left === null ? t("runsPerDay", { n: formatNumber(COMMITTEE_RUNS_PER_DAY, locale, 0) }) : t("runsLeft", { left: formatNumber(left, locale, 0), n: formatNumber(out?.runs_per_day ?? COMMITTEE_RUNS_PER_DAY, locale, 0) })}</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn-primary" disabled={busy} onClick={() => void run()}>{busy ? t("running") : out ? t("rerun") : t("run")}</button>
+              <button type="button" className="btn-secondary" onClick={() => setOpen(false)}>{t("close")}</button>
+            </div>
+            {busy && (
+              <div className="space-y-1" data-testid="committee-progress">
+                <div role="progressbar" aria-label={t("progressLabel")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
+                  <div className="h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${pct}%` }} />
+                </div>
+                <p role="status" className="text-sm text-muted">{t(`stage.${stageFor(seconds)}`)}</p>
+              </div>
+            )}
+            {problem && <p role="alert" className="text-loss" data-testid={`committee-problem-${problem}`}>{t(`problem.${problem}`)}</p>}
+            {out && <Report out={out} />}
+          </div>
+        </Modal>
+      )}
+    </>
   );
 }

@@ -8,7 +8,9 @@ import { setFormatPrefs } from "@/lib/format";
 import { applyTheme } from "@/lib/theme";
 import { ActionsSheet } from "./ActionsSheet";
 import { AuthGate } from "./AuthGate";
+import { WelcomeTour } from "./WelcomeTour";
 import { Disclaimer } from "./Disclaimer";
+import { SetupGate } from "./SetupGate";
 import { LogoMark, Wordmark } from "./Logo";
 import { AnalyzeIcon, BellIcon, HomeIcon, PlusIcon, PortfolioIcon, SettingsIcon } from "./icons";
 
@@ -130,7 +132,7 @@ export function AppShell({ children, stable }: { children: ReactNode; stable?: b
             </button>
           </div>
         </header>
-        <main id="main" className="mx-auto max-w-5xl space-y-4 px-4 py-4 pb-24 md:pb-4"><FormatKeyed stable={stable}>{children}</FormatKeyed></main>
+        <main id="main" className="mx-auto max-w-5xl space-y-4 px-4 py-4 pb-24 md:pb-4"><FormatKeyed stable={stable}><SetupGate>{children}</SetupGate></FormatKeyed></main>
         <Disclaimer />
       </div>
       <button
@@ -144,6 +146,7 @@ export function AppShell({ children, stable }: { children: ReactNode; stable?: b
       </button>
       <TabBar />
       {menu && <ActionsSheet onClose={close} />}
+      <WelcomeTour />
     </AuthGate>
   );
 }

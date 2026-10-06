@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useGuideState } from "@/lib/guide";
+import { useSetupGate } from "@/lib/setup";
 import { loadPortfolioChoice, savePortfolioChoice, useHoldings, usePortfolios, useSummary, type PortfolioRef } from "@/lib/hooks";
 import { ScreenshotNudge } from "./ScreenshotNudge";
 import { AddHoldingForm } from "./AddHoldingForm";
@@ -19,6 +20,7 @@ function Body() {
   const { data: portfolios, error: pErr } = usePortfolios();
   const [choice, setChoice] = useState<PortfolioRef>(() => loadPortfolioChoice() ?? "combined");
   const guide = useGuideState();
+  const gate = useSetupGate();
   const [adding, setAdding] = useState(false);
   const valid = choice === "combined" || portfolios?.some((p) => p.id === choice);
   const ref: PortfolioRef = valid ? choice : "combined";
@@ -27,10 +29,10 @@ function Body() {
 
   if (pErr) return <p role="alert">{t("common.errorLoad")}</p>;
   if (!portfolios) return <p role="status" className="text-muted">{t("common.loading")}</p>;
-  if (portfolios.length === 0) return guide.dismissed ? <CreatePortfolio /> : <FirstRunGuide portfolios={portfolios} />;
+  if (portfolios.length === 0) return guide.dismissed && gate === "open" ? <CreatePortfolio /> : <FirstRunGuide portfolios={portfolios} />;
 
   const emptyHoldings = holdings.data !== undefined && holdings.data.length === 0;
-  const showGuide = !guide.dismissed && (guide.started || emptyHoldings);
+  const showGuide = gate === "blocked" || (!guide.dismissed && (guide.started || emptyHoldings));
   return (
     <>
       {showGuide && <FirstRunGuide portfolios={portfolios} />}

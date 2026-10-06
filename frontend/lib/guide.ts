@@ -12,9 +12,11 @@ export interface GuideState {
   started: boolean;
   /** Portfolio ids whose risk level the user chose inside the guide (the server always stores a default). */
   riskChosen: number[];
+  /** The optional Telegram step was skipped. */
+  telegramSkipped: boolean;
 }
 export const GUIDE_KEY = "pm.guide.v1";
-const DEFAULT: GuideState = { dismissed: false, started: false, riskChosen: [] };
+const DEFAULT: GuideState = { dismissed: false, started: false, riskChosen: [], telegramSkipped: false };
 
 let state: GuideState = DEFAULT;
 let loaded = false;
@@ -30,6 +32,7 @@ function load(): void {
       state = {
         dismissed: p.dismissed === true,
         started: p.started === true,
+        telegramSkipped: p.telegramSkipped === true,
         riskChosen: Array.isArray(p.riskChosen) ? p.riskChosen.filter((x): x is number => typeof x === "number") : [],
       };
     }
@@ -48,6 +51,7 @@ export const guideActions = {
   reopen: () => { load(); set({ ...state, dismissed: false, started: true }); },
   markStarted: () => { load(); if (!state.started) set({ ...state, started: true }); },
   markRiskChosen: (pid: number) => { load(); if (!state.riskChosen.includes(pid)) set({ ...state, riskChosen: [...state.riskChosen, pid] }); },
+  skipTelegram: () => { load(); if (!state.telegramSkipped) set({ ...state, telegramSkipped: true }); },
   /** Test helper. */
   reset: () => { loaded = true; state = DEFAULT; listeners.forEach((l) => l()); },
 };

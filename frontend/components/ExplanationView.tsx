@@ -1,6 +1,7 @@
 "use client";
 import { useLocale, useTranslations } from "next-intl";
 import type { Explanation } from "@/lib/api";
+import { useReasonText } from "@/lib/useReasonText";
 import { DASH, formatDate, formatMoney, formatTime, formatWeight } from "@/lib/format";
 
 const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
@@ -26,6 +27,7 @@ export function ExplanationView({ e, reasons, asOf, currency, showContributions 
 }) {
   const t = useTranslations("holding");
   const locale = useLocale();
+  const { text, input } = useReasonText();
   const inputs = Object.entries(e.inputs ?? {});
   const contributions = showContributions ? (e.contributions ?? []) : [];
   const annotations = e.annotations ?? [];
@@ -40,12 +42,12 @@ export function ExplanationView({ e, reasons, asOf, currency, showContributions 
     <div className="space-y-3 text-sm" data-testid="explanation">
       <div>
         <h4 className={h}>{t("whySummary")}</h4>
-        <p dir="auto">{e.summary ? <Txt>{e.summary}</Txt> : DASH}</p>
+        <p dir="auto">{e.summary ? <Txt>{text(e.summary)}</Txt> : DASH}</p>
       </div>
       {reasons && reasons.length > 0 && (
         <div>
           <h4 className={h}>{t("whyReasons")}</h4>
-          <ul className="list-disc ps-5">{reasons.map((r) => <li key={r} dir="auto"><Txt>{r}</Txt></li>)}</ul>
+          <ul className="list-disc ps-5">{reasons.map((r) => <li key={r} dir="auto"><Txt>{text(r)}</Txt></li>)}</ul>
         </div>
       )}
       {contributions.length > 0 && (
@@ -92,7 +94,7 @@ export function ExplanationView({ e, reasons, asOf, currency, showContributions 
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
             {inputs.map(([k, v]) => (
               <div key={k} className="contents">
-                <dt className={muted} dir="auto"><Txt>{k}</Txt></dt>
+                <dt className={muted} dir="auto"><Txt>{input(k)}</Txt></dt>
                 <dd className="tabular-nums" dir="auto"><Txt>{inputText(v)}</Txt></dd>
               </div>
             ))}
@@ -105,7 +107,7 @@ export function ExplanationView({ e, reasons, asOf, currency, showContributions 
           <ul className="list-disc ps-5">
             {annotations.map((a, i) => (
               <li key={`${a.kind}-${a.label}-${i}`} dir="auto">
-                <span className="font-medium">{t(`annotationKinds.${a.kind}`)}</span>: <Txt>{a.label}</Txt>
+                <span className="font-medium">{t(`annotationKinds.${a.kind}`)}</span>: <Txt>{text(a.label)}</Txt>
                 {finite(a.price) && <> · <span dir="ltr">{currency ? formatMoney(a.price, currency, locale) : a.price}</span></>}
                 {a.as_of && <span className={muted}> · {formatDate(a.as_of)}</span>}
               </li>
@@ -128,7 +130,7 @@ export function ExplanationView({ e, reasons, asOf, currency, showContributions 
       {risks.length > 0 && (
         <div>
           <h4 className={h}>{t("whyInvalidation")}</h4>
-          <ul className="list-disc ps-5">{risks.map((r, i) => <li key={`${i}-${r}`} dir="auto"><Txt>{r}</Txt></li>)}</ul>
+          <ul className="list-disc ps-5">{risks.map((r, i) => <li key={`${i}-${r}`} dir="auto"><Txt>{text(r)}</Txt></li>)}</ul>
         </div>
       )}
       {sources.length > 0 && (

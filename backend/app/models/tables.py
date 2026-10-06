@@ -102,6 +102,8 @@ class Portfolio(SQLModel, table=True):
     # When a screenshot import was last confirmed (aware-UTC semantics, stored naive like the rest).
     # Drives "Last updated from a screenshot" and the nudge (`update_is_stale`).
     last_screenshot_update_at: NaiveDatetime | None = None
+    # When the user last saved a risk level themselves (null: still the server default).
+    risk_chosen_at: NaiveDatetime | None = None
     created_at: NaiveDatetime = Field(default_factory=utcnow)
 
 

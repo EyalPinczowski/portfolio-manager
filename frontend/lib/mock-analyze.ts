@@ -74,15 +74,29 @@ export function mockWatchDelete(symbol: string): undefined { watch = watch.filte
 
 const explain = (summary: string, extra: Partial<Explanation> = {}): Explanation => ({ version: 1, summary, as_of: AS_OF, ...extra });
 
+/** 120 deterministic daily candles ending on the AS_OF day (weekends skipped). */
+function mockCandles(price: number): NonNullable<ChartReport["candles"]> {
+  const out: NonNullable<ChartReport["candles"]> = [];
+  const d = new Date(AS_OF.slice(0, 10) + "T00:00:00Z");
+  const days: string[] = [];
+  while (days.length < 120) { if (d.getUTCDay() % 6 !== 0) days.unshift(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() - 1); }
+  days.forEach((time, i) => {
+    const c = price * (0.9 + 0.1 * (i / 119) + 0.03 * Math.sin(i / 7));
+    const o = c * (1 + 0.004 * Math.sin(i));
+    out.push({ time, open: r2(o), high: r2(Math.max(o, c) * 1.01), low: r2(Math.min(o, c) * 0.99), close: r2(c) });
+  });
+  return out;
+}
+
 function signalLines(thin: boolean): SignalLine[] {
   const line = (name: string, score: number, conf: number, weight: number, reasons: string[]): SignalLine => ({
     name, available: conf > 0, score, confidence: conf, weight: conf > 0 ? weight : 0, nominal_weight: weight, reasons, data_as_of: AS_OF,
   });
   return [
-    line("trend", thin ? 0 : 38, thin ? 0 : 0.8, 35, thin ? [] : ["Price is above the 50-day and 200-day averages."]),
-    line("momentum", thin ? 0 : -12, thin ? 0 : 0.7, 30, thin ? [] : ["RSI(14) is 58; MACD is flat."]),
-    line("volatility", thin ? 0 : 5, thin ? 0 : 0.6, 20, thin ? [] : ["ATR is 2.5% of the price."]),
-    line("volume", thin ? 0 : 10, thin ? 0 : 0.5, 15, thin ? [] : ["Volume is near its 20-day average."]),
+    line("trend", thin ? 0 : 38, thin ? 0 : 0.8, 35, thin ? [] : ["Price is 3.2% above its 50-day average.", "Price is 8.1% above its 200-day average.", "The 50-day average is above the 200-day average (long-term uptrend)."]),
+    line("momentum", thin ? 0 : -12, thin ? 0 : 0.7, 30, thin ? [] : ["RSI is 58: positive momentum.", "MACD is below its signal line."]),
+    line("volatility", thin ? 0 : 5, thin ? 0 : 0.6, 20, thin ? [] : ["Daily range (ATR) is 2.5% of price: contained volatility."]),
+    line("volume", thin ? 0 : 10, thin ? 0 : 0.5, 15, thin ? [] : ["Volume is 1.0x its 20-day average: no spike."]),
   ];
 }
 
@@ -110,11 +124,13 @@ export function mockAnalyze(rawSymbol: string, q: AnalyzeQ, ctx: AnalyzeCtx, rec
       { kind: "resistance", price: r2(c.price * 1.08), distance_pct: 8, touches: 2 },
     ],
     annotations: c.thin ? [] : [
-      { kind: "support", label: "Recent swing low", price: r2(c.price * 0.93), as_of: AS_OF },
-      { kind: "moving_average", label: "200-day average", price: r2(c.price * 0.9), as_of: AS_OF },
+      { kind: "support", label: "Support (touched 3x)", price: r2(c.price * 0.93), as_of: AS_OF },
+      { kind: "pattern", label: "golden cross", as_of: "2026-10-02T00:00:00Z" },
+      { kind: "moving_average", label: "SMA200", price: r2(c.price * 0.9), as_of: AS_OF },
     ],
+    candles: c.thin ? [] : mockCandles(c.price),
     data_as_of: c.thin ? STALE_AS_OF : AS_OF, bars: c.thin ? 40 : 250,
-    explanation: explain(c.thin ? "Too little price history for chart signals." : "Trend is up; momentum is mixed.", {
+    explanation: explain(c.thin ? "Too little price history for chart signals." : "Technical score +24 (trend +38, momentum -12).", {
       contributions: signalLines(!!c.thin).map((s) => ({ name: s.name, score: s.score, weight: s.weight, confidence: s.confidence, reasons: s.reasons })),
       invalidation_risks: ["A close below the 200-day average would weaken the trend reading."],
       sources: [{ name: "Price history (Yahoo Finance)", as_of: AS_OF, detail: "Daily bars" }],
@@ -207,7 +223,7 @@ const heldOut = (h: AnalyzeHeld): NonNullable<PortfolioFit["held"]> => ({ holdin
 function out(sym: string, scout: ScoutReport, chart: ChartReport, fit: PortfolioFit, b: CandidateBase, needs: AnalyzeOut["needs_input"]): AnalyzeOut {
   return {
     symbol: sym, generated_at: AS_OF, cached: false, scout, chart, portfolio_fit: fit,
-    candidate_info: { score: b.score, confidence: b.confidence, score_available: b.scoreAvailable, fit_passes: fit.status === "incomplete" ? null : fit.status === "fits", launch_gate_open: false, launch_gate_reasons: ["No passing backtest for the active weights yet.", "Paper trading: fewer than 4 weeks of results."], notice: LIMITED_NOTICE },
+    candidate_info: { score: b.score, confidence: b.confidence, score_available: b.scoreAvailable, fit_passes: fit.status === "incomplete" ? null : fit.status === "fits", launch_gate_open: false, launch_gate_reasons: ["No backtest has been run for the active weights configuration.", "Paper trading has run 0.0 of 4 required weeks (0 call(s) recorded).", "Only 0 of 50 required calls are resolved at 1 month (0 recorded)."], notice: LIMITED_NOTICE },
     summary: `${scout.name_en}: neutral analysis from price history and your limits.`, llm_used: false, needs_input: needs, disclaimer: "Not financial advice.",
   } as AnalyzeOut;
 }

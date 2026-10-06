@@ -1575,6 +1575,19 @@ export interface components {
              */
             disclaimer: string;
         };
+        /** Candle */
+        Candle: {
+            /** Time */
+            time: string;
+            /** Open */
+            open: number;
+            /** High */
+            high: number;
+            /** Low */
+            low: number;
+            /** Close */
+            close: number;
+        };
         /**
          * ChallengeRequiredOut
          * @description 403 body of `POST /auth/login` when a Cloudflare Turnstile token is needed.
@@ -1625,6 +1638,8 @@ export interface components {
             levels?: components["schemas"]["Level"][];
             /** Annotations */
             annotations?: components["schemas"]["ChartAnnotation"][];
+            /** Candles */
+            candles?: components["schemas"]["Candle"][];
             /** Data As Of */
             data_as_of?: string | null;
             /** Bars */
@@ -3038,6 +3053,8 @@ export interface components {
              * @default false
              */
             screenshot_update_stale: boolean;
+            /** Risk Chosen At */
+            risk_chosen_at?: string | null;
             /**
              * Created At
              * Format: date-time

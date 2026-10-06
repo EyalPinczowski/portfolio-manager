@@ -7,6 +7,12 @@ import en from "@/messages/en.json";
 import he from "@/messages/he.json";
 
 vi.stubEnv("NEXT_PUBLIC_API_MOCK", "1");
+const chartCalls = vi.hoisted(() => ({ candles: [] as unknown[], lines: [] as unknown[] }));
+vi.mock("lightweight-charts", () => {
+  const mk = (kind: "candles" | "lines") => ({ setData: (d: unknown) => { chartCalls[kind].push(d); }, createPriceLine: vi.fn() });
+  const chart = { addSeries: vi.fn((k: string) => (k === "candle" ? mk("candles") : mk("lines"))), timeScale: () => ({ fitContent: vi.fn() }), remove: vi.fn() };
+  return { createChart: vi.fn(() => chart), createSeriesMarkers: vi.fn(), CandlestickSeries: "candle", HistogramSeries: "hist", LineSeries: "line", LineStyle: { Solid: 0, Dotted: 1, Dashed: 2 }, ColorType: { Solid: "solid" } };
+});
 const push = vi.fn();
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: ReactNode }) => <a href={href} {...rest}>{children}</a>,
@@ -34,7 +40,7 @@ const wrap = (locale: "en" | "he", ui: ReactNode) =>
 const an = (q: string) => mockRequest("GET", `/analyze/${q}`) as AnalyzeOut;
 const NO_VERDICT = /\b(buy|sell|hold|recommend(ed|ation)?)\b/i;
 
-beforeEach(() => { resetMockLists(); push.mockClear(); symbolParam = null; });
+beforeEach(() => { chartCalls.candles.length = 0; window.matchMedia ??= (() => ({ matches: false })) as unknown as typeof window.matchMedia; resetMockLists(); push.mockClear(); symbolParam = null; });
 afterEach(() => vi.restoreAllMocks());
 
 async function fillForm(opts: { pf?: string; amount: string; cur: string; horizon?: string }) {
@@ -300,5 +306,34 @@ describe("entries to the analyze screen", () => {
     expect(screen.getByRole("link", { name: he.nav.analyze })).toHaveAttribute("href", "/analyze");
     const menu = screen.getByRole("dialog", { name: he.actions.menuTitle });
     expect(within(menu).getByRole("link", { name: new RegExp(he.actions.analyze) })).toHaveAttribute("href", "/analyze");
+  });
+
+  it("draws the candles, and shows the gate as one short line with details behind a toggle", async () => {
+    wrap("en", <AnalyzeResult symbol="XOM" />);
+    await screen.findByTestId("signal-trend");
+    expect(screen.getByTestId("price-chart")).toHaveAttribute("dir", "ltr");
+    expect((chartCalls.candles[0] as unknown[]).length).toBe(120);
+    expect(screen.getByTestId("chart-legend")).toBeInTheDocument();
+    expect(screen.queryByLabelText(en.analyze.indicators)).toBeNull(); // raw numbers only inside Why?
+    const gate = screen.getByTestId("gate-notice");
+    expect(screen.getByTestId("gate-progress").textContent).toBe("Backtest: not yet · Weeks 0/4 · Calls 0/50");
+    expect(gate.textContent).not.toContain("Paper trading has run");
+    fireEvent.click(within(gate).getByRole("button", { name: en.reason.gateDetails }));
+    expect(gate.textContent).toContain("Paper trading has run 0.0 of 4 weeks");
+  });
+
+  it("Hebrew: reasons, gate and chart annotations are Hebrew; at most 2 reasons per signal until more", async () => {
+    wrap("he", <AnalyzeResult symbol="XOM" />);
+    const trend = await screen.findByTestId("signal-trend");
+    expect(trend.querySelectorAll("li").length).toBe(2);
+    expect(trend.textContent).toContain("המחיר גבוה ב-3.2% מהממוצע של 50 הימים האחרונים.");
+    fireEvent.click(within(trend).getByRole("button", { name: he.reason.more.replace("{n}", "1") }));
+    expect(trend.querySelectorAll("li").length).toBe(3);
+    const gate = screen.getByTestId("gate-notice");
+    fireEvent.click(within(gate).getByRole("button", { name: he.reason.gateDetails }));
+    expect(gate.textContent).toContain("המסחר הדמיוני רץ 0.0 מתוך 4 שבועות");
+    const chart = screen.getByRole("region", { name: he.analyze.chartTitle });
+    expect(chart.textContent).toContain("צלב זהב");
+    expect(screen.getByTestId("root").textContent).not.toMatch(/Paper trading|Price is|RSI is|touched/);
   });
 });

@@ -4127,6 +4127,39 @@
         ],
         "title": "CandidatesOut"
       },
+      "Candle": {
+        "properties": {
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "open": {
+            "type": "number",
+            "title": "Open"
+          },
+          "high": {
+            "type": "number",
+            "title": "High"
+          },
+          "low": {
+            "type": "number",
+            "title": "Low"
+          },
+          "close": {
+            "type": "number",
+            "title": "Close"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time",
+          "open",
+          "high",
+          "low",
+          "close"
+        ],
+        "title": "Candle"
+      },
       "ChallengeRequiredOut": {
         "properties": {
           "detail": {
@@ -4248,6 +4281,13 @@
             },
             "type": "array",
             "title": "Annotations"
+          },
+          "candles": {
+            "items": {
+              "$ref": "#/components/schemas/Candle"
+            },
+            "type": "array",
+            "title": "Candles"
           },
           "data_as_of": {
             "anyOf": [
@@ -8630,6 +8670,18 @@
             "type": "boolean",
             "title": "Screenshot Update Stale",
             "default": false
+          },
+          "risk_chosen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Chosen At"
           },
           "created_at": {
             "type": "string",

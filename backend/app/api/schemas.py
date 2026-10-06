@@ -162,6 +162,8 @@ class PortfolioOut(BaseModel):
     # setting (`screenshot_update_nudge_days`, default 7).
     last_screenshot_update_at: datetime | None = None
     screenshot_update_stale: bool = False
+    # When the user saved a risk level themselves; null while the server default is in place.
+    risk_chosen_at: datetime | None = None
     created_at: datetime
 
 

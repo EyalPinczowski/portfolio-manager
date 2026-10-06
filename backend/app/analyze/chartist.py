@@ -11,7 +11,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from app.analyze.schemas import NOT_VALIDATED_NOTICE, ChartReport, Level, SignalLine
+from app.analyze.schemas import NOT_VALIDATED_NOTICE, Candle, ChartReport, Level, SignalLine
 from app.config import Settings, get_settings
 from app.scoring.scorecard import NOT_VALIDATED, compute_scorecard
 from app.scoring.universe import _OneFrame
@@ -87,6 +87,27 @@ def support_resistance(df: pd.DataFrame, s: Settings) -> list[Level]:
     return out
 
 
+def chart_candles(df: pd.DataFrame, n: int) -> list[Candle]:
+    """The last `n` daily OHLC bars of the history already fetched (prices are already in the
+    listing currency: agorot are converted at the provider layer). Rows missing a value are skipped."""
+    cols = ["Open", "High", "Low", "Close"]
+    if any(c not in df.columns for c in cols):
+        return []
+    out: list[Candle] = []
+    for ts, row in df[cols].dropna().tail(n).iterrows():  # ts: the DatetimeIndex label
+        o, h, lo, c = (float(row[k]) for k in cols)
+        out.append(
+            Candle(
+                time=pd.Timestamp(str(ts)).strftime("%Y-%m-%d"),
+                open=round(o, 4),
+                high=round(h, 4),
+                low=round(lo, 4),
+                close=round(c, 4),
+            )
+        )
+    return out
+
+
 def build_chart_report(
     symbol: str, df: pd.DataFrame | None, settings: Settings | None = None
 ) -> ChartReport:
@@ -136,6 +157,9 @@ def build_chart_report(
         else {},
         levels=support_resistance(frame, s) if frame is not None and len(frame) > 20 else [],
         annotations=list(explanation.annotations),
+        candles=chart_candles(frame, s.analyze_chart_bars)
+        if frame is not None and len(frame)
+        else [],
         data_as_of=as_of,
         bars=0 if frame is None else len(frame),
         explanation=explanation,

@@ -571,6 +571,27 @@
       "horizon": {
         "title": "Set a holding period for each stock",
         "hint": "How long do you plan to hold each one? No default is filled in."
+      },
+      "telegram": {
+        "title": "Connect Telegram alerts",
+        "hint": "Get alerts in Telegram when a recommendation changes. You can skip this and do it later in Settings."
+      }
+    },
+    "tgConnect": "Get a link code",
+    "tgLinked": "Telegram is connected.",
+    "tgError": "Could not get a code. Try again later.",
+    "skipTelegram": "Skip",
+    "gateWhy": "Finish the short setup first. The app needs it to give you information that fits you.",
+    "suggest": {
+      "line": "Suggested: {period}. {reason}",
+      "use": "Use suggestion",
+      "useAll": "Use all suggestions",
+      "reason": {
+        "fund": "A broad fund spreads the risk and usually suits long holding.",
+        "crypto": "It moves fast, so it is worth checking often.",
+        "stockLong": "With a careful risk level, a longer holding gives a stock time to recover.",
+        "stockMid": "With a balanced risk level, about half a year is a common middle.",
+        "stockShort": "With a bold risk level, a shorter period that you check often fits."
       }
     }
   },
@@ -745,6 +766,139 @@
       "tight": "Too tight",
       "wide": "Too wide"
     }
+  },
+  "reason": {
+    "priceVsSma": "Price is {pct}% {dir, select, above {above} other {below}} its {n}-day average.",
+    "priceVsSmaAtr": "Price is {z} daily-ranges {dir, select, above {above} other {below}} its {n}-day average.",
+    "sma50v200": "The 50-day average is {dir, select, above {above (long-term uptrend)} other {below (long-term downtrend)}} the 200-day average.",
+    "emaSlope": "The 20-day moving average changed {pct}% in the last 10 sessions.",
+    "macdAtr": "Momentum line (MACD) is {dir, select, above {above} other {below}} its signal line.",
+    "momentum12": "Return over the past year, without the last month: {ret}%.",
+    "rsiOver": "RSI is {n}: overbought (sharp rise, may cool off).",
+    "rsiUnder": "RSI is {n}: oversold (sharp fall).",
+    "rsiPositive": "RSI is {n}: positive momentum.",
+    "rsiWeak": "RSI is {n}: weak momentum.",
+    "macdCrossUp": "MACD just crossed above its signal line (positive sign).",
+    "macdCrossDown": "MACD just crossed below its signal line (negative sign).",
+    "macdSide": "MACD is {dir, select, above {above} other {below}} its signal line.",
+    "stochOver": "Stochastic is {n}: overbought zone.",
+    "stochUnder": "Stochastic is {n}: oversold zone.",
+    "stochKD": "Stochastic ({n}) is {dir, select, above {above} other {below}} its signal line.",
+    "bbUpper": "Price is at the upper edge of its Bollinger bands (stretched up).",
+    "bbLower": "Price is at the lower edge of its Bollinger bands (stretched down).",
+    "bbPosition": "Price sits at {n}% of the Bollinger bands range.",
+    "atrHigh": "The daily price range is {n}% of the price: high volatility.",
+    "atrLow": "The daily price range is {n}% of the price: moderate volatility.",
+    "obvRise": "Trading volume confirms the rise over the last 20 sessions.",
+    "obvFall": "Trading volume confirms the decline over the last 20 sessions.",
+    "obvDiverge": "Trading volume disagrees with the price direction over the last 20 sessions.",
+    "volSpike": "Volume is {n}x its 20-day average on {dir, select, up {a rising} other {a falling}} day.",
+    "volNormal": "Volume is {n}x its 20-day average: no spike.",
+    "earnUnknown": "Next earnings date unknown (no free calendar for this market).",
+    "earnAgo": "The last earnings report was {n} day(s) ago.",
+    "earnToday": "Earnings report today.",
+    "earnIn": "Earnings report in {n} day(s).",
+    "earnLowered": "Confidence is lowered: an upcoming earnings report can make the price jump.",
+    "noHistoryTech": "No price history available.",
+    "noHistoryPatterns": "No price history available for pattern detection.",
+    "fewBarsTech": "Only {n} trading days of history; at least {m} are needed.",
+    "fewBarsPatterns": "Only {n} trading days of history; at least {m} are needed for patterns.",
+    "noIndicators": "Not enough data to compute the indicators.",
+    "noValidValues": "The indicators produced no valid values.",
+    "nearSupport": "Price is {pct}% above support at {p} (touched {k} times).",
+    "nearResistance": "Price is {pct}% below resistance at {p} (touched {k} times).",
+    "noNearLevel": "No key level is close to the price.",
+    "noNearLevelParts": "No key level is close to the price ({parts}).",
+    "breakout": "Breakout: close {p} is above the {n}-day high {h}{vol, select, yes { on heavy volume} other {}}.",
+    "breakdown": "Breakdown: close {p} is below the {n}-day low {h}{vol, select, yes { on heavy volume} other {}}.",
+    "goldenCross": "Golden cross: the 50-day average crossed above the 200-day average within the last {n} sessions.",
+    "deathCross": "Death cross: the 50-day average crossed below the 200-day average within the last {n} sessions.",
+    "sma50v200NoCross": "The 50-day average is {dir, select, above {above} other {below}} the 200-day average (no recent cross).",
+    "doubleTopConfirmed": "Double top near {p}: price broke below the neckline {neck}.",
+    "doubleTopForming": "Possible double top near {p}; the neckline {neck} is not broken yet.",
+    "doubleBottomConfirmed": "Double bottom near {p}: price broke above the neckline {neck}.",
+    "doubleBottomForming": "Possible double bottom near {p}; the neckline {neck} is not broken yet.",
+    "invalidSma": "A close {dir, select, above {above} other {below}} the {n}-day average ({p}) would reverse the trend reading.",
+    "invalidSupport": "A close below support at {p} would turn this level into resistance.",
+    "invalidResistance": "A close above resistance at {p} would invalidate it.",
+    "techSummary": "Technical score {score} ({cats}).",
+    "patternSummary": "Pattern score {score} from {n} rule(s); {k} pattern(s) found.",
+    "totalSummary": "Total score {score} from {n} signal(s) with data; the weight of signals without data ({names}) was spread over the others.",
+    "noSignalData": "No signal has data for this security yet.",
+    "annSupport": "Support (touched {k} times)",
+    "annResistance": "Resistance (touched {k} times)",
+    "annSma": "{n}-day average",
+    "annBreakout": "Breakout above the recent high",
+    "annBreakdown": "Breakdown below the recent low",
+    "annGolden": "Golden cross",
+    "annDeath": "Death cross",
+    "annDoubleTopC": "Double top (confirmed)",
+    "annDoubleTopF": "Double top (forming)",
+    "annDoubleBottomC": "Double bottom (confirmed)",
+    "annDoubleBottomF": "Double bottom (forming)",
+    "gateNoBacktest": "No backtest has been run yet.",
+    "gateOldBacktest": "The latest backtest used different weights than the current ones.",
+    "gateBacktestFailed": "The backtest did not pass.",
+    "gatePaperNotStarted": "Paper trading has not started: it needs {weeks} weeks and {calls} calls resolved after 1 month.",
+    "gateWeeks": "Paper trading has run {done} of {need} weeks ({rec} call(s) recorded).",
+    "gateErrors": "Paper trading had {n} critical error(s); none are allowed.",
+    "gateCalls": "Only {done} of {need} calls are resolved after 1 month ({rec} recorded).",
+    "gateNoBench": "Paper trading has no result against {bench} yet.",
+    "gateNotBeat": "Paper trading does not beat {bench} ({edge}%).",
+    "cat": {
+      "trend": "trend",
+      "momentum": "momentum",
+      "volatility": "volatility",
+      "volume": "volume"
+    },
+    "none": "none",
+    "input": {
+      "close": "Last close",
+      "bars": "Days of history",
+      "sma20": "20-day average",
+      "sma50": "50-day average",
+      "sma200": "200-day average",
+      "ema20_slope_10d_pct": "20-day average change over 10 days (%)",
+      "rsi14": "RSI (14)",
+      "macd_hist": "MACD gap",
+      "stoch_k": "Stochastic",
+      "bollinger_pct_b": "Position inside Bollinger bands (0-1)",
+      "atr14_pct": "Daily range (% of price)",
+      "atr14": "Daily range (14 days)",
+      "atr14_pct_of_price": "Daily range (% of price)",
+      "bollinger_lower": "Lower Bollinger band",
+      "bollinger_upper": "Upper Bollinger band",
+      "high_52w": "52-week high",
+      "low_52w": "52-week low",
+      "support": "Nearest support",
+      "resistance": "Nearest resistance",
+      "sma50_minus_sma200": "50-day minus 200-day average",
+      "obv_rising_20d": "Volume trend rising (20 days)",
+      "volume_ratio": "Volume vs 20-day average (x)",
+      "mom_12_1_z": "Yearly momentum (adjusted)",
+      "z_sma50_atr": "Distance from 50-day average (daily ranges)",
+      "z_sma200_atr": "Distance from 200-day average (daily ranges)",
+      "macd_hist_atr": "MACD gap (daily ranges)"
+    },
+    "chartAria": "Price chart with the analysis drawn on it",
+    "legendCandles": "Daily candles",
+    "legendSma20": "20-day average",
+    "legendSma50": "50-day average",
+    "legendBands": "Bollinger bands",
+    "legendSupport": "Support",
+    "legendResistance": "Resistance",
+    "legendPattern": "Pattern",
+    "chartNote": "Last {n} trading days. Lines are display only and do not change the score.",
+    "gateShort": "Scores are still experimental, so this page gives no verdict yet. It is information to study, not an instruction.",
+    "gateWeeksLine": "Weeks {done}/{need}",
+    "gateCallsLine": "Calls {done}/{need}",
+    "gateBacktestMissing": "Backtest: not yet",
+    "gateBacktestFailedLine": "Backtest: not passed",
+    "gateDetails": "Details",
+    "gateHide": "Hide details",
+    "more": "{n} more",
+    "less": "Show less",
+    "indicatorsTitle": "Numbers behind the chart"
   },
   "analyze": {
     "title": "Analyze a stock",
@@ -1526,9 +1680,9 @@
     }
   },
   "committee": {
-    "title": "Investment committee",
+    "title": "Deep review",
     "intro": "A deeper read on public information: company profile, news, and the risks a skeptical analyst raises, each answered by the CIO. It never gives a verdict, and it cannot move the score by more than a small cap.",
-    "run": "Run the committee",
+    "run": "Start deep review",
     "rerun": "Run again",
     "running": "Running…",
     "runningNote": "The committee is reading the public information. This can take a moment.",
@@ -1579,7 +1733,19 @@
       "generic": "The committee could not run. Try again."
     },
     "runsPerDay": "Up to {n} runs a day.",
-    "runsLeft": "{left} of {n} runs left today."
+    "runsLeft": "{left} of {n} runs left today.",
+    "open": "Open deep review",
+    "close": "Close",
+    "explainReads": "Reads the company profile, recent news and the main risks, using public information only.",
+    "explainNotAdvice": "This is information to read, not advice, and it gives no verdict.",
+    "progressLabel": "Deep review progress",
+    "stage": {
+      "profile": "Reading the company profile…",
+      "news": "Reading the news…",
+      "risks": "Checking the risks…",
+      "summary": "Summarizing…"
+    },
+    "busyBadge": "Deep review is running"
   },
   "terms": {
     "title": "Terms of use and disclaimer",
@@ -1625,5 +1791,40 @@
     "readOnly": "Sign in to accept these terms and start using the app.",
     "signIn": "Sign in",
     "backHome": "Back to the app"
+  },
+  "tour": {
+    "title": "Welcome tour",
+    "step": "{n} of {total}",
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "start": "Let's start",
+    "settingsRow": "Show the app tour",
+    "slides": {
+      "welcome": {
+        "title": "Welcome to Holdwise",
+        "body": "Holdwise helps you understand your US and Israeli stocks. It only suggests: it never trades for you, and nothing here is investment advice."
+      },
+      "portfolio": {
+        "title": "Add your portfolio",
+        "body": "Upload screenshots from your broker. The image is read on your device and is never kept, and you check every row before saving."
+      },
+      "home": {
+        "title": "Home",
+        "body": "See your daily value and change in shekels and dollars, compared with the S&P 500 and the TA-125."
+      },
+      "analyze": {
+        "title": "Analyze a stock",
+        "body": "Search any stock for a chart with support and resistance, signals in plain words and how it fits your portfolio. The Deep review button gives a longer AI reading."
+      },
+      "alerts": {
+        "title": "Alerts",
+        "body": "You get an alert only when something changes or a stop or target is hit. Alerts can also be sent to Telegram."
+      },
+      "rules": {
+        "title": "Your rules",
+        "body": "Your risk limits and settings (language, theme, currency) are yours. Suggestions never break your limits."
+      }
+    }
   }
 }

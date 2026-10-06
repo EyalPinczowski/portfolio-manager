@@ -59,7 +59,7 @@ export function QuietHoursScreen({ s }: { s: Settings }) {
   );
 }
 
-function CodeBox({ code, onNew }: { code: LinkCode; onNew: () => void }) {
+export function CodeBox({ code, onNew }: { code: LinkCode; onNew: () => void }) {
   const t = useTranslations("prefs.telegram");
   const locale = useLocale();
   const { data: st } = useTelegramStatus();

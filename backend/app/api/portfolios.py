@@ -79,6 +79,7 @@ def portfolio_out(p: Portfolio, settings: Settings) -> PortfolioOut:
             as_utc(p.last_screenshot_update_at) if p.last_screenshot_update_at else None
         ),
         screenshot_update_stale=update_is_stale(p, settings),
+        risk_chosen_at=as_utc(p.risk_chosen_at) if p.risk_chosen_at else None,
         created_at=as_utc(p.created_at),
     )
 
@@ -249,6 +250,7 @@ def patch_portfolio(
         p.base_currency = body.base_currency
     if "risk_filter" in body.model_fields_set and body.risk_filter is not None:
         p.risk_filter = _clean_risk_filter(body.risk_filter, settings)
+        p.risk_chosen_at = utcnow()
     if "expected_return_pct" in body.model_fields_set:  # validated as a pair by the schema
         p.expected_return_pct = body.expected_return_pct
         p.expected_return_horizon_months = body.expected_return_horizon_months

@@ -598,3 +598,15 @@ def test_live_quote_replaces_the_stale_screenshot_price(
         db.commit()
     h = {x["symbol"]: x for x in c.get(f"/api/portfolios/{pid}/holdings").json()}["TEVA.TA"]
     assert h["price"] == 70.0 and h["price_stale"] is False
+
+
+def test_risk_chosen_at_is_null_until_the_user_saves_a_risk_level(signup: SignupFn) -> None:
+    c = signup()
+    pid = make_portfolio(c)
+    assert c.get(f"/api/portfolios/{pid}").json()["risk_chosen_at"] is None
+    c.patch(f"/api/portfolios/{pid}", json={"name": "renamed"})
+    assert c.get(f"/api/portfolios/{pid}").json()["risk_chosen_at"] is None
+    r = c.patch(f"/api/portfolios/{pid}", json={"risk_filter": {"preset": "conservative"}})
+    assert r.status_code == 200
+    assert r.json()["risk_chosen_at"] is not None
+    assert c.get(f"/api/portfolios/{pid}").json()["risk_chosen_at"] is not None

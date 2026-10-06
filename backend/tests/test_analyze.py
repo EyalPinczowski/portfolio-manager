@@ -86,6 +86,20 @@ def test_any_ticker_gets_scout_and_chart_reports_without_a_portfolio(world: Worl
     assert out["summary"] and out["llm_used"] is False and out["disclaimer"] == DISCLAIMER
 
 
+def test_chart_has_the_last_n_ohlc_candles_from_the_same_history(world: World) -> None:
+    chart = world.get("AAPL").json()["chart"]
+    candles = chart["candles"]
+    assert len(candles) == get_settings().analyze_chart_bars == 120
+    df = frame()
+    last = candles[-1]
+    assert last["time"] == df.index[-1].strftime("%Y-%m-%d")
+    assert last["close"] == pytest.approx(float(df["Close"].iloc[-1]), abs=1e-3)
+    assert all(c["low"] <= min(c["open"], c["close"]) for c in candles)
+    assert [c["time"] for c in candles] == sorted(c["time"] for c in candles)
+    # annotations carry the date they were detected on
+    assert all(a["as_of"] for a in chart["annotations"])
+
+
 def test_tase_uses_ils_and_catches_agorot_history(world: World) -> None:
     ok = world.get("TEVA.TA", portfolio_id=world.pid, **FIT).json()
     assert ok["scout"]["market"] == "TASE" and ok["scout"]["price"]["currency"] == "ILS"

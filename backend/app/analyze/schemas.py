@@ -90,6 +90,16 @@ class Level(BaseModel):
     touches: int
 
 
+class Candle(BaseModel):
+    model_config = FINITE
+
+    time: str  # YYYY-MM-DD (the exchange's trading day)
+    open: float
+    high: float
+    low: float
+    close: float
+
+
 class ChartReport(BaseModel):
     model_config = FINITE
 
@@ -100,6 +110,7 @@ class ChartReport(BaseModel):
     indicators: dict[str, float] = Field(default_factory=dict)
     levels: list[Level] = Field(default_factory=list)
     annotations: list[ChartAnnotation] = Field(default_factory=list)
+    candles: list[Candle] = Field(default_factory=list)  # last N daily OHLC bars, display only
     data_as_of: datetime | None = None
     bars: int
     explanation: Explanation

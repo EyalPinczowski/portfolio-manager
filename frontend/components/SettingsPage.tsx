@@ -9,6 +9,7 @@ import { useAdminUsers, useMe, usePortfolios, useSettings, useSummary, useTelegr
 import { settingsHref } from "@/lib/routes";
 import { useRouter } from "@/i18n/navigation";
 import { guideActions } from "@/lib/guide";
+import { tourActions } from "@/lib/tour";
 import { SaveStatus, useSettingsSave } from "./SettingsControls";
 import {
   BellGlyph, BookGlyph, CalendarGlyph, ClockGlyph, CoinGlyph, GlobeGlyph, HashGlyph, KeyGlyph, LockGlyph, PulseGlyph, SendGlyph, ShieldGlyph, SparkGlyph, SunGlyph, UserGlyph,
@@ -91,6 +92,7 @@ export function SettingsHub() {
   const nf = useTranslations("prefs.notifications");
   const tg = useTranslations("prefs.telegram");
   const idea = useTranslations("prefs.ideas");
+  const tour = useTranslations("tour");
   const wk = useTranslations("prefs.portfolio");
   const router = useRouter();
   const locale = useLocale();
@@ -143,6 +145,7 @@ export function SettingsHub() {
           r("privacy", sec("privacy"), <SettingsRow key="privacy" label={sec("privacy")} icon={<LockGlyph />} tone="indigo" href={settingsHref("privacy")} />),
           r("status", sec("status"), <SettingsRow key="status" label={sec("status")} icon={<PulseGlyph />} tone="pink" href={settingsHref("status")} />),
           r("guide", sec("guide"), <SettingsRow key="guide" label={sec("guide")} icon={<BookGlyph />} tone="gray" chevron onClick={() => { guideActions.reopen(); router.push("/"); }} />),
+          r("tour", tour("settingsRow"), <SettingsRow key="tour" label={tour("settingsRow")} icon={<BookGlyph />} tone="gray" chevron onClick={() => tourActions.reopen()} />),
         ],
       },
       ...(adminData ? [{ id: "admin", rows: [r("admin", sec("admin"), <SettingsRow key="admin" label={sec("admin")} icon={<KeyGlyph />} tone="gray" href={settingsHref("admin")} />)] }] : []),

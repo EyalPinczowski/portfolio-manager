@@ -15,7 +15,7 @@ Read this file, then `CLAUDE.md`, `docs/status.md` and `docs/reminders.md`, befo
 - The app is named **Holdwise** (green H mark on a rising line, green brand tokens; `frontend/components/Logo.tsx`, `public/icons/*.svg`, `scripts/gen-icons.mjs` rasterises the PWA PNGs).
 - Queue item 3 is done: Ask my portfolio (`/ask`, saved conversations, structured `needs_horizon`) and the Investment Committee on the Analyze result.
 - Backend: 1724+ passed, 33 skipped. Frontend vitest: 506 passed. Mock e2e (light + dark): 93 passed. `npm run e2e:real`: passed.
-- Alembic is at 0020 (daily_bar) and expand-only.
+- Alembic is at 0021 (portfolio.risk_chosen_at) and expand-only.
 - After an API change: regenerate `backend/openapi.json`, then `cd frontend && npm run gen:api`.
 
 ## Deploy state (2026-10-05)
@@ -27,6 +27,8 @@ Read this file, then `CLAUDE.md`, `docs/status.md` and `docs/reminders.md`, befo
 ## Latest (2026-10-06)
 - Update 6 pushed: gear Settings icon, language mark follows the page locale, screenshot review keeps typed values and the ✕ delete is the first column. Terms acceptance is stored in the `terms_acceptance` table (user_id, version, accepted_at).
 - Waiting on the user: admin login after the `BOOTSTRAP_ADMIN_RESET` step on Render, then delete the bootstrap variables and set `REQUIRE_PROXY_AUTH=true`.
+
+- Update 7 pushed (see status.md): Analyze chart + Hebrew reasons, Deep review side panel, required setup (only Telegram skippable) with suggested holding periods, welcome tour. Existing users confirm their risk level once (risk_chosen_at starts null).
 
 ## First thing to do
 Queue item 3 is done. Next is queue item 4 (Postgres run, Opus review, reminders, host and deploy). The backtest is closed: the user accepted the result (`docs/product-decisions.md`, 2026-10-04) and wants no target, cap or stop changes.

@@ -511,6 +511,7 @@ class Settings(BaseSettings):
     analyze_levels_per_side: int = Field(
         default=3, ge=1, le=10
     )  # support / resistance levels shown
+    analyze_chart_bars: int = Field(default=120, ge=20, le=500)  # daily candles sent for the chart
     # --- screener / universe (scoring/screener.py, scheduler job run_universe_score_refresh) ---
     universe_file: str | None = None  # symbols, one per line; default: app/data/universe_seed.txt
     universe_refresh_interval_minutes: int = Field(default=60, gt=0)

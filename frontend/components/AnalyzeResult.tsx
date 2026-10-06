@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { api, ApiError, type AnalyzeOut, type AnalyzeQuery, type AskOut, type ExposureCheck, type Horizon, type Portfolio, type PortfolioFit, type RiskPresetName } from "@/lib/api";
 import { DASH, formatMoney, formatNumber, formatPct, formatTime, formatWeight } from "@/lib/format";
@@ -11,6 +11,9 @@ import { CommitteeSection } from "./CommitteeSection";
 import { ExplanationView } from "./ExplanationView";
 import { HorizonPicker, Levels, NoLevels, WhyToggle } from "./ExitLevelsPanel";
 import { PnlText } from "./Pnl";
+import { PriceChart, type Candle, type PatternMark, type PriceLevel } from "./charts";
+import { gateProgress } from "@/lib/reasonText";
+import { useReasonText } from "@/lib/useReasonText";
 
 const PRESETS: RiskPresetName[] = ["very_conservative", "conservative", "balanced", "balanced_aggressive", "aggressive", "very_aggressive"];
 const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
@@ -227,18 +230,47 @@ function FitSection({ d, portfolios, query, setQuery }: { d: AnalyzeOut; portfol
 
 function Gate({ d }: { d: AnalyzeOut }) {
   const t = useTranslations("analyze");
+  const r = useTranslations("reason");
+  const { text } = useReasonText();
+  const [open, setOpen] = useState(false);
   const c = d.candidate_info;
+  const reasons = c.launch_gate_reasons ?? [];
+  const gp = gateProgress(reasons);
+  const parts: string[] = [];
+  if (gp.backtest) parts.push(r(gp.backtest === "failed" ? "gateBacktestFailedLine" : "gateBacktestMissing"));
+  if (gp.weeks) parts.push(r("gateWeeksLine", gp.weeks));
+  if (gp.calls) parts.push(r("gateCallsLine", gp.calls));
   return (
     <section className="card space-y-2 border-warn-fg" aria-label={t("gateTitle")} data-testid="gate-notice">
       <h2 className="text-heading">{t("gateTitle")}</h2>
-      <p className="text-sm">{t("gateBody")}</p>
-      {!c.launch_gate_open && c.launch_gate_reasons.length > 0 && (
-        <div className="text-sm text-muted">
-          <p>{t("gateReasons")}</p>
-          <ul className="list-disc ps-5">{c.launch_gate_reasons.map((r) => <li key={r} dir="auto"><Txt>{r}</Txt></li>)}</ul>
+      <p className="text-sm">{r("gateShort")}</p>
+      {!c.launch_gate_open && parts.length > 0 && <p className="text-sm font-medium" data-testid="gate-progress">{parts.join(" · ")}</p>}
+      {!c.launch_gate_open && reasons.length > 0 && (
+        <div>
+          <button type="button" className="btn-secondary" aria-expanded={open} aria-controls="gate-details" onClick={() => setOpen((v) => !v)}>{open ? r("gateHide") : r("gateDetails")}</button>
+          {open && (
+            <div id="gate-details" className="mt-2 text-sm text-muted">
+              <p>{t("gateReasons")}</p>
+              <ul className="list-disc ps-5">{reasons.map((x) => <li key={x} dir="auto"><Txt>{text(x)}</Txt></li>)}</ul>
+            </div>
+          )}
         </div>
       )}
     </section>
+  );
+}
+
+function SignalReasons({ reasons }: { reasons: string[] }) {
+  const r = useTranslations("reason");
+  const { text } = useReasonText();
+  const [all, setAll] = useState(false);
+  const shown = all ? reasons : reasons.slice(0, 2);
+  const hidden = reasons.length - 2;
+  return (
+    <>
+      <ul className="list-disc ps-4 text-caption text-muted">{shown.map((x) => <li key={x} dir="auto"><Txt>{text(x)}</Txt></li>)}</ul>
+      {hidden > 0 && <button type="button" className="text-caption text-brand-text underline" aria-expanded={all} onClick={() => setAll((v) => !v)}>{all ? r("less") : r("more", { n: hidden })}</button>}
+    </>
   );
 }
 
@@ -270,7 +302,7 @@ function Signals({ d }: { d: AnalyzeOut }) {
               <tr key={s.name} className="border-t border-line align-top" data-testid={`signal-${s.name}`}>
                 <th scope="row" className="py-1 pe-2 text-start font-normal">
                   {h.has(`signal.${s.name}`) ? h(`signal.${s.name}`) : s.name}
-                  {s.available ? <ul className="list-disc ps-4 text-caption text-muted">{s.reasons.map((r) => <li key={r} dir="auto"><Txt>{r}</Txt></li>)}</ul> : <span className="block text-caption text-muted">{t("noData")}</span>}
+                  {s.available ? <SignalReasons reasons={s.reasons} /> : <span className="block text-caption text-muted">{t("noData")}</span>}
                 </th>
                 <td className="px-2 tabular-nums" dir="ltr">{s.available ? `${s.score > 0 ? "+" : ""}${formatNumber(s.score, locale, 0)}` : DASH}</td>
                 <td className="px-2 tabular-nums" dir="ltr">{s.available ? formatWeight(s.weight, locale, 0) : DASH}</td>
@@ -284,17 +316,53 @@ function Signals({ d }: { d: AnalyzeOut }) {
   );
 }
 
+const BEARISH = /breakdown|death|double top/i;
+
 function ChartSection({ d }: { d: AnalyzeOut }) {
   const t = useTranslations("analyze");
+  const r = useTranslations("reason");
+  const { text, input } = useReasonText();
   const locale = useLocale();
   const ch = d.chart;
   const cur = d.scout.currency;
   const inds = Object.entries(ch.indicators ?? {});
-  const levels = ch.levels ?? [];
+  const levels = useMemo(() => ch.levels ?? [], [ch.levels]);
+  const anns = useMemo(() => ch.annotations ?? [], [ch.annotations]);
+  const bars = (ch.candles ?? []) as Candle[];
+  const lines = useMemo<PriceLevel[]>(() => {
+    const out: PriceLevel[] = levels.map((l) => ({ price: l.price, kind: l.kind }));
+    for (const a of anns) {
+      if ((a.kind === "support" || a.kind === "resistance") && finite(a.price) && !out.some((o) => Math.abs(o.price - a.price!) < 1e-6)) out.push({ price: a.price, kind: a.kind });
+    }
+    return out;
+  }, [levels, anns]);
+  const patterns = anns.filter((a) => a.kind === "pattern");
+  const marks = useMemo<PatternMark[]>(
+    () => patterns.flatMap((a) => (a.as_of ? [{ time: a.as_of.slice(0, 10), text: text(a.label), bearish: BEARISH.test(a.label) }] : [])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [patterns.length, ch.data_as_of, locale],
+  );
+  const labels = useMemo(() => ({ support: r("legendSupport"), resistance: r("legendResistance"), aria: r("chartAria") }), [r]);
+  const sw = (color: string, dashed = false) => <span aria-hidden="true" className="inline-block h-0 w-4 align-middle" style={{ borderTop: `2px ${dashed ? "dashed" : "solid"} ${color}` }} />;
   return (
     <section className="card space-y-3" aria-label={t("chartTitle")}>
       <h2 className="text-heading">{t("chartTitle")}</h2>
-      {!ch.available && levels.length === 0 && (ch.annotations ?? []).length === 0 ? <p className="text-sm text-muted">{t("chartNone")}</p> : (
+      {bars.length > 0 && (
+        <div className="space-y-1">
+          <PriceChart bars={bars} levels={lines} marks={marks} labels={labels} />
+          <ul className="flex flex-wrap gap-x-3 gap-y-1 text-caption text-muted" aria-label={r("legendCandles")} data-testid="chart-legend">
+            <li>{sw("#4cd9a0")} {r("legendCandles")}</li>
+            <li>{sw("#60a5fa")} {r("legendSma20")}</li>
+            <li>{sw("#fbbf24")} {r("legendSma50")}</li>
+            <li>{sw("#98a2b3", true)} {r("legendBands")}</li>
+            <li>{sw("#4cd9a0", true)} {r("legendSupport")}</li>
+            <li>{sw("#ff8a80", true)} {r("legendResistance")}</li>
+            {marks.length > 0 && <li><span aria-hidden="true">▲</span> {r("legendPattern")}</li>}
+          </ul>
+          <p className="text-caption text-muted">{r("chartNote", { n: bars.length })}</p>
+        </div>
+      )}
+      {!ch.available && levels.length === 0 && anns.length === 0 && bars.length === 0 ? <p className="text-sm text-muted">{t("chartNone")}</p> : (
         <>
           {levels.length > 0 && (
             <ul className="space-y-1 text-sm" aria-label={t("chartTitle")}>
@@ -308,19 +376,24 @@ function ChartSection({ d }: { d: AnalyzeOut }) {
               ))}
             </ul>
           )}
-          {(ch.annotations ?? []).length > 0 && (
+          {patterns.length > 0 && (
             <ul className="list-disc ps-5 text-sm">
-              {ch.annotations!.map((a, i) => <li key={i}>{t(`annotation.${a.kind}`)}: <bdi dir="auto">{a.label}</bdi>{finite(a.price) && <> · {money(a.price, cur, locale)}</>}</li>)}
+              {patterns.map((a, i) => <li key={i}>{t("annotation.pattern")}: <bdi dir="auto">{text(a.label)}</bdi></li>)}
             </ul>
-          )}
-          {inds.length > 0 && (
-            <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4" aria-label={t("indicators")}>
-              {inds.map(([k, v]) => <div key={k}><dt className="text-caption text-muted" dir="ltr">{k}</dt><dd className="tabular-nums" dir="ltr">{formatNumber(v, locale, 2)}</dd></div>)}
-            </dl>
           )}
         </>
       )}
-      <WhyToggle id="why-chart"><ExplanationView e={ch.explanation} currency={cur} /></WhyToggle>
+      <WhyToggle id="why-chart">
+        {inds.length > 0 && (
+          <div className="mb-3">
+            <h4 className="font-semibold">{r("indicatorsTitle")}</h4>
+            <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3" aria-label={t("indicators")}>
+              {inds.map(([k, v]) => <div key={k}><dt className="text-caption text-muted">{input(k)}</dt><dd className="tabular-nums" dir="ltr">{formatNumber(v, locale, 2)}</dd></div>)}
+            </dl>
+          </div>
+        )}
+        <ExplanationView e={ch.explanation} currency={cur} />
+      </WhyToggle>
     </section>
   );
 }

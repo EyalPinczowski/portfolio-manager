@@ -479,6 +479,7 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
       const a = b.expected_return_pct, h = b.expected_return_horizon_months;
       if ((a == null) !== (h == null)) throw new ApiError(422, "expected_return_pct and expected_return_horizon_months go together");
       Object.assign(pf, b);
+      if (b.risk_filter) pf.risk_chosen_at = new Date().toISOString();
     }
     return pf;
   }
