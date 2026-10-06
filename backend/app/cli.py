@@ -10,12 +10,12 @@ from datetime import timedelta
 from typing import Any
 
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import select
+from sqlmodel import col, delete, select
 
 from app.auth.passwords import hash_password
 from app.config import Settings, get_settings, turnstile_state, validate_production, validate_proxy
 from app.db import get_engine, new_session, prepare_database, run_migrations
-from app.models import Invite, User
+from app.models import AuthSession, Invite, User
 from app.timeutil import utcnow
 
 
@@ -67,13 +67,30 @@ def bootstrap_admin(settings: Settings) -> str:
         return "already exists"
     except ValueError as exc:
         if "already exists" in str(exc):
-            return "already exists"
+            return (
+                _reset_admin_password(email, password)
+                if settings.bootstrap_admin_reset
+                else ("already exists")
+            )
         if "at least" in str(exc):
             return "error: password too short"
         return "error: invalid settings"
     except Exception as exc:  # never include the message: it could carry values
         return f"error: {type(exc).__name__}"
     return "created"
+
+
+def _reset_admin_password(email: str, password: str) -> str:
+    """BOOTSTRAP_ADMIN_RESET: new password for an existing *admin*, and sign out its sessions."""
+    with new_session() as db:
+        user = db.exec(select(User).where(User.email == email.strip().lower())).first()
+        if user is None or not user.is_admin or user.id is None:
+            return "already exists (reset applies to admin accounts only)"
+        user.password_hash = hash_password(password)
+        db.add(user)
+        db.execute(delete(AuthSession).where(col(AuthSession.user_id) == user.id))
+        db.commit()
+    return "password reset"
 
 
 def check_config(settings: Settings, probe: bool = False) -> dict[str, str]:

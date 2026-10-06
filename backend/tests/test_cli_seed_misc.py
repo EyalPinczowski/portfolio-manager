@@ -87,6 +87,56 @@ def test_cli_bootstrap_admin_is_idempotent_and_silent(
     get_settings.cache_clear()
 
 
+def test_cli_bootstrap_admin_reset_changes_password_and_signs_out(
+    env: None, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from datetime import timedelta
+
+    from app.auth.passwords import verify_password
+    from app.config import get_settings
+    from app.db import new_session
+    from app.models import AuthSession
+    from app.timeutil import utcnow
+
+    admin_id = cli.create_admin("boss@mail.com", "old password 123")
+    plain_id = 0
+    with new_session() as db:
+        plain = User(email="plain@mail.com", password_hash="h", is_admin=False)
+        db.add(plain)
+        db.add(
+            AuthSession(
+                token_hash="t1",
+                user_id=admin_id,
+                csrf_token="c",
+                expires_at=utcnow() + timedelta(1),
+            )
+        )
+        db.commit()
+        assert plain.id is not None
+        plain_id = plain.id
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_EMAIL", "Boss@Mail.com")
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_PASSWORD", "new password 456")
+    get_settings.cache_clear()
+    assert cli.bootstrap_admin(get_settings()) == "already exists"  # no reset without the flag
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_RESET", "true")
+    get_settings.cache_clear()
+    assert cli.main(["bootstrap-admin"]) == 0
+    out = capsys.readouterr().out
+    assert "password reset" in out and "boss@" not in out.lower() and "456" not in out
+    with new_session() as db:
+        admin = db.get(User, admin_id)
+        assert admin is not None and verify_password(admin.password_hash, "new password 456")
+        assert db.exec(select(AuthSession).where(AuthSession.user_id == admin_id)).first() is None
+    # A non-admin with the configured email is never touched.
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_EMAIL", "plain@mail.com")
+    get_settings.cache_clear()
+    assert "admin accounts only" in cli.bootstrap_admin(get_settings())
+    with new_session() as db:
+        p = db.get(User, plain_id)
+        assert p is not None and p.password_hash == "h" and not p.is_admin
+    get_settings.cache_clear()
+
+
 # ---------------------------------------------------------------- seed data
 def load_seed() -> list[dict[str, str]]:
     with Path(DEFAULT_SEED).open(encoding="utf-8", newline="") as fh:

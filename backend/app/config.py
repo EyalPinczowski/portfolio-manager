@@ -938,6 +938,9 @@ class Settings(BaseSettings):
     # this user when both are set and the email is unused. Remove both after the first login.
     bootstrap_admin_email: str | None = None
     bootstrap_admin_password: str | None = None
+    # One-time: when the admin already exists, set its password to BOOTSTRAP_ADMIN_PASSWORD and sign
+    # out its sessions. Admin accounts only. Delete all three variables after logging in.
+    bootstrap_admin_reset: bool = False
     telegram_bot_username: str | None = None  # for the t.me deep link only
     telegram_link_code_ttl_minutes: int = Field(default=15, ge=1, le=60)
     telegram_link_code_length: int = Field(default=8, ge=6, le=16)
