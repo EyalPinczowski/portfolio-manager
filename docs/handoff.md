@@ -24,6 +24,10 @@ Read this file, then `CLAUDE.md`, `docs/status.md` and `docs/reminders.md`, befo
 - Website: Cloudflare's Pages Git connect loops for this user, so the site deploys as the Worker `holdwise` from GitHub Actions (`.github/workflows/deploy-site.yml`, `frontend/wrangler.jsonc`, `frontend/worker/index.ts`). Needs repo secrets `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`; last run failed with auth error 10000 (token), user is recreating the token. Then set `API_ORIGIN` + secret `PROXY_SHARED_SECRET` on the Worker.
 - Still to set up, in order: log in via the Worker, `REQUIRE_PROXY_AUTH=true` on Render, UptimeRobot on `/api/health`, Turnstile, AI keys (Gemini, Mistral), Telegram webhook. Secrets never go in chat.
 
+## Latest (2026-10-06)
+- Update 6 pushed: gear Settings icon, language mark follows the page locale, screenshot review keeps typed values and the ✕ delete is the first column. Terms acceptance is stored in the `terms_acceptance` table (user_id, version, accepted_at).
+- Waiting on the user: admin login after the `BOOTSTRAP_ADMIN_RESET` step on Render, then delete the bootstrap variables and set `REQUIRE_PROXY_AUTH=true`.
+
 ## First thing to do
 Queue item 3 is done. Next is queue item 4 (Postgres run, Opus review, reminders, host and deploy). The backtest is closed: the user accepted the result (`docs/product-decisions.md`, 2026-10-04) and wants no target, cap or stop changes.
 

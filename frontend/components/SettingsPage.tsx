@@ -1,6 +1,6 @@
 "use client";
 import { useState, type ReactNode } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 import pkg from "@/package.json";
 import { api } from "@/lib/api";
@@ -93,6 +93,7 @@ export function SettingsHub() {
   const idea = useTranslations("prefs.ideas");
   const wk = useTranslations("prefs.portfolio");
   const router = useRouter();
+  const locale = useLocale();
   const [q, setQ] = useState("");
   const { data: s } = useSettings();
   const { data: me } = useMe();
@@ -114,7 +115,7 @@ export function SettingsHub() {
       {
         id: "general", footer: t("hubIntro"),
         rows: [
-          r("language", sec("language"), <SettingsRow key="language" label={sec("language")} value={s.language === "he" ? "עברית" : "English"} icon={<GlobeGlyph />} tone="blue" href={settingsHref("language")} />),
+          r("language", sec("language"), <SettingsRow key="language" label={sec("language")} value={locale === "he" ? "עברית" : "English"} icon={<GlobeGlyph />} tone="blue" href={settingsHref("language")} />),
           r("appearance", sec("appearance"), <SettingsRow key="appearance" label={sec("appearance")} value={ap(`themes.${s.theme}`)} icon={<SunGlyph />} tone="indigo" href={settingsHref("appearance")} />),
           r("currency", sec("currency"), <SettingsRow key="currency" label={sec("currency")} value={ap(`currencies.${s.main_currency}`)} icon={<CoinGlyph />} tone="green" href={settingsHref("currency")} />),
           r("numberFormat", sec("numberFormat"), <SettingsRow key="numberFormat" label={sec("numberFormat")} value={ap(`formats.${s.number_format}`)} icon={<HashGlyph />} tone="gray" href={settingsHref("numberFormat")} />),

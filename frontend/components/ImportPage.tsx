@@ -33,6 +33,8 @@ function Body() {
   const [imageCount, setImageCount] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
   const synced = useRef<ImportRow[]>([]);
+  /** The rows as the server last saw them. Decides which table a row sits in, so typing never moves a row. */
+  const [syncedRows, setSyncedRows] = useState<ImportRow[]>([]);
   const [draft, setDraft] = useState<ImportDraft | null>(null);
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [changes, setChanges] = useState<ProposedChange[]>([]);
@@ -53,6 +55,20 @@ function Body() {
   const heldNow = useHoldings(draft ? draft.portfolio_id : null, portfolios);
   const summaryNow = useSummary(draft ? draft.portfolio_id : null);
 
+  const markSynced = (rs: ImportRow[]) => { synced.current = rs; setSyncedRows(rs); };
+  /** Server rows merged into the live rows: only the server's matching fields are taken; what the user typed stays. */
+  const mergeServer = (local: ImportRow[], server: ImportRow[], prev: ImportRow[]): ImportRow[] => {
+    const prevByIndex = new Map(prev.map((r) => [r.index, r]));
+    const byIndex = new Map(local.map((r) => [r.index, r]));
+    return server.filter((s) => byIndex.has(s.index)).map((s) => {
+      const l = byIndex.get(s.index)!;
+      // The user already checked the currency: keep it checked unless the server raised the flag anew.
+      const p = prevByIndex.get(s.index);
+      const checked = !!p && p.flags.includes("currency_changed") && !l.flags.includes("currency_changed");
+      const flags = checked ? s.flags.filter((f) => f !== "currency_changed") : s.flags;
+      return { ...l, matched_name: s.matched_name, flags, candidates: s.candidates, symbol: s.symbol, currency: s.currency, unit: s.unit };
+    });
+  };
   /** Take the chosen file out of the input (the browser keeps no other reference to it). */
   const takeFiles = (): File[] => {
     const fs = Array.from(fileRef.current?.files ?? []);
@@ -60,7 +76,7 @@ function Body() {
     setFileCount(0);
     return fs;
   };
-  const showDraft = (d: ImportDraft) => { synced.current = d.rows; setDraft(d); setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set()); setAcked(new Set()); };
+  const showDraft = (d: ImportDraft) => { markSynced(d.rows); setDraft(d); setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set()); setAcked(new Set()); };
   /** `sent` = the rows of the failed request, so a 422 `loc` (position in the array) can be shown against its row. */
   const fail = (e: unknown, fallback: ErrorKind = "generic", sent?: ImportRow[]) => {
     if (e instanceof ApiError) {
@@ -132,7 +148,7 @@ function Body() {
     setError(null);
     try {
       const d = await api.patchImport(draft.id, { rows, scope: next });
-      synced.current = d.rows; setDraft(d); setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set());
+      const prev = synced.current; markSynced(d.rows); setDraft(d); setRows((cur) => mergeServer(cur, d.rows, prev)); setChanges(d.proposed_changes); setBad(new Set());
     } catch (err) { fail(err, "confirm", rows); }
   };
   const editRow = (i: number, patch: Partial<ImportRow>) =>
@@ -140,11 +156,16 @@ function Body() {
   /** Symbol fixed or row removed: let the server re-match and recompute the proposed changes, then show them. */
   const resync = async (next: ImportRow[]) => {
     if (!draft) return;
+    const before = rows;
     setRows(next);
     try {
       const d = await api.patchImport(draft.id, { rows: next });
-      synced.current = d.rows; setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set());
-    } catch (err) { fail(err, "confirm", next); }
+      const prev = synced.current; markSynced(d.rows); setRows((cur) => mergeServer(cur, d.rows, prev)); setChanges(d.proposed_changes); setBad(new Set());
+    } catch (err) {
+      // A removed row comes back if the server did not take the removal; other edits stay as typed.
+      if (next.length < before.length) setRows((cur) => [...cur, ...before.filter((r) => !next.some((n) => n.index === r.index) && !cur.some((c) => c.index === r.index))].sort((a, b) => a.index - b.index));
+      fail(err, "confirm", next);
+    }
   };
   const setUnit = (i: number, unit: ImportRow["unit"]) => editRow(i, { unit, currency: currencyForUnit(unit) });
   /** The user has looked at the currency/unit: drop the flag the server raised (it blocks confirming until then). */
@@ -198,10 +219,10 @@ function Body() {
             <table className="w-full min-w-[64rem] text-sm">
               <thead className="bg-surface-2">
                 <tr>
+                  <th scope="col" className="px-2 py-2"><span className="sr-only">{t("col.remove")}</span></th>
                   {(["name", "symbol", "quantity", "price", "value", "cost", "currency", "change", "changeAmount"] as const).map((k) => (
                     <th key={k} scope="col" className="px-2 py-2 text-start font-semibold">{t(`col.${k}`)}</th>
                   ))}
-                  <th scope="col" className="px-2 py-2"><span className="sr-only">{t("col.remove")}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -224,6 +245,9 @@ function Body() {
                   const rowType = (ch?.type === "keep" ? undefined : ch?.type) as ChangeType | undefined;
                   return (
                     <tr key={r.index} data-flagged={flagged} className={`border-t align-top ${flagged ? "bg-amber-50 dark:bg-amber-950/40" : ""} border-line`}>
+                      <td className="px-2 py-2">
+                        <button type="button" className="btn-secondary" aria-label={t("removeRow", { n: r.index + 1 })} onClick={() => removeRow(r.index)}>✕</button>
+                      </td>
                       <td className="px-2 py-2">
                         <input aria-label={`${t("col.name")} ${r.index + 1}`} className="input min-w-32" value={r.name} onChange={(e) => editRow(r.index, { name: e.target.value })} />
                         {flagged && (
@@ -314,9 +338,6 @@ function Body() {
                           />
                         )}
                       </td>
-                      <td className="px-2 py-2">
-                        <button type="button" className="btn-secondary" aria-label={t("removeRow", { n: r.index + 1 })} onClick={() => removeRow(r.index)}>✕</button>
-                      </td>
                     </tr>
                   );
                 })}
@@ -403,7 +424,11 @@ function Body() {
           </label>
           {(() => {
             const held = heldNow.data ? new Set(heldNow.data.map((h) => h.symbol)) : null;
-            const g = groupRows(rows, changes, held);
+            // Group by the rows the server last saw, show the live (edited) rows.
+            const liveByIndex = new Map(rows.map((r) => [r.index, r]));
+            const syncedByIndex = new Map(syncedRows.map((r) => [r.index, r]));
+            const g = groupRows(rows.map((r) => syncedByIndex.get(r.index) ?? r), changes, held);
+            for (const k of ["new", "changed", "unchanged"] as const) g[k] = g[k].map((r) => liveByIndex.get(r.index) ?? r);
             const order: RowGroup[] = ["new", "changed"];
             const fx = summaryNow.data && summaryNow.data.value.usd > 0 ? summaryNow.data.value.ils / summaryNow.data.value.usd : null;
             const totals = heldNow.data ? updateTotals(rows, changes, heldNow.data, scope, fx) : null;

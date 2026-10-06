@@ -156,6 +156,24 @@ def test_an_untouched_row_keeps_the_confirmation_the_user_gave(signup: SignupFn)
     )
 
 
+def test_deleting_a_row_does_not_misalign_the_previous_rows_of_the_others(
+    signup: SignupFn,
+) -> None:
+    """Rows are matched to their previous version by `index`, not by list position."""
+    c = signup()
+    url, _ = _draft(c)
+    first = {**ROW, "index": 0}
+    shekels = {**ROW, "index": 1, "currency": "ILS", "unit": "ILS", "price": 700.0, "value": 7000.0}
+    flagged = c.patch(url, json={"rows": [first, shekels]}).json()["rows"][1]
+    assert "currency_changed" in flagged["flags"]
+    confirmed = {**shekels, "flags": [f for f in flagged["flags"] if f != "currency_changed"]}
+    both = c.patch(url, json={"rows": [first, confirmed]}).json()["rows"]
+    assert "currency_changed" not in both[1]["flags"]
+    only = c.patch(url, json={"rows": [confirmed]}).json()["rows"]  # the first row is deleted
+    assert [r["index"] for r in only] == [1]
+    assert "currency_changed" not in only[0]["flags"]
+
+
 def test_changing_the_currency_back_clears_the_flag_and_a_new_change_raises_it_again(
     signup: SignupFn,
 ) -> None:

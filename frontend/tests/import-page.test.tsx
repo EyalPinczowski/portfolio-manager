@@ -158,6 +158,62 @@ describe("import page", () => {
     expect(screen.getByRole("button", { name: "Confirm import" })).toBeDisabled();
   });
 
+  describe("editing while the server syncs", () => {
+    const mk = (i: number, symbol: string, over: Partial<ImportRow> = {}): ImportRow => ({
+      index: i, name: symbol, symbol, tase_number: null, quantity: 10, price: 10, value: 100, cost: 9, currency: "USD", unit: "USD", matched_name: null, flags: [], ...over,
+    });
+    const open = async () => {
+      vi.mocked(readScreenshotsOnDevice).mockResolvedValueOnce({ layout: "generic", rows: [mk(0, "ACME"), mk(1, "ZZZW", { quantity: null })], meta: [{}, {}] });
+      renderPage();
+      await pick();
+      clickRead();
+      await screen.findByRole("region", { name: "Review the rows" });
+    };
+    const echo = (rows: ImportRow[]) => ({ id: 1, portfolio_id: 1, rows, proposed_changes: [], scope: "partial" as const, expires_at: null }) as unknown as Awaited<ReturnType<typeof api.patchImport>>;
+
+    it("a quantity typed while a sync is in flight survives the reply", async () => {
+      await open();
+      let release!: (d: Awaited<ReturnType<typeof api.patchImport>>) => void;
+      let sent: ImportRow[] = [];
+      vi.spyOn(api, "patchImport").mockImplementationOnce((_id, body) => { sent = body.rows as ImportRow[]; return new Promise((r) => { release = r; }); });
+      fireEvent.change(screen.getByLabelText("Symbol 1"), { target: { value: "ACMX" } });
+      fireEvent.blur(screen.getByLabelText("Symbol 1"));
+      await waitFor(() => expect(release).toBeDefined());
+      fireEvent.change(screen.getByLabelText("Quantity 2"), { target: { value: "777" } });
+      release(echo(sent.map((r) => ({ ...r, matched_name: "Acme Inc" }))));
+      await waitFor(() => expect(screen.getByLabelText("Symbol 1")).toHaveValue("ACMX"));
+      expect(screen.getByLabelText("Quantity 2")).toHaveValue("777");
+    });
+
+    it("a deleted row stays deleted after the reply", async () => {
+      await open();
+      let release!: (d: Awaited<ReturnType<typeof api.patchImport>>) => void;
+      let sent: ImportRow[] = [];
+      vi.spyOn(api, "patchImport").mockImplementationOnce((_id, body) => { sent = body.rows as ImportRow[]; return new Promise((r) => { release = r; }); });
+      fireEvent.click(screen.getByRole("button", { name: "Remove row 1" }));
+      expect(screen.queryByLabelText("Name 1")).not.toBeInTheDocument();
+      await waitFor(() => expect(release).toBeDefined());
+      release(echo(sent));
+      await waitFor(() => expect(screen.getByLabelText("Name 2")).toBeInTheDocument());
+      expect(screen.queryByLabelText("Name 1")).not.toBeInTheDocument();
+    });
+
+    it("puts the remove button in the first column", async () => {
+      await open();
+      const row = screen.getByLabelText("Name 1").closest("tr")!;
+      expect(within(row).getAllByRole("cell")[0]).toContainElement(screen.getByRole("button", { name: "Remove row 1" }));
+    });
+
+    it("a failed delete brings the row back and shows the error", async () => {
+      await open();
+      vi.spyOn(api, "patchImport").mockRejectedValueOnce(new ApiError(500, "boom"));
+      fireEvent.click(screen.getByRole("button", { name: "Remove row 1" }));
+      await waitFor(() => expect(screen.getByLabelText("Name 1")).toBeInTheDocument());
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(screen.getByLabelText("Name 2")).toBeInTheDocument();
+    });
+  });
+
   it("server reading: 503 (no OCR engine on the server) points back at on-device reading", async () => {
     vi.spyOn(api, "createImport").mockRejectedValueOnce(new ApiError(503, "Tesseract is not installed"));
     renderPage();

@@ -162,6 +162,7 @@ def finalize_rows(
     user did not touch keeps the flags (or the absence of them) it was confirmed with.
     """
     index = SecurityIndex(matchable_securities(db, owner_id))
+    prev_by_index = {p.index: p for p in previous or []}
     for i, row in enumerate(rows):
         if renumber:
             row.index = i
@@ -171,7 +172,7 @@ def finalize_rows(
             row.matched_name = known.name_en
             row.flags = [f for f in row.flags if f not in ("unmatched", "low_confidence_match")]
             row.candidates = []
-            if previous is None or _changed(row, previous[i] if i < len(previous) else None):
+            if previous is None or _changed(row, prev_by_index.get(row.index)):
                 row.flags = [f for f in row.flags if f not in ("currency_changed", "unit_mismatch")]
                 flag = currency_flag(row, known)
                 if flag is not None:

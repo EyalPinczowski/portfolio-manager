@@ -177,6 +177,17 @@ describe("appearance pages", () => {
     await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/settings", { locale: "he" }));
   });
 
+  it("language: the checkmark follows the page locale, not the saved language, and the switch happens even if the save fails", async () => {
+    vi.spyOn(api, "patchSettings").mockRejectedValueOnce(new Error("down"));
+    wrap("he", screens.language); // saved language in the mock is not necessarily he; the page is
+    const heRadio = await screen.findByRole("radio", { name: "עברית" });
+    expect(heRadio).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "English" })).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(screen.getByRole("radio", { name: "English" }));
+    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/settings", { locale: "en" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+
   it("currency and number format send their own field", async () => {
     const spy = vi.spyOn(api, "patchSettings");
     wrap("en", screens.currency);

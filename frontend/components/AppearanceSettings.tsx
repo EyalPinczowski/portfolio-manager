@@ -8,7 +8,8 @@ import { CheckList } from "./SettingsUI";
 
 /** Each of these is one phone-style page: a check list where the current choice has a checkmark, saved at once. */
 
-export function LanguageScreen({ s }: { s: Settings }) {
+export function LanguageScreen(_props: { s?: Settings }) {
+  void _props;
   const t = useTranslations("prefs.appearance");
   const locale = useLocale();
   const router = useRouter();
@@ -17,9 +18,9 @@ export function LanguageScreen({ s }: { s: Settings }) {
   return (
     <>
       <CheckList
-        label={t("language")} footer={t("languageHelp")} value={s.language}
+        label={t("language")} footer={t("languageHelp")} value={locale === "he" ? "he" : "en"}
         options={[{ value: "he", label: "עברית" }, { value: "en", label: "English" }]}
-        onPick={async (language) => { if (await save({ language }) && language !== locale) router.replace(pathname, { locale: language }); }}
+        onPick={async (language) => { await save({ language }); if (language !== locale) router.replace(pathname, { locale: language }); }}
       />
       <SaveStatus state={state} status={status} />
     </>
