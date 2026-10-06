@@ -2544,7 +2544,7 @@ export interface components {
             /** Flags */
             flags?: ("missing_fields" | "value_mismatch" | "unmatched" | "low_confidence_match" | "currency_changed" | "unit_mismatch" | "quantity_uncertain" | "quantity_fractional" | "cost_inferred" | "duplicate_removed" | "conflict" | "price_unit_100x" | "total_mismatch" | "ocr_low_confidence")[];
             /** Exchange */
-            exchange?: ("NASDAQ" | "NYSE" | "AMEX") | null;
+            exchange?: ("NASDAQ" | "NYSE" | "AMEX" | "MANUAL") | null;
             conflict?: components["schemas"]["RowConflict"] | null;
         };
         /**

@@ -25,6 +25,7 @@ from app.importer.diff import ProposedChange, diff_rows
 from app.importer.imageio import ImageRejectedError
 from app.importer.layouts import rows_from_ocr_result
 from app.importer.match import (
+    US_TICKER,
     SecurityIndex,
     apply_match,
     currency_flag,
@@ -168,6 +169,21 @@ def finalize_rows(
             row.index = i
         validate_row(row, settings)
         known = index.by_symbol.get((row.symbol or "").upper()) if row.symbol else None
+        old = prev_by_index.get(row.index)
+        if (
+            known is None
+            and not rematch
+            and old is not None
+            and row.symbol
+            and row.exchange is None
+            and (row.symbol or "").upper() != (old.symbol or "").upper()
+            and US_TICKER.fullmatch(row.symbol.upper())
+            and row_currency(row) == "USD"
+        ):
+            # The user typed a ticker the seed does not know: they are the evidence, as the
+            # broker's `NASDAQ • TICKER` would be. It stays unverified until a quote confirms it.
+            row.symbol = row.symbol.upper()
+            row.exchange = "MANUAL"
         if known is not None and not rematch:
             row.matched_name = known.name_en
             row.flags = [f for f in row.flags if f not in ("unmatched", "low_confidence_match")]

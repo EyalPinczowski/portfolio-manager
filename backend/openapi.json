@@ -7222,7 +7222,8 @@
                 "enum": [
                   "NASDAQ",
                   "NYSE",
-                  "AMEX"
+                  "AMEX",
+                  "MANUAL"
                 ]
               },
               {

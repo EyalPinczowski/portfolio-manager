@@ -94,7 +94,8 @@ class MatchCandidate(BaseModel):
     score: float = Field(ge=0, le=100, allow_inf_nan=False)  # 0-100 name similarity
 
 
-Exchange = Literal["NASDAQ", "NYSE", "AMEX"]
+# "MANUAL": no broker exchange, the user typed the ticker of a US-dollar row themselves.
+Exchange = Literal["NASDAQ", "NYSE", "AMEX", "MANUAL"]
 
 
 class RowConflict(BaseModel):

@@ -174,6 +174,18 @@ def test_deleting_a_row_does_not_misalign_the_previous_rows_of_the_others(
     assert "currency_changed" not in only[0]["flags"]
 
 
+def test_a_ticker_the_user_types_for_an_unknown_us_dollar_row_is_kept(signup: SignupFn) -> None:
+    """The server used to clear a typed ticker it did not know, so the box could not be filled."""
+    c = signup()
+    url, _ = _draft(c)
+    blank = {**ROW, "index": 0, "name": "Reddit Inc O", "symbol": None}
+    c.patch(url, json={"rows": [blank]})
+    typed = {**blank, "symbol": "zzqx"}
+    row = c.patch(url, json={"rows": [typed]}).json()["rows"][0]
+    assert row["symbol"] == "ZZQX"
+    assert "unmatched" not in row["flags"]
+
+
 def test_changing_the_currency_back_clears_the_flag_and_a_new_change_raises_it_again(
     signup: SignupFn,
 ) -> None:
