@@ -106,6 +106,16 @@ test("real backend: challenge, first portfolio, import, null-price paths", async
   await expect(review.getByLabel(`${m("import.col.symbol")} 1`)).toHaveValue("AAPL");
   await expect(review.getByLabel(`${m("import.col.symbol")} 2`)).toHaveValue("NVDA");
   await checkScreen(page, "en"); // the wide review table scrolls inside its box, never the page
+  // 3b. Add a stock that is not in the screenshot, by hand: search the (seeded, so offline) ticker, pick it, enter a quantity.
+  await review.getByRole("button", { name: m("import.addRow") }).click();
+  const added = review.getByLabel(`${m("import.col.symbol")} 3`);
+  await expect(added).toBeVisible();
+  await added.fill("MSFT");
+  await page.getByRole("option", { name: /MSFT/ }).first().click();
+  await expect(added).toHaveValue("MSFT");
+  await review.getByLabel(`${m("import.col.quantity")} 3`).fill("2");
+  await expect(page.getByRole("button", { name: m("import.confirm") })).toBeEnabled();
+  await checkScreen(page, "en");
   await page.getByRole("button", { name: m("import.confirm") }).click();
   await expect(page.getByText(m("import.done"))).toBeVisible();
 
@@ -116,6 +126,7 @@ test("real backend: challenge, first portfolio, import, null-price paths", async
   await expect(card("AAPL")).toContainText("231.10");
   await expect(card("NVDA")).toContainText(m("holdings.noData"));
   await expect(card("NVDA")).not.toContainText("$0.00");
+  await expect(card("MSFT")).toBeVisible(); // the hand-added row was confirmed with the others
   await checkScreen(page, "en");
 
   // 4b. The setup is required before other pages open: a risk level, then a holding period for each

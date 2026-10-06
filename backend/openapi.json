@@ -1228,7 +1228,7 @@
           "misc"
         ],
         "summary": "Securities Search",
-        "description": "Seeded or provider-verified securities only (never another user's unverified ticker).",
+        "description": "Seeded or provider-verified securities first (never another user's unverified ticker).\nWith `remote=1` the symbol-search provider adds US/TASE listings we do not know yet (`new`).",
         "operationId": "securities_search_api_securities_search_get",
         "parameters": [
           {
@@ -1239,6 +1239,16 @@
               "type": "string",
               "maxLength": 64,
               "title": "Q"
+            }
+          },
+          {
+            "name": "remote",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Remote"
             }
           }
         ],
@@ -10777,6 +10787,41 @@
               "CRYPTO"
             ],
             "title": "Market"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "known",
+              "new"
+            ],
+            "title": "Source",
+            "default": "known"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ILS",
+                  "USD"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "exchange": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange"
           }
         },
         "type": "object",

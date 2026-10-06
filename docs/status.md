@@ -215,3 +215,9 @@ Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after a
 - Holding period suggestions (`lib/horizonSuggest.ts`, display only, never pre-selected): fund/ETF/bond 1y, crypto 3m, stock by risk preset (conservative 1y, balanced 6m, aggressive 3m); "use suggestion" / "use all suggestions".
 - Welcome tour (6 slides, skippable, `pm.tour.v1`), reopen from Settings.
 - Checks: backend 1880 passed / 35 skipped, ruff/format/mypy clean; frontend 670 vitest, e2e 105 (light + dark) + real 1 (now walks terms → tour skip → portfolio → import → risk → suggested periods → holding), build ok.
+
+## 2026-10-06 (Update 8: ticker search + manual rows in the import review)
+- `SymbolSearchProvider` (`providers/symbol_search.py`): Yahoo via yfinance by default, Finnhub `/search` only when keyed; cached, rate limited, US (NYSE/NASDAQ/AMEX plain tickers) + TASE `.TA` only, errors → empty. `GET /api/securities/search?q=&remote=1` adds `source:"new"` hits after the known ones (per-user rate limit, off by default).
+- Importer: a typed or picked `XXX.TA` on an ILS row is accepted as an unverified user-scoped security (like the USD rule); an extra manual row at a new index validates and confirms like screenshot rows.
+- Frontend: `SymbolSearch.tsx` (symbol box dropdown) in the import review and `AddHoldingForm`; "+ Add a stock" in the review; `mergeServer` keeps `exchange` and never overwrites a symbol typed during a resync.
+- Checks: backend 1893 passed / 35 skipped, ruff/format/mypy clean; frontend 678 vitest, e2e 105 + real 1 (real run adds MSFT by hand), build ok.

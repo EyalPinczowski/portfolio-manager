@@ -16,10 +16,11 @@ from app.api.schemas import (
     SecurityHit,
 )
 from app.auth.deps import DbDep, SettingsDep, UserDep
+from app.auth.ratelimit import enforce_limit, symbol_search_limiter
 from app.config import DISCLAIMER
 from app.launchgate import GateDep
 from app.models import PriceAlert, Security
-from app.providers.registry import get_providers
+from app.providers.registry import get_providers, get_symbol_search
 from app.repo import (
     get_alert,
     get_holding,
@@ -50,18 +51,49 @@ def risk_presets(user: UserDep) -> list[RiskPresetOut]:
 
 @router.get("/securities/search", response_model=list[SecurityHit])
 def securities_search(
-    user: UserDep, db: DbDep, q: Annotated[str, Query(max_length=64)]
+    user: UserDep,
+    db: DbDep,
+    settings: SettingsDep,
+    q: Annotated[str, Query(max_length=64)],
+    remote: bool = False,
 ) -> list[SecurityHit]:
-    """Seeded or provider-verified securities only (never another user's unverified ticker)."""
-    return [
+    """Seeded or provider-verified securities first (never another user's unverified ticker).
+    With `remote=1` the symbol-search provider adds US/TASE listings we do not know yet (`new`)."""
+    out = [
         SecurityHit(
             symbol=s.symbol,
             name_en=s.name_en,
             name_he=s.name_he,
             market=s.market,  # type: ignore[arg-type]
+            source="known",
+            currency=s.currency if s.currency in ("USD", "ILS") else None,  # type: ignore[arg-type]
         )
         for s in search_securities(db, q)
     ]
+    query = q.strip()
+    if remote and len(query) >= 2:
+        assert user.id is not None
+        enforce_limit(
+            symbol_search_limiter, f"user:{user.id}", settings.symbol_search_user_per_hour, 3600.0
+        )
+        known = {h.symbol.upper() for h in out}
+        for hit in get_symbol_search().search(query, settings.symbol_search_max_results):
+            sym = hit.symbol.upper()
+            if sym in known:
+                continue
+            known.add(sym)
+            out.append(
+                SecurityHit(
+                    symbol=sym,
+                    name_en=hit.name,
+                    name_he="",
+                    market=hit.market,
+                    source="new",
+                    currency=hit.currency,
+                    exchange=hit.exchange,
+                )
+            )
+    return out
 
 
 @router.get("/holdings/{holding_id}/scorecard", response_model=ScoreCardDetail)

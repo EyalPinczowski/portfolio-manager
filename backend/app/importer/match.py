@@ -179,13 +179,20 @@ def new_security_kind(row: ParsedRow) -> str | None:
     - `us`: the broker printed `NASDAQ|NYSE|AMEX • TICKER` (`row.exchange`), the ticker is 1-5
       capital letters and the row is in dollars. Accepted as an unverified, user-scoped security;
       a successful quote verifies it.
-    - `tase`: a TASE security number plus a symbol the user typed (`<id>.TA`) for a shekel row.
+    - `tase`: a `<id>.TA` symbol on a shekel row, with a TASE security number or typed/picked by
+      the user (`exchange == "MANUAL"`).
     Names are never evidence (they are truncated, reversed and unreliable).
     """
     sym = (row.symbol or "").upper()
     if row.exchange is not None and US_TICKER.fullmatch(sym) and row_currency(row) == "USD":
         return "us"
-    if row.tase_number and MANUAL_TASE_SYMBOL.fullmatch(sym) and row_currency(row) == "ILS":
+    # A broker's TASE security number, or a `<id>.TA` the user typed or picked from the symbol
+    # search (`exchange == "MANUAL"`), is the evidence.
+    if (
+        MANUAL_TASE_SYMBOL.fullmatch(sym)
+        and row_currency(row) == "ILS"
+        and (row.tase_number or row.exchange == "MANUAL")
+    ):
         return "tase"
     return None
 
@@ -199,7 +206,7 @@ def resolve_row(
         sec = index.by_symbol.get(row.symbol.upper())
         if sec is not None:
             return MatchResult(sec, "symbol", 100.0)
-        if new_security_kind(row) == "us":
+        if new_security_kind(row) in ("us", "tase"):
             return MatchResult(None, "new", 100.0)
     result = match_row(row, index, settings)
     if result.security is None and new_security_kind(row) == "tase":

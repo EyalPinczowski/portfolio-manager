@@ -7,6 +7,7 @@ import { parseLocaleNumber } from "@/lib/number";
 import { MAX_QTY } from "@/lib/import-rows";
 import { Modal } from "./Modal";
 import { FundAddFlow } from "./FundAddFlow";
+import { SymbolSearch } from "./SymbolSearch";
 
 const HORIZONS: Horizon[] = ["1w", "1m", "3m", "6m", "1y"];
 const SYMBOL_RE = /^[A-Z0-9.^=-]{1,20}$/;
@@ -85,7 +86,7 @@ export function AddHoldingForm({ portfolios, portfolioId, onClose, onAdded }: {
         )}
         <div>
           <label htmlFor="ah-symbol" className="label">{t("symbol")}</label>
-          <input id="ah-symbol" className="input" dir="ltr" autoCapitalize="characters" maxLength={20} value={symbol} onChange={(e) => setSymbol(e.target.value)} aria-invalid={problem === "symbol" || undefined} />
+          <SymbolSearch id="ah-symbol" className="input" value={symbol} onChange={setSymbol} onPick={(h) => setSymbol(h.symbol)} invalid={problem === "symbol"} />
           <p className="mt-1 text-xs text-muted">{t("symbolHint")}</p>
         </div>
         <div>

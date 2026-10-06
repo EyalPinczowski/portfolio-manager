@@ -271,12 +271,15 @@ let draft: ImportDraft = {
 };
 
 /** Mimics the server: keeps stock-looking rows, matches held symbols, flags weak matches, proposes changes. */
-function draftFromRows(pid: number, rows: ImportRow[], scope: "partial" | "full" = "partial"): ImportDraft {
-  const kept = rows.filter((r) => r.name.trim() !== "" || r.symbol).map((r, i) => {
+function draftFromRows(pid: number, rows: ImportRow[], scope: "partial" | "full" = "partial", edit = false): ImportDraft {
+  // A PATCH (`edit`) keeps every row and its index as sent, like the server; a first import drops empty lines and numbers the rest.
+  const kept = rows.filter((r) => edit || r.name.trim() !== "" || r.symbol).map((r, i) => {
     const flags: ImportRow["flags"] = r.flags.filter((f) => f !== "low_confidence_match" && f !== "unmatched");
     const weak = !r.symbol && !r.tase_number;
     if (weak) flags.push("unmatched", "low_confidence_match");
-    return { ...r, symbol: r.symbol ?? (r.tase_number ? "TEVA.TA" : null), index: i, flags, candidates: weak ? [{ symbol: "MNDY", name: "monday.com", score: 58 }] : [] };
+    const nonQty = r.quantity === null || r.quantity === undefined;
+    if (edit && nonQty && !flags.includes("quantity_uncertain")) flags.push("quantity_uncertain");
+    return { ...r, symbol: r.symbol ?? (r.tase_number ? "TEVA.TA" : null), index: edit ? r.index : i, flags, candidates: weak ? [{ symbol: "MNDY", name: "monday.com", score: 58 }] : [] };
   });
   const held = holdingsFor(pid);
   // Like the server: only real quantity differences, plus (full scope only) a `keep` choice (row_index -1) for each held symbol that vanished.
@@ -496,12 +499,15 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
       // Like the server: new rows without explicit changes => re-match and recompute the changes.
       if (patch.rows) validateRows(patch.rows);
       const scopeChanged = patch.scope !== undefined && patch.scope !== draft.scope;
-      const redone = (patch.rows || scopeChanged) && !patch.proposed_changes ? draftFromRows(draft.portfolio_id, patch.rows ?? draft.rows, patch.scope ?? draft.scope) : null;
+      const redone = (patch.rows || scopeChanged) && !patch.proposed_changes ? draftFromRows(draft.portfolio_id, patch.rows ?? draft.rows, patch.scope ?? draft.scope, !!patch.rows) : null;
       draft = { ...draft, ...patch, ...(redone ? { rows: redone.rows, proposed_changes: redone.proposed_changes } : {}) };
     }
     return draft;
   }
-  if (p === "/securities/search") return mockSearchHits(new URLSearchParams(path.split("?")[1] ?? "").get("q") ?? "");
+  if (p === "/securities/search") {
+    const qs = new URLSearchParams(path.split("?")[1] ?? "");
+    return mockSearchHits(qs.get("q") ?? "", qs.get("remote") === "1");
+  }
   if (p === "/ask" && method === "POST") return mockAskPost(b as never);
   if (p === "/ask/conversations") return mockAskConversations();
   if ((m = p.match(/^\/ask\/conversations\/(\d+)$/))) return method === "DELETE" ? mockAskDelete(Number(m[1])) : mockAskConversation(Number(m[1]));

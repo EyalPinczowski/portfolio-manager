@@ -153,6 +153,7 @@ telegram_code_limiter = CountLimiter()  # per user: new link codes
 telegram_link_limiter = CountLimiter()  # per Telegram chat: /start attempts
 admin_invite_limiter = CountLimiter()  # per admin: new invites
 fund_search_limiter = CountLimiter()  # per user: fund searches (each may call GemelNet)
+symbol_search_limiter = CountLimiter()  # per user: remote symbol searches
 ask_limiter = CountLimiter()  # per user: ask-my-portfolio questions
 committee_limiter = CountLimiter()  # per user: committee runs per hour (up to 4 LLM calls each)
 committee_daily_limiter = CountLimiter()  # per user: committee runs per day
@@ -168,6 +169,7 @@ def clear_all_limiters() -> None:
     telegram_link_limiter.clear()
     admin_invite_limiter.clear()
     fund_search_limiter.clear()
+    symbol_search_limiter.clear()
     ask_limiter.clear()
     committee_limiter.clear()
     committee_daily_limiter.clear()

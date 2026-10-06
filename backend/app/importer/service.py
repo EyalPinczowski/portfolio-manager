@@ -25,6 +25,7 @@ from app.importer.diff import ProposedChange, diff_rows
 from app.importer.imageio import ImageRejectedError
 from app.importer.layouts import rows_from_ocr_result
 from app.importer.match import (
+    MANUAL_TASE_SYMBOL,
     US_TICKER,
     SecurityIndex,
     apply_match,
@@ -173,12 +174,23 @@ def finalize_rows(
         if (
             known is None
             and not rematch
+            and row.exchange is None
             and old is not None
+            and old.exchange == "MANUAL"
+            and row.symbol
+            and (row.symbol or "").upper() == (old.symbol or "").upper()
+        ):
+            row.exchange = "MANUAL"  # the client echoed the row without it: the evidence stays
+        if (
+            known is None
+            and not rematch
             and row.symbol
             and row.exchange is None
-            and (row.symbol or "").upper() != (old.symbol or "").upper()
-            and US_TICKER.fullmatch(row.symbol.upper())
-            and row_currency(row) == "USD"
+            and (old is None or (row.symbol or "").upper() != (old.symbol or "").upper())
+            and (
+                (US_TICKER.fullmatch(row.symbol.upper()) and row_currency(row) == "USD")
+                or (MANUAL_TASE_SYMBOL.fullmatch(row.symbol.upper()) and row_currency(row) == "ILS")
+            )
         ):
             # The user typed a ticker the seed does not know: they are the evidence, as the
             # broker's `NASDAQ • TICKER` would be. It stays unverified until a quote confirms it.
@@ -373,7 +385,9 @@ def row_security(db: Session, row: ParsedRow, created: list[str]) -> Security:
     if sec is not None:
         return sec
     kind = new_security_kind(row)
-    if kind == "tase":
+    if kind == "tase" and not row.tase_number:
+        sec = infer_security(row.symbol)  # a `<id>.TA` stock the user picked or typed
+    elif kind == "tase":
         sec = Security(
             symbol=row.symbol,
             name_en=row.symbol,

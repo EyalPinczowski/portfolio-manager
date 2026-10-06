@@ -73,3 +73,12 @@ def test_live_dividends_tase_is_ils_not_agorot() -> None:
     if f.value is not None:
         assert {e.currency for e in f.value.events} == {"ILS"}
         assert all(e.amount < 50 for e in f.value.events)  # shekels per share, not agorot
+
+
+@pytest.mark.live
+def test_live_symbol_search_finds_reddit_and_a_tase_name() -> None:
+    from app.providers.symbol_search import YahooSymbolSearch
+
+    p = YahooSymbolSearch()
+    assert "RDDT" in [h.symbol for h in p.search("reddit")]
+    assert any(h.symbol.endswith(".TA") for h in p.search("nice systems teva leumi"))

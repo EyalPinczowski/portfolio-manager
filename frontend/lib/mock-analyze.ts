@@ -1,6 +1,6 @@
 /* Mock analyze / search-history / watchlist responses (NEXT_PUBLIC_API_MOCK=1). Shapes follow backend/openapi.json. */
 import type {
-  AnalyzeOut, AskOut, ChartReport, ExposureCheck, Explanation, Horizon, PortfolioFit, RiskFilter, ScoutReport,
+  AnalyzeOut, AskOut, ChartReport, ExposureCheck, Explanation, Horizon, PortfolioFit, RiskFilter, ScoutReport, SecurityHit,
   SearchHistoryItem, SignalLine, WatchlistItem,
 } from "./api";
 import { ApiError } from "./errors";
@@ -25,9 +25,19 @@ export const CATALOG: CatalogItem[] = [
   { symbol: "LUMI.TA", en: "Bank Leumi", he: "בנק לאומי", market: "TASE", type: "stock", sector: "Financials", country: "Israel", cur: "ILS", price: 47.9 },
   { symbol: "ARNA.TA", en: "Arena Fund", he: "קרן ארנה", market: "TASE", type: "fund", sector: "Diversified", country: "Israel", cur: "ILS", price: 31.4, stale: true, thin: true },
 ];
-export const mockSearchHits = (q: string) => {
+/** Listings the symbol search finds beyond the known list (remote=1), like Yahoo does for a name that is not seeded. */
+const REMOTE_ONLY = [
+  { symbol: "RDDT", en: "Reddit, Inc.", market: "US" as const, cur: "USD" as const, exchange: "NYSE" },
+  { symbol: "GTLB", en: "GitLab Inc.", market: "US" as const, cur: "USD" as const, exchange: "NASDAQ" },
+  { symbol: "ZZQ.TA", en: "Zed Q Industries", market: "TASE" as const, cur: "ILS" as const, exchange: "TASE" },
+];
+export const mockSearchHits = (q: string, remote = false): SecurityHit[] => {
   const s = q.trim().toLowerCase();
-  return s ? CATALOG.filter((c) => c.symbol.toLowerCase().includes(s) || c.en.toLowerCase().includes(s) || c.he.includes(q.trim())).map((c) => ({ symbol: c.symbol, name_en: c.en, name_he: c.he, market: c.market })) : [];
+  if (!s) return [];
+  const known: SecurityHit[] = CATALOG.filter((c) => c.symbol.toLowerCase().includes(s) || c.en.toLowerCase().includes(s) || c.he.includes(q.trim())).map((c) => ({ symbol: c.symbol, name_en: c.en, name_he: c.he, market: c.market, source: "known" as const, currency: c.cur as "USD" | "ILS" }));
+  if (!remote || s.length < 2) return known;
+  const added: SecurityHit[] = REMOTE_ONLY.filter((c) => c.symbol.toLowerCase().includes(s) || c.en.toLowerCase().includes(s)).map((c) => ({ symbol: c.symbol, name_en: c.en, name_he: "", market: c.market, source: "new" as const, currency: c.cur, exchange: c.exchange }));
+  return [...known, ...added];
 };
 
 export interface AnalyzeHeld { symbol: string; sector: string; country: string; valueIls: number; quantity: number; weightOf: number; cost: number | null; horizon: Horizon | null; id: number; cur: string }

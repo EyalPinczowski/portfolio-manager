@@ -408,6 +408,11 @@ class SecurityHit(BaseModel):
     name_en: str
     name_he: str
     market: MarketKey
+    # `known`: in our list (seed or verified). `new`: found by the symbol search only, so the
+    # security is created, unverified, when it is picked in an import and confirmed.
+    source: Literal["known", "new"] = "known"
+    currency: Literal["USD", "ILS"] | None = None
+    exchange: str | None = None  # NASDAQ | NYSE | AMEX | TASE (new hits only)
 
 
 # ---------------------------------------------------------------- scorecard

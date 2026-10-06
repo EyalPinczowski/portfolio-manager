@@ -2,7 +2,7 @@
 import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { mutate } from "swr";
-import { api, ApiError, type ChangeType, type ImportDraft, type ImportRow, type ImportScope, type ProposedChange, type ProposedChangeType } from "@/lib/api";
+import { api, ApiError, type ChangeType, type ImportDraft, type ImportRow, type ImportScope, type ProposedChange, type ProposedChangeType, type SecurityHit } from "@/lib/api";
 import { MAX_IMPORT_IMAGES, MAX_UPLOAD_BYTES } from "@/lib/config";
 import { conflictOf, currencyForUnit, effectiveFlags, needsConflictAck, needsQuantity, rowProblems, type RowProblem } from "@/lib/import-rows";
 import { formatDate, formatMoney, formatTime, formatWeight } from "@/lib/format";
@@ -16,6 +16,7 @@ import { AppShell } from "./AppShell";
 import { CreatePortfolio } from "./CreatePortfolio";
 import { Modal } from "./Modal";
 import { NumberCell } from "./NumberCell";
+import { SymbolSearch } from "./SymbolSearch";
 
 const TYPES: ChangeType[] = ["buy", "sell", "deposit", "withdrawal"];
 type ErrorKind = "generic" | "noRows" | "ocr" | "tooLarge" | "type" | "rate" | "confirm" | "serverOcr" | "unmatched" | "currencyChanged" | "rows";
@@ -43,6 +44,8 @@ function Body() {
   /** "These screenshots show my whole portfolio": off by default; on = holdings missing from them are asked about. */
   const [whole, setWhole] = useState(false);
   const [acked, setAcked] = useState<Set<number>>(new Set());
+  /** Rows the user added by hand ("+ Add a stock"): a picked symbol also sets their unit. */
+  const [manual, setManual] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState<"device" | "server" | "confirm" | null>(null);
   const [progress, setProgress] = useState<OcrProgress | null>(null);
   const [error, setError] = useState<{ kind: ErrorKind; wait?: number } | null>(null);
@@ -57,7 +60,8 @@ function Body() {
 
   const markSynced = (rs: ImportRow[]) => { synced.current = rs; setSyncedRows(rs); };
   /** Server rows merged into the live rows: only the server's matching fields are taken; what the user typed stays. */
-  const mergeServer = (local: ImportRow[], server: ImportRow[], prev: ImportRow[]): ImportRow[] => {
+  const mergeServer = (local: ImportRow[], server: ImportRow[], prev: ImportRow[], sent?: ImportRow[]): ImportRow[] => {
+    const sentByIndex = new Map((sent ?? []).map((r) => [r.index, r]));
     const prevByIndex = new Map(prev.map((r) => [r.index, r]));
     const byIndex = new Map(local.map((r) => [r.index, r]));
     return server.filter((s) => byIndex.has(s.index)).map((s) => {
@@ -66,7 +70,9 @@ function Body() {
       const p = prevByIndex.get(s.index);
       const checked = !!p && p.flags.includes("currency_changed") && !l.flags.includes("currency_changed");
       const flags = checked ? s.flags.filter((f) => f !== "currency_changed") : s.flags;
-      return { ...l, matched_name: s.matched_name, flags, candidates: s.candidates, symbol: s.symbol, currency: s.currency, unit: s.unit };
+      // The symbol box was edited while the request was in flight: what the user typed since wins over the server's answer.
+      const edited = sentByIndex.has(s.index) && (sentByIndex.get(s.index)!.symbol ?? null) !== (l.symbol ?? null);
+      return { ...l, matched_name: s.matched_name, flags, candidates: s.candidates, symbol: edited ? l.symbol : s.symbol, exchange: s.exchange, currency: s.currency, unit: s.unit };
     });
   };
   /** Take the chosen file out of the input (the browser keeps no other reference to it). */
@@ -76,7 +82,7 @@ function Body() {
     setFileCount(0);
     return fs;
   };
-  const showDraft = (d: ImportDraft) => { markSynced(d.rows); setDraft(d); setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set()); setAcked(new Set()); };
+  const showDraft = (d: ImportDraft) => { markSynced(d.rows); setDraft(d); setRows(d.rows); setChanges(d.proposed_changes); setBad(new Set()); setAcked(new Set()); setManual(new Set()); };
   /** `sent` = the rows of the failed request, so a 422 `loc` (position in the array) can be shown against its row. */
   const fail = (e: unknown, fallback: ErrorKind = "generic", sent?: ImportRow[]) => {
     if (e instanceof ApiError) {
@@ -160,7 +166,7 @@ function Body() {
     setRows(next);
     try {
       const d = await api.patchImport(draft.id, { rows: next });
-      const prev = synced.current; markSynced(d.rows); setRows((cur) => mergeServer(cur, d.rows, prev)); setChanges(d.proposed_changes); setBad(new Set());
+      const prev = synced.current; markSynced(d.rows); setRows((cur) => mergeServer(cur, d.rows, prev, next)); setChanges(d.proposed_changes); setBad(new Set());
     } catch (err) {
       // A removed row comes back if the server did not take the removal; other edits stay as typed.
       if (next.length < before.length) setRows((cur) => [...cur, ...before.filter((r) => !next.some((n) => n.index === r.index) && !cur.some((c) => c.index === r.index))].sort((a, b) => a.index - b.index));
@@ -175,6 +181,22 @@ function Body() {
     })));
   const symbolOf = (list: ImportRow[], i: number) => list.find((r) => r.index === i)?.symbol ?? null;
   const pickSymbol = (i: number, symbol: string) => void resync(rows.map((r) => (r.index === i ? { ...r, symbol } : r)));
+  /** A search result: fills the symbol (and, on a hand-added row, the name and unit) and lets the server re-match; typed numbers stay. */
+  const pickHit = (i: number, hit: SecurityHit) =>
+    void resync(rows.map((r) => {
+      if (r.index !== i) return r;
+      if (!manual.has(i)) return { ...r, symbol: hit.symbol };
+      const unit: ImportRow["unit"] = hit.currency === "USD" ? "USD" : r.unit === "USD" ? "ILS" : r.unit;
+      return { ...r, symbol: hit.symbol, name: r.name.trim() ? r.name : hit.name_en, unit, currency: currencyForUnit(unit) };
+    }));
+  /** "+ Add a stock": an empty row with the next free index. The server validates it like any other row. */
+  const addRow = () => {
+    const index = rows.reduce((m, r) => Math.max(m, r.index), -1) + 1;
+    const unit: ImportRow["unit"] = rows.length > 0 ? rows[rows.length - 1].unit : "ILS";
+    const row: ImportRow = { index, name: "", symbol: null, tase_number: null, quantity: null, price: null, value: null, cost: null, currency: currencyForUnit(unit), unit, flags: [] };
+    setManual((s) => new Set(s).add(index));
+    void resync([...rows, row]);
+  };
   /** On leaving the symbol field: re-match only if it differs from what the server last saw. */
   const commitSymbol = (i: number) => { if (symbolOf(rows, i) !== symbolOf(synced.current, i)) void resync(rows); };
   const removeRow = (i: number) => void resync(rows.filter((r) => r.index !== i));
@@ -287,7 +309,11 @@ function Body() {
                         )}
                       </td>
                       <td className="px-2 py-2">
-                        <input aria-label={`${t("col.symbol")} ${r.index + 1}`} className="input w-28" dir="ltr" value={r.symbol ?? ""} onChange={(e) => editRow(r.index, { symbol: e.target.value.trim() || null })} onBlur={() => commitSymbol(r.index)} />
+                        <SymbolSearch
+                          label={`${t("col.symbol")} ${r.index + 1}`} value={r.symbol ?? ""}
+                          onChange={(v) => editRow(r.index, { symbol: v.trim() || null })}
+                          onPick={(hit) => pickHit(r.index, hit)} onCommit={() => commitSymbol(r.index)}
+                        />
                         {r.candidates && r.candidates.length > 0 && (
                           <div className="mt-1 text-xs">
                             <p className="font-medium">{t("candidates")}</p>
@@ -441,6 +467,10 @@ function Body() {
                     {renderTable(draft, g[k])}
                   </div>
                 ))}
+                <div className="space-y-1">
+                  <button type="button" className="btn-secondary" onClick={addRow} disabled={rows.length >= 200}>{t("addRow")}</button>
+                  <p className="text-xs text-muted">{t("addRowHint")}</p>
+                </div>
                 {g.unchanged.length > 0 && (
                   <details className="space-y-1" data-testid="group-unchanged">
                     <summary className="cursor-pointer font-semibold">{t("groups.unchanged.title")} ({g.unchanged.length})</summary>

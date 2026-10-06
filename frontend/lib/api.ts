@@ -293,7 +293,8 @@ export const api = {
   patchImport: (id: number, b: { rows?: ImportRow[]; proposed_changes?: ProposedChange[]; scope?: ImportScope }) =>
     patch<ImportDraft>(`/imports/${id}`, b.rows ? { ...b, rows: sanitizeRows(b.rows) } : b),
   confirmImport: (id: number) => post<ImportDraft>(`/imports/${id}/confirm`),
-  searchSecurities: (q: string) => get<SecurityHit[]>(`/securities/search?q=${encodeURIComponent(q)}`),
+  /** `remote`: also ask the symbol-search provider for US/TASE listings that are not in our list yet (`source: "new"`). */
+  searchSecurities: (q: string, remote = false) => get<SecurityHit[]>(`/securities/search?q=${encodeURIComponent(q)}${remote ? "&remote=1" : ""}`),
 
   scorecard: (hid: number) => get<ScoreCardDetail>(`/holdings/${hid}/scorecard`),
   /** `horizon` overrides the holding's own as a what-if (not saved). No horizon at all -> status `needs_horizon`. */

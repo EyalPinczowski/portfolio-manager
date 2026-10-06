@@ -459,7 +459,8 @@ export interface paths {
         };
         /**
          * Securities Search
-         * @description Seeded or provider-verified securities only (never another user's unverified ticker).
+         * @description Seeded or provider-verified securities first (never another user's unverified ticker).
+         *     With `remote=1` the symbol-search provider adds US/TASE listings we do not know yet (`new`).
          */
         get: operations["securities_search_api_securities_search_get"];
         put?: never;
@@ -3742,6 +3743,16 @@ export interface components {
              * @enum {string}
              */
             market: "US" | "TASE" | "CRYPTO";
+            /**
+             * Source
+             * @default known
+             * @enum {string}
+             */
+            source: "known" | "new";
+            /** Currency */
+            currency?: ("ILS" | "USD") | null;
+            /** Exchange */
+            exchange?: string | null;
         };
         /** SeriesPoint */
         SeriesPoint: {
@@ -5290,6 +5301,7 @@ export interface operations {
         parameters: {
             query: {
                 q: string;
+                remote?: boolean;
             };
             header?: never;
             path?: never;

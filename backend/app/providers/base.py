@@ -423,3 +423,24 @@ def describe_missing(what: str, field: Field[Any]) -> str:
         "stale": f"{field.source} data is too old",
     }.get(field.missing_reason or "", f"{field.source} returned nothing")
     return f"No {what} data: {why}."
+
+
+class SymbolHit(BaseModel):
+    """One symbol-search result: a US (NYSE/NASDAQ/AMEX) or TASE (`.TA`) listing. Display and
+    importer evidence only: never fed into a score."""
+
+    symbol: str  # Yahoo style (`RDDT`, `TEVA.TA`)
+    name: str
+    exchange: str  # NASDAQ | NYSE | AMEX | TASE | US (unknown US venue)
+    market: Literal["US", "TASE"]
+    currency: Literal["USD", "ILS"]
+    source: str = ""
+
+
+@runtime_checkable
+class SymbolSearchProvider(Protocol):
+    @property
+    def name(self) -> str: ...
+
+    def search(self, query: str, limit: int = 8) -> list[SymbolHit]:
+        """Never raises: a failure or a rate-limited call is an empty list."""

@@ -12,6 +12,7 @@ from app.providers.base import (
     HistoryProvider,
     OcrProvider,
     QuoteProvider,
+    SymbolSearchProvider,
 )
 from app.providers.chain import ChainedHistoryProvider, ChainedQuoteProvider, build_sources
 from app.providers.dividends import YFinanceDividendProvider
@@ -28,6 +29,7 @@ class Providers:
     # Optional: tests set a fake; None means the shared default (built on first use).
     funds: FundProvider | None = None
     dividends: DividendProvider | None = None
+    symbol_search: SymbolSearchProvider | None = None
 
     def ocr(self) -> OcrProvider:
         if callable(self.ocr_factory):
@@ -127,3 +129,14 @@ def get_fund_provider() -> FundProvider:
 
 def get_dividend_provider() -> DividendProvider:
     return (_override.dividends if _override else None) or _default_dividends()
+
+
+@lru_cache
+def _default_symbol_search() -> SymbolSearchProvider:
+    from app.providers.symbol_search import default_symbol_search
+
+    return default_symbol_search(get_settings())
+
+
+def get_symbol_search() -> SymbolSearchProvider:
+    return (_override.symbol_search if _override else None) or _default_symbol_search()

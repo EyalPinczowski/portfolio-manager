@@ -25,7 +25,7 @@ import uvicorn
 
 from app.cli import create_admin
 from app.main import create_app
-from app.providers.base import Quote
+from app.providers.base import Quote, SymbolHit
 from app.providers.registry import Providers, set_providers
 from app.timeutil import utcnow
 
@@ -71,12 +71,23 @@ class FixedHistory:
         )
 
 
+class NoSymbolSearch:
+    """No outbound symbol search in the e2e run: only the seeded securities answer, offline."""
+
+    name = "none"
+
+    def search(self, query: str, limit: int = 8) -> list[SymbolHit]:
+        return []
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8765)
     args = ap.parse_args()
     create_admin(os.environ["E2E_ADMIN_EMAIL"], os.environ["E2E_ADMIN_PASSWORD"])
-    set_providers(Providers(quotes=FixedQuotes(), history=FixedHistory()))
+    set_providers(
+        Providers(quotes=FixedQuotes(), history=FixedHistory(), symbol_search=NoSymbolSearch())
+    )
     uvicorn.run(create_app(), host="127.0.0.1", port=args.port, log_level="warning")
 
 

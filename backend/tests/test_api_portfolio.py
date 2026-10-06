@@ -344,7 +344,7 @@ def test_securities_search_hebrew_english_symbol(signup: SignupFn) -> None:
     assert "BTC-USD" in syms("bitcoin")
     assert syms("") == []
     hit = c.get("/api/securities/search", params={"q": "TEVA"}).json()[0]
-    assert set(hit) == {"symbol", "name_en", "name_he", "market"}
+    assert {"symbol", "name_en", "name_he", "market"} <= set(hit) and hit["source"] == "known"
 
 
 # ---------------------------------------------------------------- screenshot import

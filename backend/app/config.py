@@ -605,6 +605,12 @@ class Settings(BaseSettings):
     earnings_confidence_multiplier: float = 0.7  # technical confidence x this inside the window
     earnings_lookahead_days: int = 30
     earnings_cache_ttl_seconds: float = 12 * 3600
+    symbol_search_ttl_s: float = 6 * 3600  # symbol search results are reused this long
+    symbol_search_per_minute: int = 20  # our own budget per vendor (Yahoo, Finnhub)
+    symbol_search_cooldown_s: float = 300.0  # Yahoo pause after a failed search
+    symbol_search_max_results: int = 8
+    symbol_search_timeout_s: float = 6.0  # one Yahoo search call
+    symbol_search_user_per_hour: int = 600  # per user, remote symbol searches
     patterns_min_rows: int = 60
     patterns_pivot_window: int = 5
     patterns_cluster_tolerance_pct: float = 1.5
