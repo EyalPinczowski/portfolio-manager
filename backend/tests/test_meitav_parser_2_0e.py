@@ -213,3 +213,43 @@ def test_the_server_ocr_path_uses_the_meitav_layout(signup: Any, ocr_text: dict[
 def test_dash_variants_glued_to_the_pnl_percent_are_a_minus(dash: str) -> None:
     r = one(card("NASDAQ • ACME", "257.49", "Acme Corp", "-0.55%", f"{dash}8.37% ↓ $3,089.88"))
     assert r.cost == pytest.approx(257.49 / (1 - 0.0837), abs=1e-3)
+
+
+NEW_LAYOUT = card(
+    "קרן סל",
+    "4,125 77רדס.XTF",
+    "+0.11%",
+    'TLV • 1180422 מספר ני"ע',
+    "12.80% ↑ ₪24,750.00",
+    "אחר",
+    "418.3",
+    "חיסכון ירוק 41",
+    "₪418.3",
+    "ראשי",
+)
+
+
+def test_a_tase_number_stays_with_the_name_above_it_and_bars_are_not_cards() -> None:
+    layout, rows = parse_screenshot_text(NEW_LAYOUT)
+    assert layout == "meitav_trade" and len(rows) == 2
+    fund, simple = rows
+    assert (fund.tase_number, fund.symbol, fund.price, fund.value) == ("1180422", None, 4125, 24750)
+    assert fund.quantity == 600 and names_match(fund.name, "77רדס.XTF")
+    assert (simple.symbol, simple.tase_number, simple.cost) == (None, None, None)
+    assert (simple.price, simple.value, simple.quantity) == (418.3, 418.3, 1)
+    assert simple.name == "חיסכון ירוק 41"  # its own digits, nothing from the fund above
+
+
+def test_a_simple_card_whose_quantity_cannot_be_inferred_is_flagged_not_merged() -> None:
+    _, rows = parse_screenshot_text(
+        card(*NEW_LAYOUT.split("\n")[:5], "אחר", "חיסכון ירוק 41", "281.3", "₪2,261.17")
+    )
+    assert len(rows) == 2 and rows[0].tase_number == "1180422"
+    assert rows[1].quantity is None and "quantity_uncertain" in rows[1].flags
+
+
+def test_no_amount_no_card_for_the_status_bar_and_header() -> None:
+    _, rows = parse_screenshot_text(
+        card("11:41", "מיטב:טרייד", "NYSE • VNTQ", "84.15", "$1,683.00")
+    )
+    assert len(rows) == 1 and rows[0].symbol == "VNTQ"

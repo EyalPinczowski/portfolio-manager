@@ -20,9 +20,20 @@ const TASE_NO = "\\d{6,8}";
 const ARROWS = /[↑↓▲▼⬆⬇△▽⇧⇩⬈⬊↗↘]/u;
 const revStr = (s: string): string => Array.from(s).reverse().join("");
 /** Section header words (letters only), as printed and as a right-to-left line may come out reversed. */
-const SECTION_HEADERS = new Set(["קרןסל", "קרנותסל"].flatMap((h) => [h, revStr(h), "ןרקלס", "תונרקלס"]));
+const SECTION_HEADERS = new Set(["קרןסל", "קרנותסל", "אחר", "מניות", "תעודותסל", "קרנותנאמנות"].flatMap((h) => [h, revStr(h), "ןרקלס", "תונרקלס"]));
+/** Bottom navigation words (Hebrew app tab bar), as printed and reversed. */
+const NAV_TOKENS = new Set(["הוראות", "ניירות", "במעקב", "מסחר", "התיק", "שלי", "ראשי", "בית", "תיק", "שוק", "עוד"].flatMap((w) => [w, revStr(w)]));
 
-export interface Anchor { start: number; end: number; exchange: string; ticker: string; strict: boolean }
+/** The label `מספר ני"ע` (security number) next to a TASE number, and its reversed spelling. */
+const SEP = "[\\s•·●∙▪*|:.\\-–—]";
+const Q = "[\"'״׳”“]";
+const LABEL = `(?:מספר\\s*ני${Q}{0,2}ע|ע${Q}{0,2}ינ\\s*רפסמ)`;
+const labelRe = () => new RegExp(LABEL, "g");
+const labelNumRe = () => new RegExp(`${LABEL}${SEP}{0,3}(\\d{4,8})(?!\\d)|(?<!\\d)(\\d{4,8})${SEP}{0,3}${LABEL}`);
+const AMOUNT_PRESENT = /[$₪]\s{0,2}\d|\d\s{0,2}[$₪]/;
+
+/** `labeled`: the line carries the `מספר ני"ע` label, so the card's name is ABOVE the anchor. */
+export interface Anchor { start: number; end: number; exchange: string; ticker: string; strict: boolean; labeled?: boolean }
 
 const fwdRe = () => new RegExp(`(?<![A-Za-z])(NASDAQ|NYSE|AMEX|TLV)\\s*(${LOOSE_BULLET})?\\s*(${TICKER}|${TASE_NO})(?![A-Za-z0-9])`, "g");
 // Visual-order (reversed) line: `ACME • NASDAQ`. The bullet is required here to avoid false hits.
@@ -63,29 +74,140 @@ export function detectMeitav(text: string): boolean {
   return strict >= 1 || any >= 2 || (section && any >= 1);
 }
 
-interface Block { anchor: Anchor; lines: string[] }
+interface Block { anchor: Anchor; lines: string[]; hasAmount: boolean }
+interface Entry { text: string; kind: "line" | "section" | "nav"; anchors: Anchor[]; labeled: boolean }
 
 /** OCR often prints a minus as an en/em dash or a Unicode hyphen: a dash glued to a digit or % is a minus. */
 const MINUS_RE = /(?<!\d)[−–—‐‑](?=[\d%])/g;
+const SIMPLE: Anchor = { start: 0, end: 0, exchange: "", ticker: "", strict: false };
+const NUM_G = "\\d[\\d,]*(?:\\.\\d+)?";
+
+const hasAmount = (s: string): boolean => AMOUNT_PRESENT.test(s);
+const isTextLine = (s: string): boolean => (s.replace(new RegExp(NUM_G, "g"), " ").match(/\p{L}/gu) ?? []).length >= 3;
+/** A figure-only line that can be a price: no letters, no amount, no percent. */
+const isPriceLine = (s: string): boolean => !isTextLine(s) && !hasAmount(s) && !s.includes("%") && /\d/.test(s);
+const isPercentLine = (s: string): boolean => s.includes("%") && !isTextLine(s) && !hasAmount(s);
+const isNavLine = (line: string): boolean => {
+  if (/[\d$₪%]/.test(line)) return false;
+  const words = line.match(/\p{L}+/gu) ?? [];
+  return words.length > 0 && words.every((w) => NAV_TOKENS.has(w));
+};
+
+function prepare(text: string): Entry[] {
+  const out: Entry[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    let line = raw.replace(MINUS_RE, "-").replace(/−/g, "-").trim();
+    if (!line) continue;
+    if (isSectionLine(line)) { out.push({ text: line, kind: "section", anchors: [], labeled: false }); continue; }
+    if (isNavLine(line)) { out.push({ text: line, kind: "nav", anchors: [], labeled: false }); continue; }
+    let anchors = findAnchors(line);
+    let labeled = false;
+    if (labelRe().test(line)) {
+      const m = labelNumRe().exec(line);
+      const blankLabel = (l: string) => l.replace(labelRe(), (x) => " ".repeat(x.length));
+      if (anchors.length > 0) {
+        line = blankLabel(line);
+        labeled = anchors.length === 1;
+        anchors = anchors.map((a) => ({ ...a, labeled }));
+      } else if (m) {
+        anchors = [{ start: m.index, end: m.index + m[0].length, exchange: "", ticker: m[1] ?? m[2], strict: true, labeled: true }];
+        labeled = true;
+      } else {
+        line = blankLabel(line);
+      }
+    }
+    out.push({ text: line, kind: "line", anchors, labeled });
+  }
+  return out;
+}
+
+/** Lines ABOVE a labeled anchor (`TLV • 1180422 מספר ני"ע`) that belong to its card: the nearest name line, the figures
+ *  between it and the anchor, and up to two price lines above the name. Never across an amount line, a section bar,
+ *  the navigation or another anchor. */
+function preRange(entries: Entry[], i: number, lo: number): [number, number] | null {
+  for (let k = i - 1; k >= lo && i - k <= 4; k--) {
+    const s = entries[k].text;
+    if (hasAmount(s)) return null;
+    if (isTextLine(s)) {
+      let start = k;
+      while (start - 1 >= lo && k - start < 2 && isPriceLine(entries[start - 1].text)) start--;
+      return [start, i];
+    }
+  }
+  return null;
+}
+
+/** Cards with no exchange line and no security number: a name, a `$`/`₪` value and a price. `run` is a stretch of
+ *  lines that belong to no anchored card. A card starts at a name line (text, no amount) once the card before it has
+ *  its amount; up to two price lines just above the name come with it. Stretches without an amount give no card. */
+function simpleCards(run: string[]): string[][] {
+  const groups: string[][] = [[]]; // groups[0] holds the lines before the first name
+  for (const s of run) {
+    const last = groups[groups.length - 1];
+    if (isTextLine(s) && !hasAmount(s) && (groups.length === 1 || last.some(hasAmount))) {
+      const carry: string[] = [];
+      while (last.length > 0 && carry.length < 2 && isPriceLine(last[last.length - 1])) carry.unshift(last.pop()!);
+      groups.push([...carry, s]);
+    } else {
+      last.push(s);
+    }
+  }
+  return groups.slice(1).filter((g) => g.some(hasAmount));
+}
 
 function toBlocks(text: string): Block[] {
+  const entries = prepare(text);
+  // Pass 1: the lines above each labeled anchor belong to that anchor's card.
+  const claimed = new Set<number>();
+  const pre = new Map<number, string[]>();
+  let lo = 0;
+  entries.forEach((e, i) => {
+    if (e.kind === "line" && e.anchors.length === 0) return;
+    if (e.kind === "line" && e.labeled) {
+      const rng = preRange(entries, i, lo);
+      if (rng) {
+        pre.set(i, entries.slice(rng[0], rng[1]).map((x) => x.text));
+        for (let k = rng[0]; k < rng[1]; k++) claimed.add(k);
+      }
+    }
+    lo = i + 1;
+  });
+  // Pass 2: walk the lines, a line goes to the open card above it or waits in `orphans`.
   const blocks: Block[] = [];
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.replace(MINUS_RE, "-").replace(/−/g, "-").trim();
-    if (!line) continue;
-    const anchors = findAnchors(line);
-    if (anchors.length === 0) {
-      const cur = blocks[blocks.length - 1];
-      if (cur && !isSectionLine(line)) cur.lines.push(line);
+  let cur: Block | null = null;
+  let orphans: string[] = [];
+  const flush = () => {
+    for (const g of simpleCards(orphans)) blocks.push({ anchor: SIMPLE, lines: g, hasAmount: true });
+    orphans = [];
+  };
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (e.kind !== "line") { flush(); cur = null; continue; }
+    if (claimed.has(i)) continue;
+    if (e.anchors.length === 0) {
+      const closed = cur !== null && !!cur.anchor.labeled && cur.hasAmount;
+      // After its amount a labeled card still takes a stray percent line (the P&L %).
+      if (cur !== null && (!closed || isPercentLine(e.text))) {
+        cur.lines.push(e.text);
+        cur.hasAmount = cur.hasAmount || hasAmount(e.text);
+      } else {
+        orphans.push(e.text);
+      }
       continue;
     }
-    anchors.forEach((a, i) => {
-      const from = i === 0 ? 0 : a.start;
-      const to = i + 1 < anchors.length ? anchors[i + 1].start : line.length;
-      const rest = `${line.slice(from, a.start)} ${line.slice(a.end, to)}`.trim();
-      blocks.push({ anchor: a, lines: rest ? [rest] : [] });
-    });
+    flush();
+    for (let j = 0; j < e.anchors.length; j++) {
+      const a = e.anchors[j];
+      const from = j === 0 ? 0 : a.start;
+      const to = j + 1 < e.anchors.length ? e.anchors[j + 1].start : e.text.length;
+      const rest = `${e.text.slice(from, a.start)} ${e.text.slice(a.end, to)}`.trim();
+      const lines = j === 0 ? [...(pre.get(i) ?? [])] : [];
+      if (rest) lines.push(rest);
+      cur = { anchor: a, lines, hasAmount: lines.some(hasAmount) };
+      blocks.push(cur);
+    }
   }
+  flush();
   return blocks;
 }
 
@@ -189,6 +311,9 @@ const round4 = (n: number): number => Math.round(n * 1e4) / 1e4;
 
 function parseBlock(b: Block): { row: ImportRow; meta: RowMeta } {
   const tlv = b.anchor.exchange === "TLV";
+  const hasSymbol = ["NASDAQ", "NYSE", "AMEX"].includes(b.anchor.exchange);
+  // No exchange line: a simple value card or a security-number card (currency, fund).
+  const simple = !hasSymbol && !tlv;
   const lines: LineInfo[] = [];
   const amts: Amt[] = [];
   const pcts: Pct[] = [];
@@ -202,13 +327,14 @@ function parseBlock(b: Block): { row: ImportRow; meta: RowMeta } {
   });
 
   const value = amts[0] ?? null;
-  const currency: "ILS" | "USD" = value ? (value.symbol === "$" ? "USD" : "ILS") : tlv ? "ILS" : "USD";
+  const currency: "ILS" | "USD" = value ? (value.symbol === "$" ? "USD" : "ILS") : hasSymbol ? "USD" : "ILS";
   const agorot = tlv && currency === "ILS";
 
   // Price candidates: numbers on figure-only lines first, then numbers at the edge of name lines.
   const tier1 = lines.flatMap((l) => (l.text ? [] : l.nums));
   const tier2 = lines.flatMap((l) => (l.text ? l.nums.filter((n) => l.work.slice(0, n.start).trim() === "" || l.work.slice(n.end).trim() === "") : []));
-  const cands = [...tier1, ...tier2];
+  // A figure-only line wins: a number glued to a name (`חיסכון ירוק 41`) is part of the name.
+  const cands = tier1.length > 0 ? tier1 : tier2;
   let price: Num | null = null;
   if (value) {
     price = cands.find((c) => wholeQuantity(value, c, agorot) !== null) ?? cands[0] ?? null;
@@ -219,7 +345,7 @@ function parseBlock(b: Block): { row: ImportRow; meta: RowMeta } {
   let quantity: number | null = null;
   if (value && price && value.value >= INFER_MIN_VALUE) {
     quantity = wholeQuantity(value, price, agorot);
-    if (quantity === null) {
+    if (quantity === null && !simple) {
       const unitPrice = agorot ? price.value / 100 : price.value;
       if (unitPrice > 0) { quantity = round4(value.value / unitPrice); meta.quantity_fractional = true; }
     }
@@ -242,12 +368,12 @@ function parseBlock(b: Block): { row: ImportRow; meta: RowMeta } {
     name = w.replace(/[^\p{L}\p{N}\s.&'’"\-–,/()…]/gu, " ").replace(/^[\s.…\-–,]+|[\s\-–,]+$/gu, "").replace(/\s+/g, " ");
     if (name) break;
   }
-  if (!name) name = tlv ? "" : b.anchor.ticker;
+  if (!name) name = hasSymbol ? b.anchor.ticker : "";
 
   const row: ImportRow = {
     index: 0, name,
-    symbol: tlv ? null : b.anchor.ticker,
-    tase_number: tlv ? b.anchor.ticker : null,
+    symbol: hasSymbol ? b.anchor.ticker : null,
+    tase_number: (tlv || b.anchor.labeled) && b.anchor.ticker ? b.anchor.ticker : null,
     quantity, price: price ? price.value : null, value: value ? value.value : null, cost,
     currency, unit: agorot ? "agorot" : currency === "USD" ? "USD" : "ILS",
     matched_name: null, flags: [],

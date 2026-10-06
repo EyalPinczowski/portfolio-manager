@@ -279,6 +279,108 @@
           }
         ]
       }
+    },
+    {
+      "id": "section_bars_and_simple_cards",
+      "description": "Newer Meitav screen: US cards with an English name line and a day chip 0%, a section bar between groups (קרן סל, אחר), TASE fund cards whose name is ABOVE `TLV • number מספר ני\"ע` (digits inside the Hebrew-and-Latin name), a simple card with no exchange line and no P&L % (a name with a glued number, value = price), and a currency card with a security number label only. Cards must not borrow lines from a neighbour.",
+      "images": {
+        "in_order": [
+          "11:41\n00:18\n86%\nמיטב:טרייד\nNYSE • VNTQ\n84.15\nVantiq Robotics Inc\n0%\n9.30% ↑ $1,683.00\nNASDAQ • ORLM\n41.5\nOrlem Cloud Systems Inc\n0%\n21.40% ↑ $4,150\nקרן סל\n4,125 77רדס.XTF\n+0.11%\nTLV • 1180422 מספר ני\"ע\n12.80% ↑ ₪24,750.00\n2,190\n40דנכ.XTF\n0%\nTLV • 1190377 מספר ני\"ע\n8.25% ↑ ₪21,900.00\nאחר\n418.3\nחיסכון ירוק 41\n₪418.3\n281.3 דולר קנדי\n• 99041 מספר ני\"ע\n$2,261.17\nהוראות\nניירות במעקב\nמסחר\nהתיק שלי\nראשי"
+        ],
+        "shuffled_columns": [
+          "11:41\nמיטב:טרייד\nNYSE • VNTQ\nVantiq Robotics Inc\n↑ 9.30%\n1,683.00$\n84.15\n0%\nNASDAQ • ORLM\n0%\nOrlem Cloud Systems Inc\n$4,150\n↑ 21.40%\n41.5\nקרן סל\n77רדס.XTF\n4,125\n+0.11%\nTLV • 1180422 מספר ני\"ע\n₪24,750.00\n↑ 12.80%\n40דנכ.XTF\n2,190 0%\nTLV • 1190377 מספר ני\"ע\n↑ 8.25%\n₪21,900.00\nאחר\nחיסכון ירוק 41\n418.3\n₪418.3\nדולר קנדי\n281.3\n99041 • מספר ני\"ע\n2,261.17$\nהוראות\nניירות במעקב\nמסחר\nהתיק שלי\nראשי"
+        ],
+        "hebrew_reversed": [
+          "11:41\nףירט:בטימ\nVNTQ • NYSE\nVantiq Robotics Inc\n84.15\n%0\n$1,683.00 ↑ %9.30\nORLM • NASDAQ\nOrlem Cloud Systems Inc\n41.5\n%0\n$4,150 ↑ %21.40\nלס ןרק\nXTF.77סדר 4,125\n%0.11+\n1180422 • TLV ע\"ינ רפסמ\n₪24,750.00 ↑ %12.80\nXTF.40כנד\n2,190\n%0\n1190377 • TLV ע\"ינ רפסמ\n₪21,900.00 ↑ %8.25\nרחא\n418.3\n41 קורי ןוכסיח\n418.3₪\n281.3 ידנק רלוד\n99041 • ע\"ינ רפסמ\n2,261.17$\nתוארוה\nבקעמב תוריינ\nרחסמ\nילש קיתה\nישאר"
+        ]
+      },
+      "expected": {
+        "layout": "meitav_trade",
+        "rows": [
+          {
+            "name": "Vantiq Robotics Inc",
+            "symbol": "VNTQ",
+            "tase_number": null,
+            "quantity": 20,
+            "price": 84.15,
+            "value": 1683.0,
+            "cost": 76.9899,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "Orlem Cloud Systems Inc",
+            "symbol": "ORLM",
+            "tase_number": null,
+            "quantity": 100,
+            "price": 41.5,
+            "value": 4150.0,
+            "cost": 34.1845,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "77רדס.XTF",
+            "symbol": null,
+            "tase_number": "1180422",
+            "quantity": 600,
+            "price": 4125,
+            "value": 24750.0,
+            "cost": 3656.9149,
+            "currency": "ILS",
+            "unit": "agorot",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "40דנכ.XTF",
+            "symbol": null,
+            "tase_number": "1190377",
+            "quantity": 1000,
+            "price": 2190,
+            "value": 21900.0,
+            "cost": 2023.0947,
+            "currency": "ILS",
+            "unit": "agorot",
+            "flags": [
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "חיסכון ירוק 41",
+            "symbol": null,
+            "tase_number": null,
+            "quantity": 1,
+            "price": 418.3,
+            "value": 418.3,
+            "cost": null,
+            "currency": "ILS",
+            "unit": "ILS",
+            "flags": []
+          },
+          {
+            "name": "דולר קנדי",
+            "symbol": null,
+            "tase_number": "99041",
+            "quantity": null,
+            "price": 281.3,
+            "value": 2261.17,
+            "cost": null,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "quantity_uncertain"
+            ]
+          }
+        ]
+      }
     }
   ]
 }

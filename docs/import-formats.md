@@ -26,6 +26,13 @@ Other things on the screen: a status bar (time, battery, a media-player notifica
 7. **Redaction:** the existing header blur (top 12 %) is slightly too small for this app: the header spans roughly the top 14 %. Make the header fraction a per-layout setting (14 % for this layout) and keep the 6+ digit-run blur, but do **not** blur the 7-digit TASE security numbers inside a card (they are needed for matching and are not account numbers); detect them by the `TLV •` prefix.
 8. **Hebrew OCR:** right-to-left lines come out of Tesseract in visual order; Hebrew names can be reversed ("125כשתא" for "תא125"). Matching must normalise by comparing both the string and its reverse for Hebrew-only tokens.
 
+### Newer layout features (Update 10, 2026-10-06; invented fixture `section_bars_and_simple_cards`)
+- **Grey section bars** between groups (`קרן סל`, `אחר`) and the **bottom navigation** (`ראשי`, `התיק שלי`, `מסחר`, `ניירות במעקב`, `הוראות`) are not cards and never names; a bar or the navigation ends the card above it.
+- **TASE fund cards put the name above the number**: name (Hebrew with Latin, digits inside it, e.g. `77רדס.XTF`), then `TLV • 1180422 מספר ני"ע`, then `12.80% ↑ ₪24,750.00`; price (agorot) on the left, day chip `+0.11%` or `0%`. The label `מספר ני"ע` makes the anchor "labeled": the nearest name line above it (plus the figures between, and up to two price lines above the name) belongs to its card. Digits glued to letters are never a price.
+- **US cards** keep `NYSE • VNTQ` first, then the English name, `9.30% ↑ $1,683.00` and the left price with a `0%` chip.
+- **Cards with no exchange line** (a plain name with a number glued to it, `₪418.3`, value = price, no P&L %; a currency card `$2,261.17` with only `מספר ני"ע • 99041`): parsed as simple cards, never merged into a neighbour. The card starts at a name line (text, no amount) once the card before has its amount; with no whole `value / price` the quantity is left empty and flagged `quantity_uncertain`. A stretch without any `$`/`₪` amount (status bar, header) gives no card.
+- A figure-only line wins as the price over a number glued to a name.
+
 ### Acceptance tests (synthetic fixtures, same layout, invented numbers)
 - A card list with US tickers, a warrant row with a tiny value, a TASE fund with agorot price, and a section header: quantities inferred exactly, the warrant flagged `quantity_uncertain`, the TASE fund priced in agorot and valued in ILS.
 - Costs inferred from P&L % within 0.05 %; a row without P&L % has no cost.

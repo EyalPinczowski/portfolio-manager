@@ -65,6 +65,25 @@ describe("import page", () => {
     expect(screen.getByText("TASE no. 629014")).toBeInTheDocument();
   });
 
+  it("a TASE-number row without a symbol hints to search by name or number and says why it is unmatched", async () => {
+    vi.mocked(readScreenshotsOnDevice).mockResolvedValueOnce(wrapRows([{ ...parsed[0], tase_number: "1180422", name: "77רדס.XTF"}]));
+    renderPage();
+    await pick();
+    clickRead();
+    await screen.findByRole("region", { name: "Review the rows" });
+    expect(screen.getByTestId("tase-search-hint")).toHaveTextContent("Search by name or TASE number 1180422");
+    expect(screen.getByText(/Could not match TASE number 1180422/)).toBeInTheDocument();
+  });
+
+  it("no hint when the row already has a symbol or no TASE number", async () => {
+    vi.mocked(readScreenshotsOnDevice).mockResolvedValueOnce(wrapRows([{ ...parsed[0], symbol: "TEVA.TA" }]));
+    renderPage();
+    await pick();
+    clickRead();
+    await screen.findByRole("region", { name: "Review the rows" });
+    expect(screen.queryByTestId("tase-search-hint")).toBeNull();
+  });
+
   it("forgets the chosen file once reading starts (cancel returns to an empty picker)", async () => {
     renderPage();
     await pick();

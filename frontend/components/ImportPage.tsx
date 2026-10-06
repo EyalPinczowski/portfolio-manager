@@ -274,7 +274,7 @@ function Body() {
                         <input aria-label={`${t("col.name")} ${r.index + 1}`} className="input min-w-32" value={r.name} onChange={(e) => editRow(r.index, { name: e.target.value })} />
                         {flagged && (
                           <ul className="mt-1 text-xs font-medium text-amber-900 dark:text-amber-200">
-                            {plainFlags.map((f) => <li key={f}>⚠ {t.has(`flags.${f}`) ? t(`flags.${f}`) : f}</li>)}
+                            {plainFlags.map((f) => <li key={f}>⚠ {f === "unmatched" && r.tase_number ? t("flags.unmatchedTase", { n: r.tase_number }) : t.has(`flags.${f}`) ? t(`flags.${f}`) : f}</li>)}
                             {mustEnterQty && <li data-testid="note-quantity-uncertain">⚠ {t("notes.quantityUncertain")}</li>}
                             {fl.has("quantity_fractional") && <li data-testid="note-quantity-fractional">⚠ {t("notes.quantityFractional")}</li>}
                             {mustAck && (
@@ -329,6 +329,7 @@ function Body() {
                           </div>
                         )}
                         {r.tase_number && <p className="mt-1 text-xs text-muted" dir="ltr">{t("taseNumber", { n: r.tase_number })}</p>}
+                        {r.tase_number && !r.symbol && <p className="mt-1 text-xs text-muted" data-testid="tase-search-hint">{t("taseSearchHint", { n: r.tase_number })}</p>}
                       </td>
                       <td className="px-2 py-2"><NumberCell key={k("q")} label={`${t("col.quantity")} ${r.index + 1}`} className="w-24" required={mustEnterQty} doubt={doubt("ocr_low_confidence")} value={r.quantity} onValue={(n, ok) => { editRow(r.index, { quantity: n }); cell(k("q"))(ok); }} /></td>
                       <td className="px-2 py-2"><NumberCell key={k("p")} label={`${t("col.price")} ${r.index + 1}`} className="w-24" doubt={doubt("price_unit_100x", "ocr_low_confidence")} value={r.price} onValue={(n, ok) => { editRow(r.index, { price: n }); cell(k("p"))(ok); }} /></td>

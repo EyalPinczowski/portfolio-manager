@@ -33,8 +33,21 @@ ARROWS = frozenset("↑↓▲▼⬆⬇△▽⇧⇩⬈⬊↗↘")
 US_EXCHANGES = ("NASDAQ", "NYSE", "AMEX")
 
 # Section header words (letters only), as printed and as a right-to-left line may come out.
-_HEADERS = ("קרןסל", "קרנותסל")
+_HEADERS = ("קרןסל", "קרנותסל", "אחר", "מניות", "תעודותסל", "קרנותנאמנות")
 SECTION_HEADERS = frozenset(w for h in _HEADERS for w in (h, h[::-1], "ןרקלס", "תונרקלס"))
+# Bottom navigation words (Hebrew app tab bar), as printed and reversed.
+_NAV = ("הוראות", "ניירות", "במעקב", "מסחר", "התיק", "שלי", "ראשי", "בית", "תיק", "שוק", "עוד")
+NAV_TOKENS = frozenset(w for n in _NAV for w in (n, n[::-1]))
+
+# The label `מספר ני"ע` (security number) next to a TASE number, and its reversed spelling.
+_SEP = r"[\s•·●∙▪*|:.\-–—]"
+_Q = "[\"'״׳”“]"
+_LABEL = rf"(?:מספר\s*ני{_Q}{{0,2}}ע|ע{_Q}{{0,2}}ינ\s*רפסמ)"
+_LABEL_RE = re.compile(_LABEL)
+_LABEL_NUM = re.compile(
+    rf"{_LABEL}{_SEP}{{0,3}}([0-9]{{4,8}})(?![0-9])|(?<![0-9])([0-9]{{4,8}}){_SEP}{{0,3}}{_LABEL}"
+)
+_AMOUNT_PRESENT = re.compile(r"[$₪]\s{0,2}[0-9]|[0-9]\s{0,2}[$₪]")
 
 _FWD = re.compile(
     rf"(?<![A-Za-z])(NASDAQ|NYSE|AMEX|TLV)\s*({LOOSE_BULLET})?\s*({TICKER}|{TASE_NO})(?![A-Za-z0-9])"
@@ -54,6 +67,7 @@ class Anchor:
     exchange: str
     ticker: str
     strict: bool
+    labeled: bool = False  # the line carries the `מספר ני"ע` label: the name is ABOVE the anchor
 
 
 def find_anchors(line: str) -> list[Anchor]:
@@ -111,28 +125,174 @@ def detect_meitav(text: str) -> bool:
 class _Block:
     anchor: Anchor
     lines: list[str] = field(default_factory=list)
+    has_amount: bool = False
+
+
+@dataclass
+class _Entry:
+    text: str
+    kind: str  # "line", "section" (grey bar) or "nav" (bottom navigation)
+    anchors: list[Anchor]
+    labeled: bool = False
 
 
 # OCR often prints a minus as an en/em dash or a Unicode hyphen: a dash glued to a digit or % is a minus.
 _MINUS_RE = re.compile(r"(?<!\d)[−–—‐‑](?=[\d%])")
+_LETTERS = re.compile(r"[^\W\d_]+")
+_SIMPLE = Anchor(0, 0, "", "", False)
 
 
-def _to_blocks(text: str) -> list[_Block]:
-    blocks: list[_Block] = []
+def _has_amount(s: str) -> bool:
+    return _AMOUNT_PRESENT.search(s) is not None
+
+
+def _is_text_line(s: str) -> bool:
+    return sum(1 for ch in re.sub(NUM, " ", s) if ch.isalpha()) >= 3
+
+
+def _is_price_line(s: str) -> bool:
+    """A figure-only line that can be a price: no letters, no amount, no percent."""
+    return (
+        not _is_text_line(s)
+        and not _has_amount(s)
+        and "%" not in s
+        and any(ch.isdigit() for ch in s)
+    )
+
+
+def _is_percent_line(s: str) -> bool:
+    return "%" in s and not _is_text_line(s) and not _has_amount(s)
+
+
+def _is_nav_line(line: str) -> bool:
+    if any(ch.isdigit() or ch in "$₪%" for ch in line):
+        return False
+    words = _LETTERS.findall(line)
+    return bool(words) and all(w in NAV_TOKENS for w in words)
+
+
+def _prepare(text: str) -> list[_Entry]:
+    out: list[_Entry] = []
     for raw in _lines(text):
         line = _MINUS_RE.sub("-", raw.replace("−", "-")).strip()
         if not line:
             continue
-        anchors = find_anchors(line)
-        if not anchors:
-            if blocks and not _is_section_line(line):
-                blocks[-1].lines.append(line)
+        if _is_section_line(line):
+            out.append(_Entry(line, "section", []))
             continue
-        for i, a in enumerate(anchors):
-            start = 0 if i == 0 else a.start
-            end = anchors[i + 1].start if i + 1 < len(anchors) else len(line)
-            rest = f"{line[start : a.start]} {line[a.end : end]}".strip()
-            blocks.append(_Block(a, [rest] if rest else []))
+        if _is_nav_line(line):
+            out.append(_Entry(line, "nav", []))
+            continue
+        anchors = find_anchors(line)
+        labeled = False
+        if _LABEL_RE.search(line):
+            m = _LABEL_NUM.search(line)
+            if anchors:
+                line = _LABEL_RE.sub(lambda mm: " " * len(mm.group(0)), line)
+                labeled = len(anchors) == 1
+                anchors = [
+                    Anchor(a.start, a.end, a.exchange, a.ticker, a.strict, labeled) for a in anchors
+                ]
+            elif m is not None:
+                num = m.group(1) or m.group(2)
+                anchors = [Anchor(m.start(), m.end(), "", num, True, True)]
+                labeled = True
+            else:
+                line = _LABEL_RE.sub(lambda mm: " " * len(mm.group(0)), line)
+        out.append(_Entry(line, "line", anchors, labeled))
+    return out
+
+
+def _pre_range(entries: list[_Entry], i: int, lo: int) -> tuple[int, int] | None:
+    """Lines ABOVE a labeled anchor (`TLV • 1180422 מספר ני"ע`) that belong to its card: the
+    nearest name line, the figures between it and the anchor, and up to two price lines above the
+    name. Never across an amount line, a section bar, the navigation or another anchor."""
+    k = i - 1
+    while k >= lo and i - k <= 4:
+        s = entries[k].text
+        if _has_amount(s):
+            return None
+        if _is_text_line(s):
+            start = k
+            while start - 1 >= lo and k - start < 2 and _is_price_line(entries[start - 1].text):
+                start -= 1
+            return start, i
+        k -= 1
+    return None
+
+
+def _simple_cards(run: list[str]) -> list[list[str]]:
+    """Cards with no exchange line and no security number: a name, a `$`/`₪` value and a price.
+    `run` is a stretch of lines that belong to no anchored card. A card starts at a name line
+    (text, no amount) once the card before it has its amount; up to two price lines just above the
+    name come with it. Stretches without an amount (status bar, header) give no card."""
+    groups: list[list[str]] = [[]]  # groups[0] holds the lines before the first name
+    for s in run:
+        last = groups[-1]
+        starts = (
+            _is_text_line(s)
+            and not _has_amount(s)
+            and (len(groups) == 1 or any(_has_amount(x) for x in last))
+        )
+        if starts:
+            carry: list[str] = []
+            while last and len(carry) < 2 and _is_price_line(last[-1]):
+                carry.insert(0, last.pop())
+            groups.append([*carry, s])
+        else:
+            last.append(s)
+    return [g for g in groups[1:] if any(_has_amount(x) for x in g)]
+
+
+def _to_blocks(text: str) -> list[_Block]:
+    entries = _prepare(text)
+    # Pass 1: the lines above each labeled anchor belong to that anchor's card.
+    claimed: dict[int, int] = {}
+    pre: dict[int, list[str]] = {}
+    lo = 0
+    for i, e in enumerate(entries):
+        if e.kind != "line" or e.anchors:
+            if e.kind == "line" and e.labeled and (rng := _pre_range(entries, i, lo)):
+                pre[i] = [entries[k].text for k in range(*rng)]
+                claimed.update({k: i for k in range(*rng)})
+            lo = i + 1
+    # Pass 2: walk the lines, a line goes to the open card above it or waits in `orphans`.
+    blocks: list[_Block] = []
+    cur: _Block | None = None
+    orphans: list[str] = []
+
+    def flush() -> None:
+        nonlocal orphans
+        blocks.extend(_Block(_SIMPLE, g, True) for g in _simple_cards(orphans))
+        orphans = []
+
+    for i, e in enumerate(entries):
+        if e.kind != "line":
+            flush()
+            cur = None
+            continue
+        if i in claimed:
+            continue
+        if not e.anchors:
+            closed = cur is not None and cur.anchor.labeled and cur.has_amount
+            # After its amount a labeled card still takes a stray percent line (the P&L %).
+            if cur is not None and (not closed or _is_percent_line(e.text)):
+                cur.lines.append(e.text)
+                cur.has_amount = cur.has_amount or _has_amount(e.text)
+            else:
+                orphans.append(e.text)
+            continue
+        flush()
+        for j, a in enumerate(e.anchors):
+            start = 0 if j == 0 else a.start
+            end = e.anchors[j + 1].start if j + 1 < len(e.anchors) else len(e.text)
+            rest = f"{e.text[start : a.start]} {e.text[a.end : end]}".strip()
+            lines = list(pre.get(i, [])) if j == 0 else []
+            if rest:
+                lines.append(rest)
+            cur = _Block(a, lines, any(_has_amount(x) for x in lines))
+            blocks.append(cur)
+    flush()
     return blocks
 
 
@@ -319,6 +479,9 @@ class _Meta:
 
 def _parse_block(b: _Block, s: Settings) -> ParsedRow:
     tlv = b.anchor.exchange == "TLV"
+    has_symbol = b.anchor.exchange in US_EXCHANGES
+    # No exchange line: a simple value card or a security-number card (currency, fund).
+    simple = not has_symbol and not tlv
     lines: list[_Line] = []
     amts: list[_Amt] = []
     pcts: list[_Pct] = []
@@ -331,7 +494,9 @@ def _parse_block(b: _Block, s: Settings) -> ParsedRow:
         lines.append(_Line(work, letters >= 3, _take_numbers(work, i)))
 
     value = amts[0] if amts else None
-    currency = ("USD" if value.symbol == "$" else "ILS") if value else ("ILS" if tlv else "USD")
+    currency = (
+        ("USD" if value.symbol == "$" else "ILS") if value else ("USD" if has_symbol else "ILS")
+    )
     agorot = tlv and currency == "ILS"
 
     # Price candidates: numbers on figure-only lines first, then numbers at the edge of name lines.
@@ -343,7 +508,8 @@ def _parse_block(b: _Block, s: Settings) -> ParsedRow:
         for n in ln.nums
         if ln.work[: n.start].strip() == "" or ln.work[n.end :].strip() == ""
     ]
-    cands = tier1 + tier2
+    # A figure-only line wins: a number glued to a name (`חיסכון ירוק 41`) is part of the name.
+    cands = tier1 or tier2
     price: _Num | None = None
     if value is not None:
         price = next(
@@ -358,7 +524,7 @@ def _parse_block(b: _Block, s: Settings) -> ParsedRow:
         whole = _whole_quantity(value, price, agorot, s.import_infer_round_slack)
         if whole is not None:
             quantity = float(whole)
-        else:
+        elif not simple:
             unit_price = price.value / 100 if agorot else price.value
             if unit_price > 0:
                 quantity = _round4(value.value / unit_price)
@@ -386,7 +552,7 @@ def _parse_block(b: _Block, s: Settings) -> ParsedRow:
         if name:
             break
     if not name:
-        name = "" if tlv else b.anchor.ticker
+        name = b.anchor.ticker if has_symbol else ""
 
     flags: list[str] = []
     if meta.quantity_uncertain:
@@ -400,9 +566,11 @@ def _parse_block(b: _Block, s: Settings) -> ParsedRow:
         {
             "index": 0,
             "name": name,
-            "symbol": None if tlv else b.anchor.ticker,
-            "tase_number": b.anchor.ticker if tlv else None,
-            "exchange": None if tlv else b.anchor.exchange,
+            "symbol": b.anchor.ticker if has_symbol else None,
+            "tase_number": b.anchor.ticker
+            if (tlv or b.anchor.labeled) and b.anchor.ticker
+            else None,
+            "exchange": b.anchor.exchange if has_symbol else None,
             "quantity": quantity,
             "price": clean_number(price.value) if price else None,
             "value": clean_number(value.value) if value else None,

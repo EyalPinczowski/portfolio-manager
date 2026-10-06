@@ -235,6 +235,7 @@
       "low_confidence_match": "Weak match: check the symbol",
       "missing_fields": "Some fields are missing",
       "unmatched": "Could not match this security",
+      "unmatchedTase": "Could not match TASE number {n}: search by its name or number, or type the symbol yourself",
       "unit_mismatch": "Price unit looks wrong (shekels or agorot?)",
       "price_unit_100x": "Price or value looks 100× off: shekels or agorot?",
       "total_mismatch": "The rows add up to more than the total shown on the screen: a number was probably misread",
@@ -280,6 +281,7 @@
     },
     "expires": "This draft is deleted automatically on {time} if you do not confirm it.",
     "taseNumber": "TASE no. {n}",
+    "taseSearchHint": "Search by name or TASE number {n}",
     "error": {
       "generic": "Could not read the screenshot. Try again.",
       "noRows": "No holdings were found in this screenshot. Try a clearer or larger one, or use server reading.",

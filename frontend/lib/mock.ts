@@ -277,9 +277,11 @@ function draftFromRows(pid: number, rows: ImportRow[], scope: "partial" | "full"
     const flags: ImportRow["flags"] = r.flags.filter((f) => f !== "low_confidence_match" && f !== "unmatched");
     const weak = !r.symbol && !r.tase_number;
     if (weak) flags.push("unmatched", "low_confidence_match");
+    const unknownTase = !r.symbol && !!r.tase_number && r.tase_number !== "629014"; // only Teva's number is known to the mock
+    if (unknownTase) flags.push("unmatched");
     const nonQty = r.quantity === null || r.quantity === undefined;
     if (edit && nonQty && !flags.includes("quantity_uncertain")) flags.push("quantity_uncertain");
-    return { ...r, symbol: r.symbol ?? (r.tase_number ? "TEVA.TA" : null), index: edit ? r.index : i, flags, candidates: weak ? [{ symbol: "MNDY", name: "monday.com", score: 58 }] : [] };
+    return { ...r, symbol: r.symbol ?? (r.tase_number === "629014" ? "TEVA.TA" : null), index: edit ? r.index : i, flags, candidates: weak ? [{ symbol: "MNDY", name: "monday.com", score: 58 }] : [] };
   });
   const held = holdingsFor(pid);
   // Like the server: only real quantity differences, plus (full scope only) a `keep` choice (row_index -1) for each held symbol that vanished.

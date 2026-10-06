@@ -50,6 +50,15 @@ account) in the layout described in `docs/import-formats.md`. It is plain JSON s
 
 The section header `קרן סל` sits between the US cards and the TLV cards.
 
+## Case `section_bars_and_simple_cards` (newer screen)
+
+Invented data. Two US cards (English name line, day chip `0%`, a `$` value without decimals), a grey bar
+`קרן סל`, two TASE fund cards whose Hebrew-with-Latin name (`77רדס.XTF`, digits inside) is **above**
+`TLV • <number> מספר ני"ע`, a grey bar `אחר`, a simple card with no exchange line and no P&L % (`חיסכון ירוק 41`:
+a name with a glued number, value = price, quantity 1) and a currency card with only the label `• 99041 מספר ני"ע`
+(`$` value, quantity not whole, so `quantity_uncertain`). Bars and the bottom navigation words are not cards; a
+card never takes a name, number or figure from its neighbour.
+
 ## Not covered
 
 Real Tesseract output (merged or split lines beyond the variants above), a left column that is separated from

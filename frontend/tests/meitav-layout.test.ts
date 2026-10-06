@@ -166,4 +166,34 @@ describe("Meitav Trade layout, behaviours", () => {
     expect(namesMatch("Acme Corp", "Acme Corp")).toBe(true);
     expect(namesMatch("", "")).toBe(false);
   });
+
+  describe("cards never borrow from a neighbour (section bars, simple cards, number labels)", () => {
+    const text = card([
+      "קרן סל", "4,125 77רדס.XTF", "+0.11%", 'TLV • 1180422 מספר ני"ע', "12.80% ↑ ₪24,750.00",
+      "אחר", "418.3", "חיסכון ירוק 41", "₪418.3", "ראשי",
+    ]);
+
+    it("keeps a TASE number with the name above it and ignores bars and navigation", () => {
+      const { rows } = parseScreenshotText(text);
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toMatchObject({ tase_number: "1180422", symbol: null, price: 4125, value: 24750, quantity: 600 });
+      expect(namesMatch(rows[0].name, "77רדס.XTF")).toBe(true);
+      expect(rows[1]).toMatchObject({ symbol: null, tase_number: null, price: 418.3, value: 418.3, quantity: 1, cost: null, name: "חיסכון ירוק 41" });
+    });
+
+    it("flags a simple card whose quantity cannot be inferred", () => {
+      const lines = text.split("\n").slice(0, 5);
+      const { rows, meta } = parseScreenshotText(card([...lines, "אחר", "חיסכון ירוק 41", "281.3", "₪2,261.17"]));
+      expect(rows).toHaveLength(2);
+      expect(rows[0].tase_number).toBe("1180422");
+      expect(rows[1].quantity).toBeNull();
+      expect(flagsOf(meta[1])).toContain("quantity_uncertain");
+    });
+
+    it("makes no card from the status bar and header", () => {
+      const { rows } = parseScreenshotText(card(["11:41", "מיטב:טרייד", "NYSE • VNTQ", "84.15", "$1,683.00"]));
+      expect(rows).toHaveLength(1);
+      expect(rows[0].symbol).toBe("VNTQ");
+    });
+  });
 });
