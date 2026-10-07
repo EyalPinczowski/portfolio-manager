@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
+from sqlmodel import col, select
 
 from app.api.schemas import (
     AlertCreate,
@@ -30,7 +31,7 @@ from app.repo import (
 )
 from app.scoring.risk import list_presets
 from app.scoring.scorecard import get_cached_scorecard, is_fresh, refresh_scorecard
-from app.securities import get_or_create_security, search_securities
+from app.securities import get_or_create_security, search_securities, search_tase_directory
 from app.strictjson import StrictJsonRoute
 from app.timeutil import as_utc
 
@@ -71,6 +72,34 @@ def securities_search(
         for s in search_securities(db, q)
     ]
     query = q.strip()
+    # The TASE list is a local table (no network, no per-user data): a fund found only by its TASE
+    # number or Hebrew name. Listed after the known hits; picking one is an unverified `new` security.
+    known_syms = {h.symbol.upper() for h in out}
+    listed = search_tase_directory(db, query, settings.symbol_search_max_results)
+    known_nums = set(
+        db.exec(
+            select(Security.tase_number).where(
+                col(Security.tase_number).in_([d.tase_number for d in listed]),
+                col(Security.verified).is_(True),
+            )
+        ).all()
+    )
+    for d in listed:
+        sym = f"{d.tase_number}.TA"
+        if sym in known_syms or d.tase_number in known_nums:
+            continue
+        known_syms.add(sym)
+        out.append(
+            SecurityHit(
+                symbol=sym,
+                name_en=d.name_en or d.name_he,
+                name_he=d.name_he,
+                market="TASE",
+                source="tase_list",
+                currency="ILS",
+                exchange="TASE",
+            )
+        )
     if remote and len(query) >= 2:
         assert user.id is not None
         enforce_limit(

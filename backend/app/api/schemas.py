@@ -412,7 +412,8 @@ class SecurityHit(BaseModel):
     market: MarketKey
     # `known`: in our list (seed or verified). `new`: found by the symbol search only, so the
     # security is created, unverified, when it is picked in an import and confirmed.
-    source: Literal["known", "new"] = "known"
+    # `tase_list`: found only in the TASE Data Hub list (by number or Hebrew name); treated like `new`.
+    source: Literal["known", "new", "tase_list"] = "known"
     currency: Literal["USD", "ILS"] | None = None
     exchange: str | None = None  # NASDAQ | NYSE | AMEX | TASE (new hits only)
 

@@ -1871,6 +1871,8 @@
     "new": "new",
     "searching": "Searching…",
     "none": "Nothing found. You can still type an exact ticker.",
-    "newHint": "Not in our list yet. It is checked against market data after you confirm."
+    "newHint": "Not in our list yet. It is checked against market data after you confirm.",
+    "taseList": "TASE list",
+    "taseListHint": "Found in the TASE securities list. It is checked against market data after you confirm."
   }
 }

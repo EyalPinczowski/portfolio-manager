@@ -48,6 +48,7 @@ from app.models import (
     ImportDraft,
     Portfolio,
     Security,
+    TaseDirectoryRow,
     Transaction,
 )
 from app.portfolio.quotes import refresh_symbols
@@ -163,7 +164,10 @@ def finalize_rows(
     currency disagrees with the security's, so an edit is never a silent confirmation. A row the
     user did not touch keeps the flags (or the absence of them) it was confirmed with.
     """
-    index = SecurityIndex(matchable_securities(db, owner_id))
+    index = SecurityIndex(
+        matchable_securities(db, owner_id),
+        lambda: list(db.exec(select(TaseDirectoryRow)).all()),
+    )
     prev_by_index = {p.index: p for p in previous or []}
     for i, row in enumerate(rows):
         if renumber:
@@ -388,9 +392,11 @@ def row_security(db: Session, row: ParsedRow, created: list[str]) -> Security:
     if kind == "tase" and not row.tase_number:
         sec = infer_security(row.symbol)  # a `<id>.TA` stock the user picked or typed
     elif kind == "tase":
+        listed = db.get(TaseDirectoryRow, row.tase_number)  # public list: name only, no user data
         sec = Security(
             symbol=row.symbol,
-            name_en=row.symbol,
+            name_en=(listed.name_en or listed.name_he) if listed else row.symbol,
+            name_he=listed.name_he if listed else "",
             tase_number=row.tase_number,
             asset_type="fund",
             market="TASE",

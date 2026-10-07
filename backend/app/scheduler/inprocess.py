@@ -27,7 +27,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.config import Settings, get_settings
 from app.scheduler.leader import LeaderLock, make_leader_lock
-from app.scheduler.setup import JOB_IDS, _catchup, _quotes, register_jobs
+from app.scheduler.setup import JOB_IDS, _catchup, _quotes, register_jobs, tase_directory_if_empty
 
 log = logging.getLogger("scheduler")
 
@@ -39,6 +39,10 @@ def startup_tasks() -> None:
     """Once per leadership: fill a missed snapshot, then prime the quotes."""
     _catchup()
     _quotes()
+    try:
+        tase_directory_if_empty()  # a first fill of the TASE list when a key exists
+    except Exception as exc:  # never blocks the other startup work
+        log.warning("tase directory first fill failed: %s", type(exc).__name__)
 
 
 class InProcessScheduler:

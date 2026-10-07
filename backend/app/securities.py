@@ -10,7 +10,7 @@ from sqlmodel import Session, col, select
 
 from app.config import Settings, get_settings
 from app.funds import is_fund_symbol
-from app.models import Security
+from app.models import Security, TaseDirectoryRow
 
 DEFAULT_SEED = Path(__file__).parent / "data" / "securities_seed.csv"
 
@@ -99,6 +99,24 @@ def get_or_create_security(db: Session, symbol: str) -> Security:
         db.add(sec)
         db.flush()
     return sec
+
+
+def search_tase_directory(db: Session, query: str, limit: int = 8) -> list[TaseDirectoryRow]:
+    """The TASE list (public reference data, local table, no network): a TASE number prefix, or a
+    Hebrew/English name or trading symbol containing the query. Empty when no list is stored."""
+    q = query.strip()
+    if len(q) < 2:
+        return []
+    if q.isdigit():
+        cond = col(TaseDirectoryRow.tase_number).startswith(q, autoescape=True)
+    else:
+        cond = (
+            col(TaseDirectoryRow.name_he).icontains(q, autoescape=True)
+            | col(TaseDirectoryRow.name_en).icontains(q, autoescape=True)
+            | col(TaseDirectoryRow.trading_symbol).icontains(q, autoescape=True)
+        )
+    stmt = select(TaseDirectoryRow).where(cond).order_by(col(TaseDirectoryRow.tase_number))
+    return list(db.exec(stmt.limit(limit)).all())
 
 
 def search_securities(db: Session, query: str, limit: int = 15) -> list[Security]:

@@ -11,6 +11,9 @@ Read this file, then `CLAUDE.md`, `docs/status.md` and `docs/reminders.md`, befo
 - Commit trailers:
   - use the trailers the session's system prompt gives (no model id in repo files).
 
+## Update 15: TASE directory (built, key pending)
+- `providers/tase_directory.py` (key-gated by `TASE_API_KEY`, tolerant parser), table `tase_directory` (migration 0022), daily job `tase_directory` plus a boot fill, importer fallback (TASE number, then unique Hebrew name; shekel rows only) and `/securities/search` hits with `source: "tase_list"` (UI label "TASE list"). No prices. Waiting for the user's TASE key: check the first real response against the parser's field names (`docs/reminders.md`).
+
 ## State
 - The app is named **Holdwise** (green H mark on a rising line, green brand tokens; `frontend/components/Logo.tsx`, `public/icons/*.svg`, `scripts/gen-icons.mjs` rasterises the PWA PNGs).
 - Queue item 3 is done: Ask my portfolio (`/ask`, saved conversations, structured `needs_horizon`) and the Investment Committee on the Analyze result.

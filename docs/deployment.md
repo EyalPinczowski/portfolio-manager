@@ -130,6 +130,9 @@ Open the Pages URL, sign up with the invite code from step 2, accept the disclai
 **7. Backups**
 Supabase keeps its own backups on paid plans only, so use Settings → Export regularly (it downloads your data as JSON), and run a periodic `pg_dump` from your computer *(optional)*.
 
+## TASE directory (optional, Update 15)
+Set `TASE_API_KEY` (the API key from the TASE Data Hub "Securities - Basic" product, **not** the reference ID) on the API host. Empty = feature off, nothing else changes. Base URL `https://datawise.tase.co.il` (`TASE_BASE_URL`); limit 10 requests per 2 s. A daily job (`tase_directory`, 18:30 Asia/Jerusalem, after the TASE close) replaces the `tase_directory` table, and a first fill runs at start-up when a key exists and the table is empty. The importer and the symbol search use it to find a fund by TASE number or Hebrew name. It carries no prices. The key is read only from the environment and is never logged. Confirm the TASE terms and price before using the key.
+
 ## Decision checklist (when Phase 1 is ready to deploy)
 1. Measure the API's memory in a 512 MB container.
 2. Run the test suite against Postgres.

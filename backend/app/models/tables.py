@@ -471,6 +471,20 @@ class LlmCache(SQLModel, table=True):
     created_at: NaiveDatetime = Field(default_factory=utcnow, index=True)
 
 
+class TaseDirectoryRow(SQLModel, table=True):
+    """One TASE security from the TASE Data Hub traded-securities list. Public reference data
+    (no user scope): lets an import or the search find a fund by its TASE number or Hebrew name.
+    The whole table is replaced by the daily refresh job."""
+
+    __tablename__ = "tase_directory"
+    tase_number: str = Field(primary_key=True)
+    name_he: str = ""
+    name_en: str = ""
+    trading_symbol: str | None = None
+    kind: str = ""  # the vendor's type text, raw
+    refreshed_at: NaiveDatetime = Field(default_factory=utcnow)
+
+
 class DailyBar(SQLModel, table=True):
     """One stored daily OHLCV bar per symbol, prices already in major units (agorot -> ILS).
 

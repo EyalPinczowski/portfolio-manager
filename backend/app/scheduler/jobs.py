@@ -5,17 +5,18 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
-from sqlmodel import Session, select
+from sqlmodel import Session, delete, func, select
 
 from app.alerts.price_alerts import check_price_alerts
 from app.config import Settings, get_settings
-from app.models import Holding, Portfolio, PriceAlert, Security
+from app.models import Holding, Portfolio, PriceAlert, Security, TaseDirectoryRow
 from app.portfolio.quotes import refresh_symbols
 from app.portfolio.valuation import take_snapshot
 from app.providers.base import HistoryProvider, QuoteProvider
+from app.providers.tase_directory import TaseDirectory
 from app.scheduler.calendars import is_market_open, is_post_close_fetch_due
 from app.scoring.scorecard import is_fresh, refresh_scorecard
-from app.timeutil import local_today
+from app.timeutil import local_today, utcnow
 
 log = logging.getLogger(__name__)
 
@@ -150,3 +151,48 @@ def run_paper_resolve_job(
     from app.paper_resolver import resolve_due_calls
 
     return resolve_due_calls(db, history, settings).resolved
+
+
+def run_tase_directory_refresh(
+    db: Session, settings: Settings | None = None, provider: TaseDirectory | None = None
+) -> int:
+    """Replace the `tase_directory` table with the latest TASE list, in one transaction.
+    No key: nothing is called. A failed or empty fetch keeps the old rows. Returns the row count
+    written (0 when nothing was replaced)."""
+    s = settings or get_settings()
+    source = provider or TaseDirectory(s)
+    if not source.enabled:
+        return 0
+    entries = source.fetch_latest()
+    if not entries:
+        log.warning("tase directory: no list fetched, keeping the stored one")
+        return 0
+    now = utcnow()
+    try:
+        db.exec(delete(TaseDirectoryRow))  # type: ignore[call-overload]
+        db.add_all(
+            TaseDirectoryRow(
+                tase_number=e.tase_number,
+                name_he=e.name_he,
+                name_en=e.name_en,
+                trading_symbol=e.trading_symbol,
+                kind=e.type,
+                refreshed_at=now,
+            )
+            for e in entries
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return len(entries)
+
+
+def run_tase_directory_if_empty(db: Session, settings: Settings | None = None) -> int:
+    """Boot helper: fetch once when a key exists and the table has no rows yet."""
+    s = settings or get_settings()
+    if not s.tase_api_key:
+        return 0
+    if db.exec(select(func.count()).select_from(TaseDirectoryRow)).one():
+        return 0
+    return run_tase_directory_refresh(db, s)

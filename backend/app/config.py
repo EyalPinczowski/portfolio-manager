@@ -64,6 +64,10 @@ def default_quote_source_limits() -> dict[str, QuoteSourceLimits]:
         "fmp": QuoteSourceLimits(ttl_seconds=24 * 3600, max_calls_per_minute=10),
         "frankfurter": QuoteSourceLimits(ttl_seconds=24 * 3600, max_calls_per_minute=10),
         "boi": QuoteSourceLimits(ttl_seconds=24 * 3600, max_calls_per_minute=10),
+        # TASE Data Hub "Securities - Basic": 10 requests per 2 s; a list is fetched once a day.
+        "tase": QuoteSourceLimits(
+            ttl_seconds=12 * 3600, max_calls_per_minute=30, timeout_seconds=20.0
+        ),
         # GemelNet (data.gov.il CKAN) publishes monthly: a long TTL, a small budget.
         "gemelnet": QuoteSourceLimits(
             ttl_seconds=12 * 3600, max_calls_per_minute=10, timeout_seconds=15.0
@@ -373,6 +377,15 @@ class Settings(BaseSettings):
         default_factory=default_quote_source_limits
     )
     finnhub_base_url: str = "https://finnhub.io/api/v1"
+    # TASE Data Hub, "Securities - Basic" (the traded-securities list: TASE number, Hebrew name).
+    # Empty key = feature off. The key comes only from the env var `TASE_API_KEY`.
+    tase_api_key: str | None = None
+    tase_base_url: str = "https://datawise.tase.co.il"
+    tase_directory_refresh_hour: int = Field(default=18, ge=0, le=23)  # after the TASE close
+    tase_directory_refresh_minute: int = Field(default=30, ge=0, le=59)
+    tase_directory_lookback_days: int = Field(default=5, ge=0, le=14)  # latest trading day search
+    tase_requests_per_window: int = Field(default=10, gt=0)  # vendor limit: 10 requests ...
+    tase_window_seconds: float = Field(default=2.0, gt=0)  # ... per 2 seconds
     coingecko_base_url: str = "https://api.coingecko.com/api/v3"
     stooq_base_url: str = "https://stooq.com"
     fmp_base_url: str = "https://financialmodelingprep.com"

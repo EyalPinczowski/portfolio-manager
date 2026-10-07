@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
 from rapidfuzz import fuzz
 
 from app.config import Settings, get_settings
 from app.importer.parse import MatchCandidate, ParsedRow, row_currency
-from app.models import Security
+from app.models import Security, TaseDirectoryRow
 
 QUOTES_RE = re.compile(r"[\"'`׳״’‘“”.,]")
 SEPARATORS_RE = re.compile(r"[()\-/]")
@@ -50,14 +50,25 @@ def has_class_designator(normalized: str) -> bool:
 @dataclass
 class MatchResult:
     security: Security | None
-    method: str  # symbol | tase_number | name | none
+    method: str  # symbol | tase_number | name | directory | new | none
     score: float
     candidates: list[tuple[str, float]] = field(default_factory=list)
     low_confidence: bool = False
+    directory: TaseDirectoryRow | None = None  # set when `method == "directory"`
 
 
 class SecurityIndex:
-    def __init__(self, securities: Sequence[Security]) -> None:
+    def __init__(
+        self,
+        securities: Sequence[Security],
+        directory_loader: Callable[[], Sequence[TaseDirectoryRow]] | None = None,
+    ) -> None:
+        # The TASE list (public reference data) is read only when a row the seed cannot match
+        # needs it, and once per index.
+        self._directory_loader = directory_loader
+        self._directory: (
+            tuple[dict[str, TaseDirectoryRow], dict[str, list[TaseDirectoryRow]]] | None
+        ) = None
         self.by_symbol = {s.symbol.upper(): s for s in securities}
         # A verified security wins a TASE number: a user-scoped one never shadows a seeded one.
         self.by_tase: dict[str, Security] = {}
@@ -83,6 +94,31 @@ class SecurityIndex:
             he = normalize_name(s.name_he)
             if he:
                 self.choices[(s.symbol, "he")] = he
+
+    def _load_directory(
+        self,
+    ) -> tuple[dict[str, TaseDirectoryRow], dict[str, list[TaseDirectoryRow]]]:
+        if self._directory is None:
+            by_number: dict[str, TaseDirectoryRow] = {}
+            by_name: dict[str, list[TaseDirectoryRow]] = {}
+            for d in self._directory_loader() if self._directory_loader else []:
+                by_number[d.tase_number] = d
+                for nm in {normalize_name(d.name_he), normalize_name(d.name_en)} - {""}:
+                    by_name.setdefault(nm, []).append(d)
+            self._directory = (by_number, by_name)
+        return self._directory
+
+    def directory_match(self, row: ParsedRow) -> TaseDirectoryRow | None:
+        """The TASE-list entry for a shekel row: its TASE number (exact), else a Hebrew/English
+        name that is unique in the list after normalising. An ambiguous name gives None."""
+        if self._directory_loader is None or row_currency(row) != "ILS":
+            return None
+        by_number, by_name = self._load_directory()
+        if row.tase_number and row.tase_number in by_number:
+            return by_number[row.tase_number]
+        query = normalize_name(row.name)
+        found = by_name.get(query, []) if query else []
+        return found[0] if len(found) == 1 else None
 
     def prefer_listing(self, sec: Security, row: ParsedRow) -> Security:
         """For dual listings choose the TASE line for shekel rows, the US line for dollar rows."""
@@ -209,6 +245,10 @@ def resolve_row(
         if new_security_kind(row) in ("us", "tase"):
             return MatchResult(None, "new", 100.0)
     result = match_row(row, index, settings)
+    if result.security is None:
+        entry = index.directory_match(row)
+        if entry is not None:
+            return MatchResult(None, "directory", 100.0, directory=entry)
     if result.security is None and new_security_kind(row) == "tase":
         return MatchResult(None, "new", 100.0)
     return result
@@ -237,7 +277,15 @@ def apply_match(
         # user has checked it, even when the matched security agrees with the guess.
         flags.append("currency_changed")
     row.candidates = []
-    if result.method == "new":
+    if result.method == "directory" and result.directory is not None:
+        # Found only in the TASE list: a TASE-based symbol and the list's name. The security is
+        # created, unverified, at confirm (`row_security`); no price is promised.
+        d = result.directory
+        row.symbol = f"{d.tase_number}.TA"
+        row.tase_number = d.tase_number
+        row.exchange = "MANUAL"
+        row.matched_name = d.name_en or d.name_he
+    elif result.method == "new":
         # Not in the seed, but the row carries the evidence for a user-scoped, unverified
         # security (created at confirm, verified by the first quote). The symbol stays.
         row.matched_name = None

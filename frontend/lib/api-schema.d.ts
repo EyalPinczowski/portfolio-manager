@@ -3792,7 +3792,7 @@ export interface components {
              * @default known
              * @enum {string}
              */
-            source: "known" | "new";
+            source: "known" | "new" | "tase_list";
             /** Currency */
             currency?: ("ILS" | "USD") | null;
             /** Exchange */

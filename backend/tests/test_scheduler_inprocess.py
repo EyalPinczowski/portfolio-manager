@@ -137,6 +137,7 @@ EXPECTED_JOBS = {
     "purge_ask_history",
     "weekly_review",
     "paper_resolve",
+    "tase_directory",
 }
 
 

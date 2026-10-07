@@ -9,6 +9,9 @@ Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after a
 ## In progress when this was written
 - **backend-2.0-E** (importer): server `meitav_trade` parser (parity with `frontend/tests/fixtures/meitav/`), new flags, matching keys, duplicate merge, update-from-screenshots scope + atomic confirm + `last_screenshot_update_at`, manual-add endpoint. If its files are uncommitted and its tests pass (pytest, ruff, mypy), verify and commit; if it died, relaunch it from `docs/phase-2.0-spec.md` (block 2.0-E).
 
+## Update 15: TASE directory (built, key pending)
+- `providers/tase_directory.py` (key-gated by `TASE_API_KEY`, tolerant parser), table `tase_directory` (migration 0022), daily job `tase_directory` plus a boot fill, importer fallback (TASE number, then unique Hebrew name; shekel rows only) and `/securities/search` hits with `source: "tase_list"` (UI label "TASE list"). No prices. Waiting for the user's TASE key: check the first real response against the parser's field names (`docs/reminders.md`).
+
 ## Queue (do automatically, in this order; verify each result yourself, commit, push)
 1. 2.0-E importer (above), then a frontend step to follow its contract (`npm run gen:api`, new flags in the review table, update-from-screenshots scope UI).
 2. Block 2.1: fallback quote providers (Finnhub, FMP/Stooq, CoinGecko, BoI/Frankfurter, TASE Data Hub optional, last close) per `docs/reviews/quote-sources-2026-10-03.md`; key-gated; fixtures only.

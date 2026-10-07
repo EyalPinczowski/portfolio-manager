@@ -98,6 +98,7 @@ export function SymbolSearch({ value, onChange, onPick, onCommit, id, label, cla
             </span>
             <span className="flex shrink-0 items-center gap-1">
               {h.source === "new" && <span className="chip-neutral" title={t("newHint")}>{t("new")}</span>}
+              {h.source === "tase_list" && <span className="chip-neutral" title={t("taseListHint")}>{t("taseList")}</span>}
               <span className="chip-neutral" dir="ltr">{h.symbol}</span>
             </span>
           </li>

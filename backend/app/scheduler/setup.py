@@ -86,6 +86,19 @@ def _paper_resolve() -> None:
         )
 
 
+def _tase_directory() -> None:
+    with new_session() as db:
+        log.info("tase directory rows: %d", jobs.run_tase_directory_refresh(db))
+
+
+def tase_directory_if_empty() -> None:
+    """Called once per leadership (startup): a first fill when a key exists and the table is empty."""
+    with new_session() as db:
+        n = jobs.run_tase_directory_if_empty(db)
+        if n:
+            log.info("tase directory first fill: %d", n)
+
+
 def interval_trigger(minutes: int, slot: int, s: Settings) -> IntervalTrigger:
     """An interval trigger whose first run is offset by `slot` * `scheduler_job_offset_seconds` and
     that jitters every run, so heavy jobs never start in the same minute (0.1 CPU hosts)."""
@@ -172,6 +185,18 @@ def register_jobs(sched: BaseScheduler, settings: Settings | None = None) -> Non
         misfire_grace_time=s.scheduler_misfire_grace_seconds,
     )
     sched.add_job(
+        _tase_directory,
+        CronTrigger(
+            hour=s.tase_directory_refresh_hour,
+            minute=s.tase_directory_refresh_minute,
+            timezone=ZoneInfo(s.scheduler_timezone),
+        ),
+        id="tase_directory",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=s.snapshot_misfire_grace_seconds,
+    )
+    sched.add_job(
         _paper_resolve,
         interval_trigger(s.paper_resolve_interval_minutes, 4, s),
         id="paper_resolve",
@@ -191,6 +216,7 @@ JOB_IDS = (
     "purge_ask_history",
     "weekly_review",
     "paper_resolve",
+    "tase_directory",
 )
 
 

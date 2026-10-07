@@ -62,6 +62,18 @@ describe("symbol search dropdown", () => {
     expect(box).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("labels a hit that comes only from the TASE list", async () => {
+    vi.spyOn(api, "searchSecurities").mockResolvedValue([
+      { symbol: "1234567.TA", name_en: "Sample Index Fund", name_he: "קרן לדוגמה", market: "TASE", source: "tase_list", currency: "ILS", exchange: "TASE" },
+    ]);
+    wrap(<AddHoldingForm portfolios={[{ id: 1, name: "Main" }] as Portfolio[]} onClose={vi.fn()} />);
+    const box = screen.getByLabelText("Symbol");
+    await typeInto(box, "1234567");
+    const opt = await screen.findByRole("option", { name: /Sample Index Fund/ });
+    expect(opt).toHaveTextContent("TASE list");
+    expect(opt).not.toHaveTextContent("new");
+  });
+
   it("keyboard: arrows move, Enter picks, Escape closes", async () => {
     wrap(<AddHoldingForm portfolios={[{ id: 1, name: "Main" }] as Portfolio[]} onClose={vi.fn()} />);
     const box = screen.getByLabelText("Symbol");

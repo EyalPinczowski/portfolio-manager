@@ -10877,7 +10877,8 @@
             "type": "string",
             "enum": [
               "known",
-              "new"
+              "new",
+              "tase_list"
             ],
             "title": "Source",
             "default": "known"
