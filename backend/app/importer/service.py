@@ -33,6 +33,7 @@ from app.importer.match import (
     new_security_kind,
     resolve_row,
 )
+from app.importer.meitav import detect_broker_total
 from app.importer.merge import merge_rows
 from app.importer.parse import (
     ParsedRow,
@@ -282,7 +283,11 @@ def keep_stock_rows(rows: list[ParsedRow], renumber: bool = True) -> list[Parsed
 
 
 def _save_draft(
-    db: Session, portfolio: Portfolio, rows: list[ParsedRow], scope: str = "partial"
+    db: Session,
+    portfolio: Portfolio,
+    rows: list[ParsedRow],
+    scope: str = "partial",
+    broker_total: float | None = None,
 ) -> ImportDraft:
     assert portfolio.id is not None
     if not rows:
@@ -293,6 +298,7 @@ def _save_draft(
         proposed_changes=[c.model_dump() for c in recompute_changes(db, portfolio.id, rows, scope)],
         status="draft",
         scope=scope,
+        broker_total=broker_total,
     )
     db.add(draft)
     db.commit()
@@ -340,12 +346,13 @@ def build_draft(
     finally:
         del redacted, image_bytes
     rows = rows_from_ocr_result(result, s)
+    broker_total = detect_broker_total(result.text) if result.text else None  # a number only
     del result  # raw OCR text goes out of scope here and is never stored
     if not rows:
         raise HTTPException(422, "No holdings could be read from the image")
     rows = merge_rows(rows)
     finalize_rows(db, rows, s, portfolio.owner_id, renumber=True)
-    return _save_draft(db, portfolio, keep_stock_rows(rows), scope)
+    return _save_draft(db, portfolio, keep_stock_rows(rows), scope, broker_total)
 
 
 def build_draft_from_rows(
@@ -354,6 +361,7 @@ def build_draft_from_rows(
     rows: list[ParsedRow],
     settings: Settings | None = None,
     scope: str = "partial",
+    broker_total: float | None = None,
 ) -> ImportDraft:
     """On-device OCR path: the browser read the screenshot, only the parsed rows arrive."""
     s = settings or get_settings()
@@ -362,7 +370,7 @@ def build_draft_from_rows(
         r.candidates, r.matched_name = [], None
     rows = merge_rows(rows)  # overlapping screenshots: one row per card, never summed
     finalize_rows(db, rows, s, portfolio.owner_id)
-    return _save_draft(db, portfolio, keep_stock_rows(rows, renumber=False), scope)
+    return _save_draft(db, portfolio, keep_stock_rows(rows, renumber=False), scope, broker_total)
 
 
 def rows_from_models(models: Sequence[BaseModel]) -> list[ParsedRow]:

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fx from "./fixtures/meitav/meitav_trade_cards.json";
 import { detectLayout, mergeScreenshots, parseScreenshotText } from "@/lib/ocr/layouts";
-import { findAnchors } from "@/lib/ocr/meitav";
+import { detectBrokerTotal, findAnchors } from "@/lib/ocr/meitav";
 import { scrubIdentifiers } from "@/lib/ocr/parse";
 import { namesMatch, tokensMatch } from "@/lib/ocr/hebrew";
 import { flagsOf } from "@/lib/ocr/types";
@@ -12,7 +12,7 @@ interface ExpRow {
   name: string; symbol: string | null; tase_number: string | null; quantity: number | null; price: number | null;
   value: number | null; cost: number | null; currency: string; unit: string; flags: string[];
 }
-interface Case { id: string; images: Record<string, string[]>; expected: { layout: string; rows: ExpRow[] } }
+interface Case { id: string; images: Record<string, string[]>; expected: { layout: string; broker_total: number | null; rows: ExpRow[] } }
 
 const near = (a: number | null | undefined, b: number | null, rel: number) => {
   if (b === null) return expect(a ?? null).toBeNull();
@@ -27,6 +27,7 @@ describe("Meitav Trade layout, shared synthetic fixtures", () => {
         const merged = mergeScreenshots(images.map((t) => parseScreenshotText(t)));
         expect(merged.layout).toBe(c.expected.layout);
         expect(merged.rows).toHaveLength(c.expected.rows.length);
+        expect(merged.broker_total ?? null, `${c.id}/${variant} broker total`).toBe(c.expected.broker_total);
         c.expected.rows.forEach((e, i) => {
           const r = merged.rows[i];
           const where = `${c.id}/${variant} row ${i} (${e.symbol ?? e.tase_number})`;
@@ -50,6 +51,36 @@ describe("Meitav Trade layout, shared synthetic fixtures", () => {
 
 describe("Meitav Trade layout, behaviours", () => {
   const card = (lines: string[]) => lines.join("\n");
+
+  it("reads the broker total from the summary header as a number, in any order, never from other text", () => {
+    expect(detectBrokerTotal("תיק אישי\n₪187,654.32\nשינוי יומי ₪3.21")).toBe(187654.32);
+    expect(detectBrokerTotal("187,654.32₪\nתיק אישי\n₪3.21")).toBe(187654.32);
+    expect(detectBrokerTotal("תיק אישי ₪187,654.32")).toBe(187654.32);
+    expect(detectBrokerTotal("ישיא קית\n₪187,654.32")).toBe(187654.32);
+    expect(detectBrokerTotal("תיק אישי\n$2,222.33")).toBeNull();
+    expect(detectBrokerTotal("NASDAQ • ACME\n$100.00\n₪500.00")).toBeNull();
+    expect(detectBrokerTotal("בית    תיק    שוק    עוד\n₪500.00")).toBeNull();
+    expect(detectBrokerTotal("")).toBeNull();
+  });
+
+  it("no guess: two prices and no whole fit leave quantity, price and cost empty", () => {
+    const { rows, meta } = parseScreenshotText(card(["NASDAQ • FAKA", "41.3", "19.9", "Fake Ambig Corp", "5.0% ↑ $1,000.00"]));
+    expect(rows[0]).toMatchObject({ quantity: null, price: null, cost: null });
+    expect(flagsOf(meta[0])).toEqual(["quantity_uncertain"]);
+  });
+
+  it("no guess: a single price with no whole fit is a real fractional share and keeps its cost", () => {
+    const { rows, meta } = parseScreenshotText(card(["NYSE • FRAC", "187.30", "Fractional Example Inc", "10.0% ↑ $468.25"]));
+    expect(rows[0]).toMatchObject({ quantity: 2.5, price: 187.3 });
+    expect(rows[0].cost).not.toBeNull();
+    expect(flagsOf(meta[0]).sort()).toEqual(["cost_inferred", "quantity_fractional"]);
+  });
+
+  it("cost is inferred only when value agrees with price x quantity", () => {
+    const { rows, meta } = parseScreenshotText(card(["NASDAQ • TINY", "1.07", "Tiny Example Co", "-12.5% ↓ $3"]));
+    expect(rows[0]).toMatchObject({ quantity: 3, cost: null });
+    expect(flagsOf(meta[0])).toEqual([]);
+  });
 
   it("detects the layout by the exchange bullet ticker pattern, else stays generic", () => {
     expect(detectLayout("NASDAQ • ACME\nAcme\n$100.00")).toBe("meitav_trade");

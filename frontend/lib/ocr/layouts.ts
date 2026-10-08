@@ -92,5 +92,6 @@ export function mergeScreenshots(parts: ParsedRows[]): ParsedRows {
     });
   }
   rows.forEach((r, i) => { r.index = i; });
-  return { layout: parts.find((p) => p.layout !== "generic")?.layout ?? "generic", rows, meta };
+  const broker_total = parts.find((p) => p.broker_total != null)?.broker_total ?? null; // the summary header is on the first screen
+  return { layout: parts.find((p) => p.layout !== "generic")?.layout ?? "generic", rows, meta, broker_total };
 }

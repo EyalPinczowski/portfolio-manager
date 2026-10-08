@@ -11,7 +11,7 @@ import pytest
 
 from app.importer.hebrew import names_match
 from app.importer.layouts import detect_layout, parse_screenshot_text, parse_screenshots
-from app.importer.meitav import find_anchors
+from app.importer.meitav import detect_broker_total, find_anchors
 from app.importer.parse import ParsedRow
 
 FIXTURE = (
@@ -73,6 +73,49 @@ def test_parity_with_the_on_device_parser(case_id: str, variant: str) -> None:
             assert abs(r.cost - e["cost"]) <= abs(e["cost"]) * fx["cost_rel_tol"] + tol, where
         assert sorted(r.flags) == sorted(e["flags"]), f"{where}: {r.flags}"
         assert names_match(r.name, e["name"]), f"{where}: {r.name!r} vs {e['name']!r}"
+
+
+@pytest.mark.parametrize(("case_id", "variant"), _variants())
+def test_the_broker_total_matches_the_shared_fixture(case_id: str, variant: str) -> None:
+    case = next(c for c in load_fixture()["cases"] if c["id"] == case_id)
+    got = [detect_broker_total(t) for t in case["images"][variant]]
+    want = case["expected"]["broker_total"]
+    assert (next((g for g in got if g is not None), None)) == want, (case_id, variant)
+
+
+def test_the_broker_total_is_a_number_from_the_label_in_any_order() -> None:
+    assert detect_broker_total("תיק אישי\n₪187,654.32\nשינוי יומי ₪3.21") == 187654.32
+    assert detect_broker_total("187,654.32₪\nתיק אישי\n₪3.21") == 187654.32  # amount first
+    assert detect_broker_total("תיק אישי ₪187,654.32") == 187654.32  # one line
+    assert detect_broker_total("ישיא קית\n₪187,654.32") == 187654.32  # reversed label
+    assert detect_broker_total("תיק אישי\n$2,222.33") is None  # not shekels
+    assert detect_broker_total("NASDAQ • ACME\n$100.00\n₪500.00") is None  # no header label
+    assert detect_broker_total("בית    תיק    שוק    עוד\n₪500.00") is None  # the tab bar
+    assert detect_broker_total("") is None
+
+
+def test_no_guess_two_prices_and_no_whole_fit_leaves_quantity_price_and_cost_empty() -> None:
+    row = one(card("NASDAQ • FAKA", "41.3", "19.9", "Fake Ambig Corp", "5.0% ↑ $1,000.00"))
+    assert row.quantity is None and row.price is None and row.cost is None
+    assert "quantity_uncertain" in row.flags and "cost_inferred" not in row.flags
+
+
+def test_no_guess_a_single_price_with_no_whole_fit_is_a_real_fractional_share() -> None:
+    row = one(card("NYSE • FRAC", "187.30", "Fractional Example Inc", "10.0% ↑ $468.25"))
+    assert row.quantity == 2.5 and row.price == 187.3 and row.cost is not None
+    assert {"quantity_fractional", "cost_inferred"} <= set(row.flags)
+
+
+def test_cost_needs_value_to_agree_with_price_times_quantity() -> None:
+    row = one(card("NASDAQ • TINY", "1.07", "Tiny Example Co", "-12.5% ↓ $3"))
+    assert row.quantity == 3 and row.cost is None and "cost_inferred" not in row.flags
+    from app.config import Settings
+
+    loose = Settings(import_cost_consistency_tol=0.1)
+    layout_rows = parse_screenshot_text(
+        card("NASDAQ • TINY", "1.07", "Tiny Example Co", "-12.5% ↓ $3"), settings=loose
+    )[1]
+    assert layout_rows[0].cost is not None  # the tolerance is a setting, not inline
 
 
 def test_conflict_rows_carry_the_other_copys_numbers() -> None:

@@ -93,6 +93,12 @@ export function pnlSign(value: number): "+" | "-" | "" {
   return value > 0 ? "+" : value < 0 ? "-" : "";
 }
 
+/** Israeli (TASE) symbols are quoted in shekels by the API; Yahoo's agorot are converted at the provider. */
+export const isTaseSymbol = (symbol: string): boolean => symbol.toUpperCase().endsWith(".TA");
+
+/** The price of a TASE stock in agorot (shekels x 100), for the "unit made explicit" hint. */
+export const toAgorot = (shekels: number): number => Math.round(shekels * 100 * 100) / 100;
+
 /** The one formatter for portfolio/signal weights. Takes a PERCENT (12.5 = 12.5%); convert fractions with `* 100`. */
 export function formatWeight(percent: number, locale: string, digits = 1): string {
   return `${formatNumber(percent, locale, digits)}%`;

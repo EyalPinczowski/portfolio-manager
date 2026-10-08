@@ -104,7 +104,8 @@
               "cost_inferred"
             ]
           }
-        ]
+        ],
+        "broker_total": null
       }
     },
     {
@@ -197,7 +198,8 @@
               "cost_inferred"
             ]
           }
-        ]
+        ],
+        "broker_total": null
       }
     },
     {
@@ -277,7 +279,8 @@
               "cost_inferred"
             ]
           }
-        ]
+        ],
+        "broker_total": null
       }
     },
     {
@@ -379,7 +382,8 @@
               "quantity_uncertain"
             ]
           }
-        ]
+        ],
+        "broker_total": null
       }
     },
     {
@@ -523,7 +527,8 @@
             "unit": "ILS",
             "flags": []
           }
-        ]
+        ],
+        "broker_total": 123456.78
       }
     },
     {
@@ -689,7 +694,8 @@
             "unit": "ILS",
             "flags": []
           }
-        ]
+        ],
+        "broker_total": 123456.78
       }
     },
     {
@@ -722,6 +728,69 @@
             "flags": [
               "cost_inferred"
             ]
+          }
+        ],
+        "broker_total": null
+      }
+    },
+    {
+      "id": "no_guess_reader",
+      "description": "Invented. Three US cards the reader must not guess on: two candidate prices and neither gives a whole quantity (price, quantity and cost stay empty, quantity_uncertain); one candidate price with a real fractional quantity (2.5 shares, still accepted); a value of $3 whose rounded quantity does not agree with value / price within the tolerance (quantity 3 kept, cost left empty).",
+      "images": {
+        "in_order": [
+          "11:41\n86%\nNASDAQ • FAKA\n41.3\n19.9\nFake Ambig Corp\n0%\n5.0% ↑ $1,000.00\nNYSE • FRAC\n187.30\nFractional Example Inc\n0%\n10.0% ↑ $468.25\nNASDAQ • TINY\n1.07\nTiny Example Co\n0%\n-12.5% ↓ $3\nבית    תיק    שוק    עוד"
+        ],
+        "shuffled_columns": [
+          "11:41\n86%\nNASDAQ • FAKA\n↑ 5.0% 1,000.00$\n19.9\nFake Ambig Corp\n0%\n41.3\nNYSE • FRAC\nFractional Example Inc\n187.30\n↑ 10.0%\n468.25$\n0%\nNASDAQ • TINY\n0%\n↓ -12.5%\nTiny Example Co\n3$\n1.07\nבית    תיק    שוק    עוד"
+        ],
+        "hebrew_reversed": [
+          "11:41\n86%\nFAKA • NASDAQ\nFake Ambig Corp\n41.3\n19.9\n%0\n$1,000.00 ↑ %5.0\nFRAC • NYSE\nFractional Example Inc\n187.30\n%0\n$468.25 ↑ %10.0\nTINY • NASDAQ\nTiny Example Co\n1.07\n%0\n$3 ↓ %12.5-\nבית    תיק    שוק    עוד"
+        ]
+      },
+      "expected": {
+        "layout": "meitav_trade",
+        "broker_total": null,
+        "rows": [
+          {
+            "name": "Fake Ambig Corp",
+            "symbol": "FAKA",
+            "tase_number": null,
+            "quantity": null,
+            "price": null,
+            "value": 1000.0,
+            "cost": null,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "quantity_uncertain"
+            ]
+          },
+          {
+            "name": "Fractional Example Inc",
+            "symbol": "FRAC",
+            "tase_number": null,
+            "quantity": 2.5,
+            "price": 187.3,
+            "value": 468.25,
+            "cost": 170.2727,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": [
+              "quantity_fractional",
+              "cost_inferred"
+            ]
+          },
+          {
+            "name": "Tiny Example Co",
+            "symbol": "TINY",
+            "tase_number": null,
+            "quantity": 3,
+            "price": 1.07,
+            "value": 3.0,
+            "cost": null,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": []
           }
         ]
       }

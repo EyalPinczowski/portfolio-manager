@@ -2396,7 +2396,16 @@ export interface components {
             day_change_pct: number;
             /** Value Ils */
             value_ils: number;
+            /** Value Native */
+            value_native: number;
             pnl?: components["schemas"]["Pnl"] | null;
+            /** Pnl Native */
+            pnl_native?: number | null;
+            /**
+             * Check Numbers
+             * @default false
+             */
+            check_numbers: boolean;
             /** Weight Pct */
             weight_pct: number;
             /** Horizon */
@@ -2543,6 +2552,8 @@ export interface components {
              * Format: date-time
              */
             expires_at: string;
+            /** Broker Total */
+            broker_total?: number | null;
         };
         /** ImportPatch */
         ImportPatch: {
@@ -2612,6 +2623,8 @@ export interface components {
              * @enum {string}
              */
             scope: "partial" | "full";
+            /** Broker Total */
+            broker_total?: number | null;
         };
         /** IncomeEstimate */
         IncomeEstimate: {

@@ -118,6 +118,10 @@
     "noScore": "No score data",
     "today": "today",
     "pnlHint": "Cost price unknown, so profit and loss is not shown.",
+    "qtyTimesPrice": "{qty} × {price}",
+    "priceAgorot": "{agorot} agorot",
+    "checkNumbers": "Check these numbers",
+    "checkNumbersHint": "These figures look unusual (very large gain or loss, price and cost far apart, or a very large share of the portfolio). Tap Edit to correct the quantity or cost. Nothing was changed for you.",
     "stopSet": "Stop set",
     "noData": "No data",
     "fundChip": "Fund",
@@ -361,6 +365,10 @@
         "title": "Unchanged",
         "hint": "Same quantity as before (a different price alone changes nothing). Open it to check them."
       }
+    },
+    "reconcile": {
+      "ok": "Rows add up to {rows}, your broker shows {broker} (gap {gap}). Close enough.",
+      "warn": "Rows add up to {rows}, your broker shows {broker} (gap {gap}). Check the rows below for a wrong quantity or price. You can still confirm."
     },
     "totals": {
       "title": "Portfolio value",
@@ -612,6 +620,9 @@
     "editTitle": "Edit {name}",
     "intro": "Change what you own by hand. Nothing is saved until you press Save.",
     "costHint": "Clear the cost to remove it; the app then shows no profit or loss for this holding. Israeli stocks: enter shekels, not agorot.",
+    "computedValue": "Value now: {value}",
+    "computedValueNote": "{qty} × {price}",
+    "priceUnitTase": "Price unit: shekels per share ({agorot} agorot). Enter the cost in shekels too.",
     "save": "Save changes",
     "saving": "Saving…",
     "error": {

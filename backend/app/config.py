@@ -677,6 +677,14 @@ class Settings(BaseSettings):
     gemelnet_category_min_peers: int = Field(default=3, ge=1)  # fewer peers: no average
     gemelnet_stale_after_days: int = Field(default=75, ge=1)  # monthly data older than this: stale
     fund_search_rate_limit_per_hour: int = Field(default=120, ge=1)  # per user
+    # "Check these numbers" guard (docs/ui-decisions.md): flags a holding whose figures look wrong.
+    # It never changes a value; the user decides.
+    check_numbers_pnl_pct: float = Field(default=500.0, gt=0)  # |P&L %| above this
+    check_numbers_price_cost_ratio: float = Field(
+        default=10.0, gt=1
+    )  # price vs cost, same currency
+    check_numbers_weight_pct: float = Field(default=50.0, gt=0, le=100)  # one holding's weight
+    check_numbers_min_holdings: int = Field(default=3, ge=1)  # the weight rule needs this many
     gemelnet_credit: str = (
         "Fund data: GemelNet, Ministry of Finance (data.gov.il), personal non-commercial use."
     )
@@ -728,6 +736,8 @@ class Settings(BaseSettings):
     )
     import_infer_round_slack: float = 1.5  # slack on the rounding error of value and price
     import_infer_min_pnl_pct: float = -99.9  # lower P&L % gives no usable cost
+    # Cost is inferred only when value / (price x quantity) is within this of 1 (relative).
+    import_cost_consistency_tol: float = 0.05
     redact_min_digit_run: int = 6
     redact_blur_radius: int = 12
     import_value_tolerance: float = 0.02

@@ -9,7 +9,7 @@
  *   value = the `$`/`₪` amount; percentages = tokens with `%`; price = the remaining number that is not the
  *   security number. Nothing is guessed when it is ambiguous: no P&L % means no cost, no value means no quantity.
  */
-import { INFER_MIN_PNL_PCT, INFER_MIN_VALUE, INFER_ROUND_SLACK } from "../config";
+import { INFER_COST_TOL, INFER_MIN_PNL_PCT, INFER_MIN_VALUE, INFER_ROUND_SLACK } from "../config";
 import type { ImportRow } from "../api";
 import type { ParsedRows, RowMeta } from "./types";
 
@@ -360,7 +360,8 @@ function parseBlock(b: Block): { row: ImportRow; meta: RowMeta } {
   const cands = tier1.length > 0 ? tier1 : tier2;
   let price: Num | null = null;
   if (value) {
-    price = cands.find((c) => wholeQuantity(value, c, agorot) !== null) ?? cands[0] ?? null;
+    // No guessing: a price with no whole quantity is used only when it is the single candidate (a real fractional holding).
+    price = cands.find((c) => wholeQuantity(value, c, agorot) !== null) ?? (cands.length === 1 ? cands[0] : null);
   }
   const pnl = pickPnl(pcts, value, price ? price.line : null);
 
@@ -377,9 +378,16 @@ function parseBlock(b: Block): { row: ImportRow; meta: RowMeta } {
 
   let cost: number | null = null;
   if (price && pnl !== null && pnl > INFER_MIN_PNL_PCT) {
-    cost = round4(price.value / (1 + pnl / 100));
-    meta.cost_inferred = true;
-    meta.pnl_pct = pnl;
+    let consistent = true;
+    if (quantity !== null && value) { // value / (price x quantity) must be ~1
+      const unitPrice = agorot ? price.value / 100 : price.value;
+      consistent = unitPrice > 0 && Math.abs(value.value / (unitPrice * quantity) - 1) <= INFER_COST_TOL;
+    }
+    if (consistent) {
+      cost = round4(price.value / (1 + pnl / 100));
+      meta.cost_inferred = true;
+      meta.pnl_pct = pnl;
+    }
   }
 
   // Name: the first line that reads as text (names are truncated and unreliable; the ticker is the identity).
@@ -404,6 +412,33 @@ function parseBlock(b: Block): { row: ImportRow; meta: RowMeta } {
   return { row, meta };
 }
 
+const TOTAL_LABEL = new Set(furnitureForms(["תיק", "אישי"]));
+const hasLetter = (x: string): boolean => /\p{L}/u.test(x);
+
+/**
+ * The `תיק אישי` (personal portfolio) amount of the summary header, in ILS: a number only. The amount sits on the
+ * label's line or on the line just before or after it (OCR order varies); the largest pure `₪` amount of those
+ * lines wins, because the daily change and the change from cost printed next to it are always smaller.
+ * Null when the screen has no such header. Mirrors `detect_broker_total` in `backend/app/importer/meitav.py`.
+ */
+export function detectBrokerTotal(text: string): number | null {
+  const lines = text.split(/\r?\n/).map((l) => l.replace(MINUS_RE, "-").replace(/−/g, "-").trim());
+  for (let i = 0; i < lines.length; i++) {
+    if (!TOTAL_LABEL.has(lines[i].replace(/[^\p{L}]/gu, "")) || lines[i].includes("%")) continue;
+    let best: number | null = null;
+    for (const k of [i - 1, i, i + 1]) {
+      if (k < 0 || k >= lines.length) continue;
+      const { work, amts } = takeAmounts(lines[k], k);
+      if ((k !== i && hasLetter(work)) || work.includes("%")) continue;
+      for (const a of amts) {
+        if (a.symbol === "₪" && a.value > 0 && a.value <= 1e15 && (best === null || a.value > best)) best = a.value;
+      }
+    }
+    if (best !== null) return best;
+  }
+  return null;
+}
+
 /** Parse OCR text of one Meitav Trade screenshot. Returns null when the text has no card at all. */
 export function parseMeitavText(text: string): ParsedRows | null {
   const blocks = toBlocks(text);
@@ -416,5 +451,5 @@ export function parseMeitavText(text: string): ParsedRows | null {
     rows.push(row);
     meta.push(m);
   }
-  return { layout: "meitav_trade", rows, meta };
+  return { layout: "meitav_trade", rows, meta, broker_total: detectBrokerTotal(text) };
 }

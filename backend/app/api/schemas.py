@@ -269,7 +269,10 @@ class HoldingOut(BaseModel):
     currency: str
     day_change_pct: float
     value_ils: float
+    value_native: float  # price x quantity in `currency` (the holding's own currency)
     pnl: Pnl | None = None
+    pnl_native: float | None = None  # the P&L amount in `currency`, like the headline value
+    check_numbers: bool = False  # the figures look wrong (the UI says so; nothing is changed)
     weight_pct: float
     horizon: Horizon | None = None
     avg_cost: float | None = None  # per unit, in cost_currency; null when not set
@@ -385,6 +388,8 @@ class ImportDraftOut(BaseModel):
     rows: list[ImportRowModel]
     proposed_changes: list[ProposedChange]
     expires_at: datetime  # an unconfirmed draft is deleted then (24 h after creation)
+    # The broker's own portfolio total (ILS) read from the screen header (a number, never the text).
+    broker_total: float | None = None
 
 
 class ImportRowsBody(Body):
@@ -392,6 +397,8 @@ class ImportRowsBody(Body):
 
     rows: list[ImportRowModel] = Field(max_length=200)
     scope: ImportScope = "partial"
+    # The broker's portfolio total (ILS) the browser read from the summary header: a number only.
+    broker_total: float | None = Field(default=None, gt=0, le=1e15, allow_inf_nan=False)
 
 
 class ImportPatch(Body):

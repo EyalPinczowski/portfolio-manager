@@ -6615,6 +6615,10 @@
             "type": "number",
             "title": "Value Ils"
           },
+          "value_native": {
+            "type": "number",
+            "title": "Value Native"
+          },
           "pnl": {
             "anyOf": [
               {
@@ -6624,6 +6628,22 @@
                 "type": "null"
               }
             ]
+          },
+          "pnl_native": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pnl Native"
+          },
+          "check_numbers": {
+            "type": "boolean",
+            "title": "Check Numbers",
+            "default": false
           },
           "weight_pct": {
             "type": "number",
@@ -6758,6 +6778,7 @@
           "currency",
           "day_change_pct",
           "value_ils",
+          "value_native",
           "weight_pct",
           "stop_tp_status",
           "score_card"
@@ -7126,6 +7147,17 @@
             "type": "string",
             "format": "date-time",
             "title": "Expires At"
+          },
+          "broker_total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker Total"
           }
         },
         "type": "object",
@@ -7395,6 +7427,19 @@
             ],
             "title": "Scope",
             "default": "partial"
+          },
+          "broker_total": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Broker Total"
           }
         },
         "additionalProperties": false,

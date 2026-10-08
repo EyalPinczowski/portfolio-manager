@@ -292,9 +292,13 @@ for (const locale of LOCALES) {
       const edits = page.locator("button", { hasText: new RegExp(`^${m("holdingEdit.edit")}$`) });
       await expect(edits.first()).toBeVisible();
       const n = await edits.count();
+      // the card headline is the position value; below it "quantity x price"
+      await expect(page.getByTestId("position-value").first()).toContainText(/[₪$]/);
+      await expect(page.getByTestId("qty-price").first()).toContainText("×");
       await edits.first().click();
       const dlg = page.getByRole("dialog");
       await expect(dlg).toBeVisible();
+      await expect(dlg.getByTestId("edit-computed-value")).toBeVisible();
       await dlg.getByLabel(m("addHolding.cost"), { exact: false }).fill("");
       await dlg.getByRole("button", { name: m("holdingEdit.save") }).click();
       await expect(dlg).toBeHidden();

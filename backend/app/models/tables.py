@@ -139,6 +139,8 @@ class ImportDraft(SQLModel, table=True):
     # partial: holdings missing from the screenshots are left alone; full: they are listed as
     # "not in these screenshots" for the user to decide (sold / withdrawn / keep).
     scope: str = Field(default="partial", sa_column_kwargs={"server_default": "partial"})
+    # The broker's own portfolio total (ILS) from the screen header, to reconcile with the rows.
+    broker_total: float | None = None
     created_at: NaiveDatetime = Field(default_factory=utcnow)
 
 

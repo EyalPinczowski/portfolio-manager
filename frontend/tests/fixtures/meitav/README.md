@@ -73,3 +73,11 @@ simple card is only accepted once the list has started (a card or a section bar)
 leading-ellipsis names, warrant/rights prices with a value under 1 (quantity empty, `quantity_uncertain`), a value
 read as `2.891.30` (= 2,891.30). The second case is three overlapping screens whose last card is cut off (no value,
 or a half-read value without the P&L %); the complete copy wins with `duplicate_removed`, no `conflict`.
+
+## Case `no_guess_reader` and `expected.broker_total` (Update 16)
+
+Invented data. Three US cards: two candidate prices with no whole fit (price, quantity and cost empty,
+`quantity_uncertain`); one candidate with a real fractional quantity (2.5 shares, accepted, cost inferred); a `$3`
+value whose rounded quantity disagrees with value / price beyond the tolerance (quantity 3, cost empty). Every case
+now has `expected.broker_total`: the `תיק אישי` header amount (`123456.78` in the two summary-header cases, `null`
+elsewhere), checked by both parsers in all variants.

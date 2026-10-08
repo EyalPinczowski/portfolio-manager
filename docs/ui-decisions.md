@@ -31,3 +31,10 @@ Settings looks and behaves like the phone's own Settings app (`components/Settin
 - **Edit** opens a modal with quantity, average cost (may be cleared), cost currency and holding period, using the same validation as the add form. It calls `PATCH /portfolios/{id}/holdings/{hid}`. The holding period is only sent if the user changed it, and "Decide later" stays an option (never a default).
 - **Remove** always asks first ("Remove {name}?") and only then calls `DELETE`. Nothing is saved or deleted without the user's own action. Quantity 0 is not allowed on edit; removing is the delete.
 - `HoldingOut` now carries `avg_cost` and `cost_currency`. All text is he/en (`holdingEdit` block); modals trap focus, close on Escape and work in RTL and at phone width.
+
+## Holding cards show the position (Update 16)
+- **Headline = position value in the holding's own currency** (`HoldingOut.value_native`, price x quantity), not the unit price. Second line: "quantity x price". For a `.TA` stock the API price is already in shekels, so the line reads "100 x ₪22.17 (2,217 agorot)": the shekel amount first, the agorot figure in brackets so the unit is explicit.
+- **P&L amount is in the same currency as the headline** (`HoldingOut.pnl_native`; the % stays). `pnl.ils` / `pnl.usd` still exist for the portfolio totals.
+- **"Check these numbers" chip** (`HoldingOut.check_numbers`, computed in `valuation.check_numbers_ids`): |P&L %| above 500, price and average cost in the same currency more than 10x apart, or one holding above 50% of a portfolio with 3+ holdings. Thresholds are settings (`check_numbers_*` in `config.py`). It is only a flag: values are never changed or corrected; the chip tooltip points to Edit.
+- **Edit form** shows "Value now" (quantity x price, live as the quantity is typed) and, for `.TA`, the price unit (shekels per share, with the agorot figure) so a wrong quantity is easy to see.
+- Funds keep their own value block. Keys: `holdings.qtyTimesPrice|priceAgorot|checkNumbers|checkNumbersHint`, `holdingEdit.computedValue|computedValueNote|priceUnitTase` (he/en).

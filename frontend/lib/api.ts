@@ -289,8 +289,8 @@ export const api = {
     return raw<ImportDraft>("POST", `/portfolios/${portfolioId}/imports`, { image });
   },
   /** On-device path: rows parsed in the browser; the image never leaves the device. */
-  importRows: (portfolioId: number, rows: ImportRow[], scope: ImportScope = "partial") =>
-    post<ImportDraft>(`/portfolios/${portfolioId}/imports/rows`, { rows: sanitizeRows(rows), scope } satisfies ImportRowsBody),
+  importRows: (portfolioId: number, rows: ImportRow[], scope: ImportScope = "partial", brokerTotal: number | null = null) =>
+    post<ImportDraft>(`/portfolios/${portfolioId}/imports/rows`, { rows: sanitizeRows(rows), scope, ...(brokerTotal !== null ? { broker_total: brokerTotal } : {}) } satisfies ImportRowsBody),
   getImport: (id: number) => get<ImportDraft>(`/imports/${id}`),
   patchImport: (id: number, b: { rows?: ImportRow[]; proposed_changes?: ProposedChange[]; scope?: ImportScope }) =>
     patch<ImportDraft>(`/imports/${id}`, b.rows ? { ...b, rows: sanitizeRows(b.rows) } : b),

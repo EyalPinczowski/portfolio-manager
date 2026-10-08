@@ -26,7 +26,7 @@ import { formatDate } from "@/lib/format";
 const zero = { ils: 0, usd: 0, pct: 0 };
 const holding = (over: Partial<Holding>): Holding => ({
   id: 1, symbol: "ARNA.TA", name_en: "Arena Fund", name_he: "קרן ארנה", asset_type: "fund", market: "TASE", quantity: 120,
-  price: 31.4, currency: "ILS", day_change_pct: 0.2, value_ils: 3768, pnl: null, weight_pct: 4.2, horizon: null,
+  price: 31.4, currency: "ILS", day_change_pct: 0.2, value_ils: 3768, value_native: 3768, check_numbers: false, pnl: null, weight_pct: 4.2, horizon: null,
   stop_tp_status: "needs_horizon", score_card: { total: 0, technical: 0, patterns: 0, confidence: 0 }, price_stale: true, price_basis: "last_close", price_is_fresh: false, ...over,
 });
 const summary = (over: Partial<Summary> = {}): Summary => ({

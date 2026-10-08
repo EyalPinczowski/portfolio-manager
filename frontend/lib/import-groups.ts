@@ -2,6 +2,7 @@
  * Grouping and totals for the "update from screenshots" review. Pure functions (no I/O), so they are easy to test.
  * The server draft does not say whether a row is a new holding, so the caller passes the symbols already held.
  */
+import { RECONCILE_WARN_PCT } from "./config";
 import type { Holding, ImportRow, ImportScope, ProposedChange } from "./api";
 
 export type RowGroup = "new" | "changed" | "unchanged";
@@ -64,4 +65,23 @@ export function updateTotals(
     }
   }
   return { before, after };
+}
+
+export interface Reconcile { rows: number; broker: number; gapPct: number; warn: boolean }
+
+/**
+ * The rows' total (ILS) against the broker's own portfolio total read from the screen header. `gapPct` is the
+ * share of the broker total (0.02 = 2 %), signed (rows minus broker); a gap over RECONCILE_WARN_PCT warns. Null when
+ * the broker total is unknown or a row cannot be converted (never a made-up number). It never blocks confirming.
+ */
+export function reconcileTotals(rows: ImportRow[], brokerTotal: number | null | undefined, fx: number | null): Reconcile | null {
+  if (typeof brokerTotal !== "number" || !(brokerTotal > 0) || rows.length === 0) return null;
+  let sum = 0;
+  for (const r of rows) {
+    const v = rowValueIls(r, fx);
+    if (v === null) return null;
+    sum += v;
+  }
+  const gapPct = (sum - brokerTotal) / brokerTotal;
+  return { rows: sum, broker: brokerTotal, gapPct, warn: Math.abs(gapPct) > RECONCILE_WARN_PCT };
 }

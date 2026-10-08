@@ -245,3 +245,10 @@ Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after a
 - Update 13: Meitav name no longer keeps a price glued to it by RTL layout (both twins, invented fixture `price_glued_to_fund_name`). Finding the fund by TASE number still needs the TASE directory (step 1).
 - Update 14: edit and remove a holding by hand with no screenshot (`HoldingActions.tsx`, card and holding page; `HoldingOut` has `avg_cost` and `cost_currency`; `api.deleteHolding`).
 - Checks: backend 1923 passed / 35 skipped, ruff/format/mypy clean; frontend 720 vitest, e2e 111 + real 1, build ok.
+
+## 2026-10-08 (Update 16: wrong quantities and profit on the cards)
+- Meitav reader (server and device): no silent price guess (a price is used for the quantity only when it fits a whole quantity or is the single candidate; otherwise quantity, price and cost stay empty with `quantity_uncertain`), cost only inferred when value/(price x quantity) agrees within `import_cost_consistency_tol`.
+- Broker total: the summary header amount is carried as `broker_total` (migration 0023); the review table shows "Rows add up to X, your broker shows Y" (2% warn threshold).
+- Cards: headline is the position value, `quantity x price` with the agorot figure for .TA, P&L in the same currency, `check_numbers` chip (P&L over 500%, price/cost over 10x, weight over 50%). `HoldingOut` gains `value_native`, `pnl_native`, `check_numbers`.
+- Checks: backend 2002 passed / 35 skipped, ruff/format/mypy clean; frontend 739 vitest, e2e 111 + real 1, build ok.
+- Open: the stored figures of the two Israeli funds are wrong; fix by Edit (quantity and average cost) or remove and re-import.

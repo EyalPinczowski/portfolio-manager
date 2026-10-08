@@ -163,3 +163,39 @@ def test_conflict_field_is_typed_in_openapi() -> None:
 
     schemas = create_app().openapi()["components"]["schemas"]
     assert {"price", "value", "quantity"} <= set(schemas["RowConflict"]["properties"])
+
+
+def test_broker_total_is_carried_in_the_draft_and_survives_a_patch(
+    pc: tuple[TestClient, int],
+) -> None:
+    c, pid = pc
+    d = _post(c, pid, [ROW], broker_total=187654.32).json()
+    assert d["broker_total"] == 187654.32
+    again = c.get(f"/api/imports/{d['id']}").json()
+    assert again["broker_total"] == 187654.32
+    patched = c.patch(f"/api/imports/{d['id']}", json={"rows": [ROW]}).json()
+    assert patched["broker_total"] == 187654.32
+    assert _post(c, pid, [ROW]).json()["broker_total"] is None  # optional
+
+
+@pytest.mark.parametrize("bad", [0, -5, 1e20, "abc"])
+def test_a_bad_broker_total_is_rejected(pc: tuple[TestClient, int], bad: Any) -> None:
+    c, pid = pc
+    assert _post(c, pid, [ROW], broker_total=bad).status_code == 422
+
+
+def test_server_reading_stores_the_header_total_as_a_number_only(
+    signup: SignupFn, ocr_text: dict[str, str]
+) -> None:
+    from tests.conftest import png_bytes
+
+    ocr_text["text"] = "תיק אישי\n₪123,456.78\nNASDAQ • ACME\n257.49\nAcme\n-8.37% ↓ $3,089.88"
+    c = signup()
+    pid = make_portfolio(c)
+    c.post("/api/auth/consent/ocr")
+    r = c.post(
+        f"/api/portfolios/{pid}/imports", content=png_bytes(), headers={"Content-Type": "image/png"}
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["broker_total"] == 123456.78
+    assert "תיק" not in r.text  # never the raw text

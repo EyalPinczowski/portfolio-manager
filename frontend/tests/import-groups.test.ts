@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Holding, ImportRow, ProposedChange } from "@/lib/api";
-import { groupRows, notInScreenshots, rowValueIls, updateTotals } from "@/lib/import-groups";
+import { groupRows, notInScreenshots, reconcileTotals, rowValueIls, updateTotals } from "@/lib/import-groups";
 
 const row = (index: number, symbol: string | null, over: Partial<ImportRow> = {}): ImportRow => ({
   index, name: symbol ?? "x", symbol, quantity: 10, price: 10, value: 100, cost: null, currency: "ILS", unit: "ILS", flags: [], ...over,
@@ -55,5 +55,28 @@ describe("updateTotals", () => {
   it("agorot prices are divided by 100 when the value is missing; USD uses the FX rate", () => {
     expect(rowValueIls(row(0, "A", { value: null, quantity: 10, price: 6500, unit: "agorot" }), null)).toBe(650);
     expect(rowValueIls(row(0, "A", { value: 100, currency: "USD", unit: "USD" }), 3.5)).toBe(350);
+  });
+});
+
+describe("reconcileTotals", () => {
+  const rows = [row(0, "A", { value: 1000 }), row(1, "B", { value: 100, currency: "USD", unit: "USD" })];
+
+  it("sums the rows in ILS with the page's FX and gives the signed gap against the broker total", () => {
+    const r = reconcileTotals(rows, 1360, 3.6)!; // 1000 + 100 * 3.6 = 1360
+    expect(r.rows).toBeCloseTo(1360);
+    expect(r.gapPct).toBeCloseTo(0);
+    expect(r.warn).toBe(false);
+    const lower = reconcileTotals(rows, 1400, 3.6)!; // 2.86 % under the broker
+    expect(lower.gapPct).toBeLessThan(-0.028);
+    expect(lower.warn).toBe(true);
+    expect(reconcileTotals(rows, 1380, 3.6)!.warn).toBe(false); // 1.45 %
+  });
+
+  it("is null without a broker total, without rows, or when a USD row has no FX (never a made-up number)", () => {
+    expect(reconcileTotals(rows, null, 3.6)).toBeNull();
+    expect(reconcileTotals(rows, 0, 3.6)).toBeNull();
+    expect(reconcileTotals([], 1000, 3.6)).toBeNull();
+    expect(reconcileTotals(rows, 1360, null)).toBeNull();
+    expect(reconcileTotals([rows[0]], 1000, null)!.warn).toBe(false);
   });
 });

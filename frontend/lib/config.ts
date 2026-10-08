@@ -20,6 +20,10 @@ export const INFER_MIN_VALUE = 1;
 export const INFER_ROUND_SLACK = 1.5;
 /** Lowest P&L % that still gives a meaningful cost (price / (1 + pnl/100)). */
 export const INFER_MIN_PNL_PCT = -99.9;
+/** Cost is inferred only when value / (price x quantity) is within this of 1 (relative); mirrors `import_cost_consistency_tol`. */
+export const INFER_COST_TOL = 0.05;
+/** The review banner warns when the rows differ from the broker's total by more than this share. */
+export const RECONCILE_WARN_PCT = 0.02;
 /** Generic parser: a leftover number counts as a per-unit cost only within these multiples of the price. */
 export const COST_PLAUSIBLE_MIN = 0.05;
 export const COST_PLAUSIBLE_MAX = 20;

@@ -27,6 +27,8 @@ export interface ParsedRows {
   layout: LayoutId;
   rows: ImportRow[];
   meta: RowMeta[];
+  /** The broker's own portfolio total (ILS) from the summary header, a number only; null when not on the screen. */
+  broker_total?: number | null;
 }
 
 /** Portable flag names for a row (the same names the fixtures use and the server will use in block 2.0-E). */

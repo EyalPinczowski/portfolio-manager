@@ -107,6 +107,41 @@ def screenshot_prices(
     return out
 
 
+def check_numbers_ids(val: PortfolioValuation, settings: Settings | None = None) -> set[int]:
+    """Ids of holdings whose figures look wrong. A flag only: no value is ever changed.
+
+    Rules (thresholds in `Settings`): |P&L %| too big; price and average cost in the same currency
+    more than N times apart (a unit mix-up, e.g. agorot vs shekels); one holding above a share of
+    the portfolio when there are enough holdings.
+    """
+    s = settings or get_settings()
+    flagged: set[int] = set()
+    many = len(val.holdings) >= s.check_numbers_min_holdings
+    for v in val.holdings:
+        h = v.holding
+        if h.id is None:
+            continue
+        if v.pnl_pct is not None and abs(v.pnl_pct) > s.check_numbers_pnl_pct:
+            flagged.add(h.id)
+        cost = h.avg_cost
+        if (
+            v.price_source != "cost"
+            and cost is not None
+            and cost > 0
+            and v.price > 0
+            and (h.cost_currency or v.currency) == v.currency
+            and max(v.price / cost, cost / v.price) > s.check_numbers_price_cost_ratio
+        ):
+            flagged.add(h.id)
+        if (
+            many
+            and val.total_ils > 0
+            and v.value_ils / val.total_ils * 100.0 > (s.check_numbers_weight_pct)
+        ):
+            flagged.add(h.id)
+    return flagged
+
+
 def value_portfolio(
     db: Session, portfolio: Portfolio, settings: Settings | None = None
 ) -> PortfolioValuation:
@@ -535,6 +570,7 @@ __all__ = [
     "PortfolioValuation",
     "ValuedHolding",
     "all_user_snapshots",
+    "check_numbers_ids",
     "ensure_tracking_started",
     "flow_ils",
     "flows_since_previous_point",

@@ -1,7 +1,7 @@
 "use client";
 import { useLocale, useTranslations } from "next-intl";
 import type { Holding } from "@/lib/api";
-import { DASH, formatDate, formatMoney, formatWeight } from "@/lib/format";
+import { DASH, formatDate, formatMoney, formatNumber, formatWeight, isTaseSymbol, toAgorot } from "@/lib/format";
 import { holdingHref } from "@/lib/routes";
 import { Link } from "@/i18n/navigation";
 import { ChevronIcon } from "./icons";
@@ -39,6 +39,29 @@ export function StatusChips({ h }: { h: Holding }) {
   );
 }
 
+/** "Check these numbers": the figures look unusual (never auto-corrected). */
+export function CheckNumbersChip({ h }: { h: Holding }) {
+  const t = useTranslations("holdings");
+  if (!h.check_numbers) return null;
+  return <span className="chip-warn" title={t("checkNumbersHint")} data-testid="check-numbers">{t("checkNumbers")}</span>;
+}
+
+/** Headline = the position's value in the holding's own currency; below it "quantity x price" with the unit explicit for TASE. */
+export function PositionValue({ h }: { h: Holding }) {
+  const t = useTranslations("holdings");
+  const locale = useLocale();
+  const hasPrice = finite(h.price) && h.price > 0;
+  const price = hasPrice ? formatMoney(h.price, h.currency, locale) : DASH;
+  const tase = hasPrice && isTaseSymbol(h.symbol) && h.currency === "ILS";
+  const unit = tase ? `${price} (${t("priceAgorot", { agorot: formatNumber(toAgorot(h.price), locale, 0) })})` : price;
+  return (
+    <div className="shrink-0 text-end">
+      <p className="font-semibold tabular-nums" dir="ltr" data-testid="position-value">{hasPrice && finite(h.value_native) ? formatMoney(h.value_native, h.currency, locale) : DASH}</p>
+      <p className="text-caption text-muted tabular-nums" dir="ltr" data-testid="qty-price">{t("qtyTimesPrice", { qty: formatNumber(h.quantity, locale, 4), price: unit })}</p>
+    </div>
+  );
+}
+
 /** A fund has no unit price: show the value the user entered and the date it refers to, never a made-up price. */
 function FundValue({ h }: { h: Holding }) {
   const t = useTranslations("holdings");
@@ -64,7 +87,6 @@ export function HoldingCard({ h }: { h: Holding }) {
   const t = useTranslations("holdings");
   const locale = useLocale();
   const name = locale === "he" ? h.name_he : h.name_en;
-  const hasPrice = finite(h.price) && h.price > 0;
   const hasPnl = !!h.pnl && (finite(h.pnl.ils) || finite(h.pnl.pct));
   return (
     <div className="flex h-full flex-col gap-2">
@@ -80,7 +102,7 @@ export function HoldingCard({ h }: { h: Holding }) {
         </div>
         {h.fund ? <FundValue h={h} /> : (
           <div className="shrink-0 text-end">
-            <p className="font-semibold tabular-nums" dir="ltr">{hasPrice ? formatMoney(h.price, h.currency, locale) : DASH}</p>
+            <PositionValue h={h} />
             <p className="text-sm"><PnlText pct={h.day_change_pct} locale={locale} /> <span className="text-caption text-muted">{t("today")}</span></p>
           </div>
         )}
@@ -88,7 +110,7 @@ export function HoldingCard({ h }: { h: Holding }) {
       <div className="flex items-center justify-between gap-3 border-t border-line pt-2 text-sm">
         <span className="text-muted">{t("pnl")}</span>
         {hasPnl ? (
-          <PnlText value={h.pnl?.ils} pct={h.pnl?.pct} currency="ILS" locale={locale} className="font-semibold" />
+          <PnlText value={h.pnl_native ?? (h.currency === "ILS" ? h.pnl?.ils : undefined)} pct={h.pnl?.pct} currency={h.currency} locale={locale} className="font-semibold" />
         ) : (
           <span className="text-end">
             <span className="text-muted">{DASH}<span className="sr-only"> {t("pnlUnavailable")}</span></span>
@@ -97,7 +119,7 @@ export function HoldingCard({ h }: { h: Holding }) {
         )}
       </div>
       <div className="mt-auto flex items-end justify-between gap-2">
-        <StatusChips h={h} />
+        <span className="flex flex-wrap gap-1.5"><StatusChips h={h} /><CheckNumbersChip h={h} /></span>
         <span className="flex shrink-0 items-center gap-1 text-caption text-muted">
           {finite(h.weight_pct) && <span className="tabular-nums" dir="ltr" title={t("weight")}>{formatWeight(h.weight_pct, locale)}</span>}
           <ChevronIcon className="h-4 w-4" />

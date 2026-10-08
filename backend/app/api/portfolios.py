@@ -46,6 +46,7 @@ from app.portfolio.summary import build_summary
 from app.portfolio.valuation import (
     PortfolioValuation,
     ValuedHolding,
+    check_numbers_ids,
     ensure_tracking_started,
     record_quantity_change,
     sync_pending_flows,
@@ -113,6 +114,13 @@ def _fund_out(db: Session, v: ValuedHolding, settings: Settings) -> FundHoldingO
     )
 
 
+def _pnl_native(v: ValuedHolding) -> float | None:
+    """The P&L amount in the holding's own (price) currency, matching the headline value."""
+    if v.pnl_ils is None or v.pnl_usd is None:
+        return None
+    return round(v.pnl_usd if v.currency.upper() == "USD" else v.pnl_ils, 2)
+
+
 def holding_outs(
     db: Session,
     portfolio: Portfolio,
@@ -121,6 +129,7 @@ def holding_outs(
 ) -> tuple[list[HoldingOut], list[str]]:
     val = valuation or value_portfolio(db, portfolio, settings)
     total = val.total_ils
+    flagged = check_numbers_ids(val, settings)
     out: list[HoldingOut] = []
     missing_scores: list[str] = []
     for v in val.holdings:
@@ -157,6 +166,9 @@ def holding_outs(
                 currency=v.currency,
                 day_change_pct=round(v.day_change_pct, 4),
                 value_ils=round(v.value_ils, 2),
+                value_native=round(v.value_native, 2),
+                pnl_native=_pnl_native(v),
+                check_numbers=h.id in flagged,
                 pnl=pnl,  # type: ignore[arg-type]
                 weight_pct=round(v.value_ils / total * 100.0, 2) if total else 0.0,
                 horizon=h.horizon,  # type: ignore[arg-type]

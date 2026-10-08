@@ -569,9 +569,11 @@ def _parse_block(b: _Block, s: Settings) -> ParsedRow:
     cands = tier1 or tier2
     price: _Num | None = None
     if value is not None:
+        # No guessing: a price that gives no whole quantity is used only when it is the single
+        # candidate (a real fractional holding); with several, none is picked.
         price = next(
             (c for c in cands if _whole_quantity(value, c, agorot, s.import_infer_round_slack)),
-            cands[0] if cands else None,
+            cands[0] if len(cands) == 1 else None,
         )
     pnl = _pick_pnl(pcts, value, price.line if price else None)
 
@@ -593,8 +595,16 @@ def _parse_block(b: _Block, s: Settings) -> ParsedRow:
 
     cost: float | None = None
     if price is not None and pnl is not None and pnl > s.import_infer_min_pnl_pct:
-        cost = clean_number(_round4(price.value / (1 + pnl / 100)))
-        meta.cost_inferred = cost is not None
+        consistent = True
+        if quantity is not None and value is not None:  # value / (price x quantity) must be ~1
+            unit_price = price.value / 100 if agorot else price.value
+            consistent = (
+                unit_price > 0
+                and abs(value.value / (unit_price * quantity) - 1) <= s.import_cost_consistency_tol
+            )
+        if consistent:
+            cost = clean_number(_round4(price.value / (1 + pnl / 100)))
+            meta.cost_inferred = cost is not None
 
     # Name: the first line that reads as text (names are truncated and unreliable; the ticker or
     # the security number is the identity).
@@ -637,6 +647,35 @@ def _parse_block(b: _Block, s: Settings) -> ParsedRow:
             "flags": flags,
         }
     )
+
+
+_TOTAL_LABEL = frozenset(_furniture_forms(("תיק", "אישי")))
+
+
+def detect_broker_total(text: str) -> float | None:
+    """The `תיק אישי` (personal portfolio) amount of the summary header, in ILS: a number only.
+    The amount sits on the label's line or on the line just before or after it (OCR order varies);
+    the largest pure `₪` amount of those lines wins, because the daily change and the change from
+    cost printed next to it are always smaller. None when the screen has no such header."""
+    lines = [_MINUS_RE.sub("-", ln.replace("−", "-")).strip() for ln in _lines(text)]
+    for i, line in enumerate(lines):
+        if "".join(ch for ch in line if ch.isalpha()) not in _TOTAL_LABEL or "%" in line:
+            continue
+        best: float | None = None
+        for k in (i - 1, i, i + 1):
+            if not 0 <= k < len(lines):
+                continue
+            work, amts = _take_amounts(lines[k], k)
+            pure = k == i or not any(ch.isalpha() for ch in work)
+            if not pure or "%" in work:
+                continue
+            for a in amts:
+                v = clean_number(a.value) if a.symbol == "₪" and a.value > 0 else None
+                if v is not None and (best is None or v > best):
+                    best = v
+        if best is not None:
+            return best
+    return None
 
 
 def parse_meitav_text(text: str, settings: Settings | None = None) -> list[ParsedRow] | None:

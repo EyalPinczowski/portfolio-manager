@@ -10,6 +10,8 @@ import { AppShell } from "./AppShell";
 import { ExitLevelsPanel } from "./ExitLevelsPanel";
 import { ExplanationView } from "./ExplanationView";
 import { HoldingActions } from "./HoldingActions";
+import { CheckNumbersChip, PositionValue } from "./HoldingsList";
+import { PnlText } from "./Pnl";
 
 const HORIZONS: Horizon[] = ["1w", "1m", "3m", "6m", "1y"];
 
@@ -56,6 +58,14 @@ function Body({ hid }: { hid: number }) {
         <Link href="/" className="text-sm text-brand-text hover:underline">← {c("back")}</Link>
         <h1 className="text-2xl font-bold">{name}</h1>
         <p className="text-sm text-muted" dir="ltr">{d.symbol}</p>
+        {held && !held.fund && (
+          <div className="mt-2 flex flex-wrap items-start justify-between gap-2" data-testid="holding-position">
+            <div className="text-start"><PositionValue h={held} />
+              {held.pnl && <p className="text-sm"><PnlText value={held.pnl_native ?? (held.currency === "ILS" ? held.pnl.ils : undefined)} pct={held.pnl.pct} currency={held.currency} locale={locale} className="font-semibold" /></p>}
+            </div>
+            <CheckNumbersChip h={held} />
+          </div>
+        )}
         {held && <div className="mt-2"><HoldingActions h={held} portfolioId={d.portfolio_id} name={name} onRemoved={() => router.push("/")} /></div>}
       </div>
 

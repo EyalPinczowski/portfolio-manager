@@ -1,17 +1,20 @@
 "use client";
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { mutate } from "swr";
 import { api, ApiError, type Horizon, type Holding } from "@/lib/api";
 import { parseLocaleNumber } from "@/lib/number";
 import { MAX_QTY } from "@/lib/import-rows";
+import { formatMoney, formatNumber, isTaseSymbol, toAgorot } from "@/lib/format";
 import { Modal } from "./Modal";
 
 const HORIZONS: Horizon[] = ["1w", "1m", "3m", "6m", "1y"];
 type Problem = "quantity" | "cost" | "rate" | "notFound" | "generic" | null;
 const fmt = (n: number | null | undefined) => (typeof n === "number" ? String(n) : "");
 
-type Target = Pick<Holding, "id" | "quantity" | "horizon"> & { avg_cost?: number | null; cost_currency?: string | null };
+type Target = Pick<Holding, "id" | "quantity" | "horizon"> & {
+  avg_cost?: number | null; cost_currency?: string | null; price?: number; currency?: string; symbol?: string;
+};
 
 /** Edit form for one holding (PATCH). Only the user's own action saves; the holding period has no default and may stay unset. */
 function EditHoldingForm({ h, portfolioId, onClose, onSaved }: {
@@ -21,12 +24,17 @@ function EditHoldingForm({ h, portfolioId, onClose, onSaved }: {
   const ad = useTranslations("addHolding");
   const hz = useTranslations("holding");
   const c = useTranslations("common");
+  const locale = useLocale();
   const [qty, setQty] = useState(fmt(h.quantity));
   const [cost, setCost] = useState(fmt(h.avg_cost));
   const [costCur, setCostCur] = useState<"" | "ILS" | "USD">(h.cost_currency === "ILS" || h.cost_currency === "USD" ? h.cost_currency : "");
   const [horizon, setHorizon] = useState<"" | Horizon>(h.horizon ?? "");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem>(null);
+
+  const liveQty = parseLocaleNumber(qty);
+  const hasPrice = typeof h.price === "number" && Number.isFinite(h.price) && h.price > 0 && !!h.currency;
+  const tase = hasPrice && !!h.symbol && isTaseSymbol(h.symbol) && h.currency === "ILS";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +68,17 @@ function EditHoldingForm({ h, portfolioId, onClose, onSaved }: {
         <label htmlFor="he-qty" className="label">{ad("quantity")}</label>
         <input id="he-qty" className="input" dir="ltr" inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} aria-invalid={problem === "quantity" || undefined} />
       </div>
+      {hasPrice && (
+        <div className="rounded-xl bg-surface-2 p-3 text-sm" data-testid="edit-computed-value">
+          <p className="font-semibold tabular-nums" dir="ltr">
+            {t("computedValue", { value: liveQty !== null && liveQty > 0 ? formatMoney(liveQty * (h.price as number), h.currency as string, locale) : "—" })}
+          </p>
+          <p className="text-caption text-muted tabular-nums" dir="ltr">
+            {t("computedValueNote", { qty: liveQty !== null ? formatNumber(liveQty, locale, 4) : "—", price: formatMoney(h.price as number, h.currency as string, locale) })}
+          </p>
+          {tase && <p className="text-caption text-muted" data-testid="edit-price-unit">{t("priceUnitTase", { agorot: formatNumber(toAgorot(h.price as number), locale, 0) })}</p>}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label htmlFor="he-cost" className="label">{ad("cost")} <span className="text-muted">({c("optional")})</span></label>

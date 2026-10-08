@@ -7,7 +7,7 @@ import { MAX_IMPORT_IMAGES, MAX_UPLOAD_BYTES } from "@/lib/config";
 import { conflictOf, currencyForUnit, effectiveFlags, needsConflictAck, needsQuantity, rowProblems, type RowProblem } from "@/lib/import-rows";
 import { formatDate, formatMoney, formatTime, formatWeight } from "@/lib/format";
 import { useHoldings, useMe, usePortfolios, useSummary } from "@/lib/hooks";
-import { groupRows, notInScreenshots, updateTotals, type RowGroup } from "@/lib/import-groups";
+import { groupRows, notInScreenshots, reconcileTotals, updateTotals, type RowGroup } from "@/lib/import-groups";
 import { prepareForServer, readScreenshotsOnDevice, type OcrProgress } from "@/lib/ocr/engine";
 import type { LayoutChoice } from "@/lib/ocr/layouts";
 import type { RowMeta } from "@/lib/ocr/types";
@@ -109,13 +109,14 @@ function Body() {
     setBusy("device"); setError(null); setProblems([]); setProgress(null);
     let parsed: ImportRow[];
     let meta: RowMeta[];
+    let brokerTotal: number | null = null;
     try {
       const out = await readScreenshotsOnDevice(files, { layout, onProgress: setProgress });
-      parsed = out.rows; meta = out.meta;
+      parsed = out.rows; meta = out.meta; brokerTotal = out.broker_total ?? null;
     } catch { setBusy(null); setProgress(null); return setError({ kind: "ocr" }); }
     try {
       if (parsed.length === 0) return setError({ kind: "noRows" });
-      const d = await api.importRows(portfolioId, parsed, whole ? "full" : "partial");
+      const d = await api.importRows(portfolioId, parsed, whole ? "full" : "partial", brokerTotal);
       setImageCount(files.length);
       setMetaByIndex(Object.fromEntries(parsed.map((r, i) => [r.index, meta[i] ?? {}])));
       showDraft(d);
@@ -459,6 +460,7 @@ function Body() {
             const order: RowGroup[] = ["new", "changed"];
             const fx = summaryNow.data && summaryNow.data.value.usd > 0 ? summaryNow.data.value.ils / summaryNow.data.value.usd : null;
             const totals = heldNow.data ? updateTotals(rows, changes, heldNow.data, scope, fx) : null;
+            const rec = reconcileTotals(rows, draft.broker_total, fx);
             return (
               <>
                 {order.map((k) => g[k].length > 0 && (
@@ -478,6 +480,18 @@ function Body() {
                     <p className="text-xs text-muted">{t("groups.unchanged.hint")}</p>
                     {renderTable(draft, g.unchanged)}
                   </details>
+                )}
+                {rec && (
+                  <p
+                    role="status" data-testid="reconcile"
+                    className={rec.warn ? "rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200" : "rounded-xl bg-surface-2 p-3 text-sm text-muted"}
+                  >
+                    {t(rec.warn ? "reconcile.warn" : "reconcile.ok", {
+                      rows: formatMoney(rec.rows, "ILS", locale, { compact: true }),
+                      broker: formatMoney(rec.broker, "ILS", locale, { compact: true }),
+                      gap: formatWeight(Math.abs(rec.gapPct) * 100, locale),
+                    })}
+                  </p>
                 )}
                 {totals && (
                   <dl className="grid grid-cols-2 gap-2 rounded-xl bg-surface-2 p-3 text-sm" aria-label={t("totals.title")} data-testid="update-totals">

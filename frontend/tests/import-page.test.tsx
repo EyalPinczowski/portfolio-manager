@@ -58,7 +58,7 @@ describe("import page", () => {
     await screen.findByRole("region", { name: "Review the rows" });
 
     expect(readScreenshotsOnDevice).toHaveBeenCalledTimes(1);
-    expect(importRows).toHaveBeenCalledWith(1, parsed, "partial");
+    expect(importRows).toHaveBeenCalledWith(1, parsed, "partial", null);
     expect(upload).not.toHaveBeenCalled(); // the image never goes to the server
     expect(createUrl).not.toHaveBeenCalled(); // no blob URL for the screenshot
     expect(screen.getByText(/This draft is deleted automatically on/)).toBeInTheDocument();
@@ -270,7 +270,7 @@ describe("import page", () => {
     fireEvent.click(await screen.findByRole("checkbox", { name: /These screenshots show my whole portfolio/ }));
     clickRead();
     const group = await screen.findByRole("group", { name: /Not in th(is|ese) screenshots?/ });
-    expect(importRows).toHaveBeenCalledWith(1, parsed, "full");
+    expect(importRows).toHaveBeenCalledWith(1, parsed, "full", null);
     const picker = within(group).getAllByRole("combobox")[0];
     expect(within(picker).getAllByRole("option").map((o) => o.getAttribute("value"))).toEqual(["keep", "sell", "withdrawal"]);
     expect((picker as HTMLSelectElement).value).toBe("keep");
@@ -349,6 +349,38 @@ describe("import page", () => {
     const totals = await screen.findByTestId("update-totals");
     expect(totals).toHaveTextContent("Value now");
     expect(totals).toHaveTextContent("Value after this update");
+  });
+
+  it("reconcile banner: a small gap to the broker total is a calm note, a gap over 2% warns, and neither blocks confirming", async () => {
+    const withTotal = (total: number | null) => ({ layout: "meitav_trade" as const, rows: parsed, meta: parsed.map(() => ({})), broker_total: total });
+    vi.mocked(readScreenshotsOnDevice).mockResolvedValueOnce(withTotal(65500));
+    const importRows = vi.spyOn(api, "importRows");
+    renderPage();
+    await pick();
+    clickRead();
+    const calm = await screen.findByTestId("reconcile");
+    expect(importRows).toHaveBeenCalledWith(1, parsed, "partial", 65500);
+    expect(calm).toHaveTextContent(/Rows add up to .*65.*your broker shows .*gap 0\.8%/);
+    expect(calm.className).not.toMatch(/amber/);
+    expect(screen.getByRole("button", { name: "Confirm import" })).toBeEnabled();
+  });
+
+  it("reconcile banner: warning style over the threshold, and absent without a broker total", async () => {
+    vi.mocked(readScreenshotsOnDevice).mockResolvedValueOnce({ layout: "meitav_trade" as const, rows: parsed, meta: parsed.map(() => ({})), broker_total: 80000 });
+    const first = renderPage();
+    await pick();
+    clickRead();
+    const warn = await screen.findByTestId("reconcile");
+    expect(warn).toHaveTextContent(/gap 18\.8%/);
+    expect(warn.className).toMatch(/amber/);
+    expect(screen.getByRole("button", { name: "Confirm import" })).toBeEnabled();
+    first.unmount();
+
+    renderPage();
+    await pick();
+    clickRead();
+    await screen.findByRole("region", { name: "Review the rows" });
+    expect(screen.queryByTestId("reconcile")).toBeNull();
   });
 
   it("the whole-portfolio checkbox in the review switches the scope on the server and shows the 'not in these screenshots' list", async () => {

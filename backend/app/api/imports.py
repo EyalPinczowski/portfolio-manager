@@ -33,6 +33,7 @@ def _out(d: ImportDraft, settings: Settings | None = None) -> ImportDraftOut:
         rows=[ImportRowModel.model_validate(r) for r in d.rows],
         proposed_changes=[ProposedChange.model_validate(c) for c in d.proposed_changes],
         expires_at=draft_expires_at(d, s),
+        broker_total=d.broker_total,
     )
 
 
@@ -123,7 +124,10 @@ def create_import_from_rows(
     p = get_portfolio(db, user.id, portfolio_id)
     enforce_limit(upload_limiter, f"user:{user.id}", settings.upload_rate_limit_per_hour, 3600.0)
     rows = service.rows_from_models(body.rows)
-    return _out(service.build_draft_from_rows(db, p, rows, settings, body.scope), settings)
+    return _out(
+        service.build_draft_from_rows(db, p, rows, settings, body.scope, body.broker_total),
+        settings,
+    )
 
 
 def _live_draft(

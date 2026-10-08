@@ -90,6 +90,9 @@ function holdingsFor(pid: number): Holding[] {
     return {
       id: s.id, symbol: s.symbol, name_en: s.en, name_he: s.he, asset_type: s.type, market: s.market,
       quantity: s.qty, price: s.price, currency: s.cur, day_change_pct: s.chg, value_ils: v,
+      value_native: s.qty * s.price,
+      pnl_native: cost === null ? null : s.qty * (s.price - (s.cost ?? 0)),
+      check_numbers: false,
       pnl: cost === null ? null : { ils: v - cost, usd: (v - cost) / FX, pct: ((v - cost) / cost) * 100 },
       price_stale: !!s.stale || !!s.fund,
       price_basis: s.stale || s.fund ? "last_close" : "live", price_is_fresh: !s.stale && !s.fund,
@@ -484,7 +487,7 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
   if (/^\/portfolios\/\d+\/xray-rules$/.test(p)) return method === "PATCH" ? mockPatchXrayRules(b as never) : mockXrayRulesOut();
   if ((m = p.match(/^\/portfolios\/(\d+)\/xray$/))) return xray();
   if ((m = p.match(/^\/portfolios\/(\d+)\/heatmap$/))) return heatmap();
-  if ((m = p.match(/^\/portfolios\/(\d+)\/imports\/rows$/))) return (validateRows((b.rows as ImportRow[]) ?? []), draftFromRows(Number(m[1]), (b.rows as ImportRow[]) ?? [], b.scope === "full" ? "full" : "partial"));
+  if ((m = p.match(/^\/portfolios\/(\d+)\/imports\/rows$/))) return (validateRows((b.rows as ImportRow[]) ?? []), (draft = { ...draftFromRows(Number(m[1]), (b.rows as ImportRow[]) ?? [], b.scope === "full" ? "full" : "partial"), broker_total: typeof b.broker_total === "number" ? b.broker_total : null }));
   if ((m = p.match(/^\/portfolios\/(\d+)\/imports$/))) {
     if (typeof Blob !== "undefined" && body instanceof Blob && !/^image\/(png|jpeg|webp)$/.test(body.type)) throw new ApiError(415, "Unsupported media type");
     return draft;
