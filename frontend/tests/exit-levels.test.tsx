@@ -43,13 +43,17 @@ describe("exit levels panel", () => {
     expect(tp.textContent).toContain("▲");
     expect(tp.textContent).toContain("1:1.5"); // R:R
     expect(tp.textContent).toContain("₪");
-    expect(screen.getByText(/Scale-out plan/)).toBeInTheDocument();
+    expect(screen.getByTestId("scale-plan")).toBeInTheDocument();
+    expect(screen.queryByTestId("level-card")).toBeNull(); // one compact table, no per-level cards
+    expect(screen.getAllByRole("row").length).toBeGreaterThanOrEqual(6); // header + stop, trailing, break-even, price, TP1, TP2
     expect(screen.getByText(/A smaller position fits your limits better/)).toBeInTheDocument();
     expect(screen.queryByText(/tighten/i)).toBeNull(); // never advises tightening the stop
-    // Why? is built from the level's Explanation
-    fireEvent.click(within(stop).getByRole("button", { name: "Why?" }));
-    expect(within(stop).getByTestId("explanation")).toBeInTheDocument();
-    expect(within(stop).getByTestId("explanation").textContent).toMatch(/ATR\(14\) below the price/);
+    // Why? is built from the level's Explanation, behind the collapsed "Where each level comes from"
+    expect(screen.queryByTestId("reason-stop")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: en.exit.levelReasons }));
+    const why = screen.getByTestId("reason-stop");
+    fireEvent.click(within(why).getByRole("button", { name: "Why?" }));
+    expect(within(why).getByTestId("explanation").textContent).toMatch(/ATR\(14\) below the price/);
     expect(screen.getByText(/Not financial advice/)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/\b(buy|sell|hold)\b/i);
   });
@@ -118,9 +122,10 @@ describe("exit levels panel", () => {
     expect(container.firstElementChild).toHaveAttribute("dir", "rtl");
     if (id === 1) {
       const stop = screen.getByTestId("level-stop");
-      expect(stop.querySelector("dd span[dir=ltr]")).not.toBeNull();
-      expect(within(stop).getByRole("button", { name: he.exit.why })).toBeInTheDocument();
-      expect(screen.getByText(he.exit.scaleTitle)).toBeInTheDocument();
+      expect(stop.querySelector("td[dir=ltr]")).not.toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: he.exit.levelReasons }));
+      expect(within(screen.getByTestId("reason-stop")).getByRole("button", { name: he.exit.why })).toBeInTheDocument();
+      expect(screen.getByTestId("scale-plan")).toBeInTheDocument();
     }
   });
 
@@ -140,12 +145,15 @@ describe("exit levels panel", () => {
       expect(within(el).getByTestId("plan-planFirst").textContent).toContain("₪");
       expect(within(el).getByTestId("plan-planTrail").textContent).toContain(trail);
       expect(within(el).getByTestId("plan-planTrail").textContent).not.toContain("₪"); // no level price for the trailing part
-      expect(el.textContent).toMatch(/trailing part uses a stop distance of/);
-      expect(el.textContent).toMatch(/Break-even trigger/);
       expect(el.textContent).toMatch(/suggestion to review and change, not an instruction/);
       expect(within(el).queryByText(/No profile set/)).toBeNull();
-      fireEvent.click(within(el).getByRole("button", { name: "Why?" }));
-      expect(within(el).getByTestId("explanation").textContent).toMatch(/profile keeps/);
+      expect(screen.queryByTestId("plan-rules")).toBeNull(); // the rules are collapsed
+      fireEvent.click(screen.getByRole("button", { name: en.holding.more.explain }));
+      const rules = screen.getByTestId("plan-rules");
+      expect(rules.textContent).toMatch(/trailing part uses a stop distance of/);
+      expect(rules.textContent).toMatch(/Break-even trigger/);
+      fireEvent.click(within(rules).getByRole("button", { name: "Why?" }));
+      expect(within(rules).getByTestId("explanation").textContent).toMatch(/profile keeps/);
       expect(el.textContent).not.toMatch(BAD_EN);
     });
 
@@ -190,7 +198,9 @@ describe("he exit levels show no English server sentences", () => {
     wrap("he", <ExitLevelsPanel holdingId={1} portfolioId={1} />);
     const el = await screen.findByTestId("scale-plan");
     expect(el.textContent).not.toMatch(/not an instruction/);
-    const stop = screen.getByTestId("level-stop");
+    screen.getByTestId("level-stop");
+    fireEvent.click(screen.getByRole("button", { name: he.exit.levelReasons }));
+    const stop = screen.getByTestId("reason-stop");
     expect(stop.textContent).not.toMatch(/ATR\(14\) below|Source:/);
     expect(stop.textContent).toContain(he.exit.sources.atr);
     expect(document.body.textContent).not.toMatch(/3 months/);

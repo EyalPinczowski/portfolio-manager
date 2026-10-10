@@ -29,23 +29,29 @@ const holding = (over: Partial<Holding>): Holding => ({
   score_card: { total: 10, technical: 10, patterns: 10, confidence: 0.7 }, price_stale: false, price_basis: "live", price_is_fresh: true, ...over,
 });
 
-describe("holding cards: position value, quantity x price, P&L in the same currency", () => {
-  it("a US card leads with the position value in dollars and P&L in dollars", () => {
+describe("compact holding rows: one link per holding with value and P&L %", () => {
+  it("a US row shows the value in dollars, the P&L percent and the weight", () => {
     wrap("en", <HoldingsList holdings={[holding({})]} />);
-    expect(screen.getByTestId("position-value")).toHaveTextContent("$2,000.00");
-    expect(screen.getByTestId("qty-price")).toHaveTextContent("10 × $200.00");
-    expect(screen.getByText(/\+\$500\.00/)).toBeInTheDocument();
+    const row = screen.getByTestId("holding-row");
+    expect(row).toHaveTextContent("$2,000.00");
+    expect(row).toHaveTextContent(/\+33\.33%/);
+    expect(row).toHaveTextContent("AAPL");
+    expect(row).toHaveAttribute("href", "/holding?id=1");
+    expect(row).toHaveAttribute("aria-label", "Open Apple");
     expect(document.body.textContent).not.toMatch(/₪/);
   });
 
-  it("a TASE card shows shekels, with the agorot figure in brackets", () => {
+  it("a TASE row shows shekels", () => {
     wrap("en", <HoldingsList holdings={[holding({
       symbol: "TEVA.TA", name_en: "Teva", market: "TASE", currency: "ILS", price: 22.17, quantity: 100, value_native: 2217,
       pnl: { ils: 217, usd: 62, pct: 10.85 }, pnl_native: 217,
     })]} />);
-    expect(screen.getByTestId("position-value")).toHaveTextContent("₪2,217.00");
-    expect(screen.getByTestId("qty-price")).toHaveTextContent("100 × ₪22.17 (2,217 agorot)");
-    expect(screen.getByText(/\+₪217\.00/)).toBeInTheDocument();
+    expect(screen.getByTestId("holding-row")).toHaveTextContent("₪2,217.00");
+  });
+
+  it("a row has no edit or remove buttons (they live on the holding page)", () => {
+    wrap("en", <HoldingsList holdings={[holding({})]} />);
+    expect(screen.queryByRole("button")).toBeNull();
   });
 
   it.each(["en", "he"] as const)("the check-numbers chip shows only when flagged (%s)", (locale) => {
@@ -59,7 +65,7 @@ describe("holding cards: position value, quantity x price, P&L in the same curre
 
   it("values are never altered by the flag", () => {
     wrap("en", <HoldingsList holdings={[holding({ check_numbers: true, value_native: 15500, pnl_native: 16000000, pnl: { ils: 1, usd: 1, pct: 103421 } })]} />);
-    expect(screen.getByTestId("position-value")).toHaveTextContent("$15,500.00");
+    expect(screen.getByTestId("holding-row")).toHaveTextContent("$15,500.00");
   });
 });
 

@@ -14,7 +14,7 @@ import { mockSettingsRequest, NOT_HANDLED } from "./mock-settings";
 import { mockBuyIdeas } from "./mock-ideas";
 import { mockDividends, mockFund, mockFundSearch } from "./mock-funds";
 import {
-  mockAnalyze, mockAsk, mockHistoryDelete, mockSearchHistory, mockSearchHits, mockWatchAdd, mockWatchDelete, mockWatchlist,
+  mockAnalyze, mockAsk, mockCandles, mockHistoryDelete, mockSearchHistory, mockSearchHits, mockWatchAdd, mockWatchDelete, mockWatchlist,
   type AnalyzeCtx,
 } from "./mock-analyze";
 import { mockAskConversation, mockAskConversations, mockAskDelete, mockAskPost, mockCommittee } from "./mock-ask";
@@ -542,6 +542,14 @@ export function mockRequest(method: string, path: string, body?: unknown): unkno
   if (p === "/watchlist" && method === "POST") return mockWatchAdd(String(b.symbol ?? ""));
   if (p === "/watchlist") return mockWatchlist();
   if ((m = p.match(/^\/watchlist\/([^/]+)$/)) && method === "DELETE") return mockWatchDelete(m[1]);
+  if ((m = p.match(/^\/securities\/([^/]+)\/analysts$/)) && m[1] !== "search") {
+    const sym = decodeURIComponent(m[1]).toUpperCase();
+    if (sym.endsWith(".TA") || sym === "NOCOVER") return { symbol: sym, status: "no_coverage", as_of: null, counts: { strong_buy: 0, buy: 0, hold: 0, sell: 0, strong_sell: 0 }, analysts_total: 0, targets: null, source: null };
+    return { symbol: sym, status: "ok", as_of: "2026-10-01", counts: { strong_buy: 6, buy: 12, hold: 8, sell: 2, strong_sell: 1 }, analysts_total: 29, targets: { low: 120, mean: 165, high: 210, currency: "USD" }, source: "yfinance" };
+  }
+  if ((m = p.match(/^\/securities\/([^/]+)\/candles$/)) && m[1] !== "search") {
+    return { symbol: decodeURIComponent(m[1]).toUpperCase(), candles: mockCandles(150) };
+  }
   if ((m = p.match(/^\/holdings\/(\d+)\/scorecard$/))) return scorecard(Number(m[1]));
   if ((m = p.match(/^\/holdings\/(\d+)\/exit-levels$/))) {
     const seed = SEEDS.find((x) => x.id === Number(m![1]));

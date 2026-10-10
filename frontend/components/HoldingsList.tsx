@@ -131,13 +131,49 @@ export function HoldingCard({ h }: { h: Holding }) {
   );
 }
 
+/** One compact line per holding: name + symbol, value, P&L %, a thin weight bar and the check-numbers chip. The whole row opens the holding page. */
+export function HoldingRow({ h }: { h: Holding }) {
+  const t = useTranslations("holdings");
+  const locale = useLocale();
+  const name = locale === "he" ? h.name_he : h.name_en;
+  const hasPrice = finite(h.price) && h.price > 0;
+  const fundIls = h.fund?.value_basis === "manual_value" && finite(h.fund.manual_value_ils) ? h.fund.manual_value_ils : null;
+  const value = h.fund ? (fundIls !== null ? formatMoney(fundIls, "ILS", locale) : DASH) : hasPrice && finite(h.value_native) ? formatMoney(h.value_native, h.currency, locale) : DASH;
+  const pct = h.pnl && finite(h.pnl.pct) ? h.pnl.pct : null;
+  const w = finite(h.weight_pct) ? Math.min(100, Math.max(0, h.weight_pct)) : 0;
+  return (
+    <Link href={holdingHref(h.id)} aria-label={t("open", { name })} data-testid="holding-row" className="flex min-h-14 flex-col justify-center gap-1 px-3 py-2 hover:bg-surface-2">
+      <span className="flex items-center justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block truncate font-semibold"><bdi>{name}</bdi></span>
+          <span className="block text-caption text-muted" dir="ltr">{h.symbol}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2 text-end">
+          <span className="block">
+            <span className="block font-semibold tabular-nums" dir="ltr">{value}</span>
+            <span className="block text-caption"><PnlText pct={pct} locale={locale} />{pct === null && <span className="sr-only"> {t("pnlUnavailable")}</span>}</span>
+          </span>
+          <ChevronIcon className="h-4 w-4 text-muted" />
+        </span>
+      </span>
+      <span className="flex items-center gap-2">
+        <span aria-hidden="true" className="h-1 flex-1 overflow-hidden rounded-full bg-surface-2"><span className="block h-full rounded-full bg-brand" style={{ width: `${w}%` }} /></span>
+        {finite(h.weight_pct) && <span className="text-caption text-muted tabular-nums" dir="ltr" title={t("weight")}>{formatWeight(h.weight_pct, locale)}</span>}
+        {h.price_stale && <span className="chip-warn" title={t(h.fund ? "fundStaleHint" : "staleHint")}>{t("stale")}</span>}
+        {(h.score_card?.confidence === 0 || !hasPrice) && <span className="chip-neutral">{t("noData")}</span>}
+        <CheckNumbersChip h={h} />
+      </span>
+    </Link>
+  );
+}
+
 export function HoldingsList({ holdings }: { holdings: Holding[] }) {
   const t = useTranslations("holdings");
   return (
     <section aria-label={t("title")}>
       <h2 className="mb-2 text-heading">{t("title")}</h2>
-      <ul className="grid gap-3 md:grid-cols-2">
-        {holdings.map((h) => <li key={h.id}><HoldingCard h={h} /></li>)}
+      <ul className="card divide-y divide-line !p-0 overflow-hidden">
+        {holdings.map((h) => <li key={h.id}><HoldingRow h={h} /></li>)}
       </ul>
     </section>
   );

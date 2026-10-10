@@ -252,3 +252,11 @@ Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after a
 - Cards: headline is the position value, `quantity x price` with the agorot figure for .TA, P&L in the same currency, `check_numbers` chip (P&L over 500%, price/cost over 10x, weight over 50%). `HoldingOut` gains `value_native`, `pnl_native`, `check_numbers`.
 - Checks: backend 2002 passed / 35 skipped, ruff/format/mypy clean; frontend 739 vitest, e2e 111 + real 1, build ok.
 - Open: the stored figures of the two Israeli funds are wrong; fix by Edit (quantity and average cost) or remove and re-import.
+
+## 2026-10-10 (Update 17: short, visual portfolio, holding and Analyze pages)
+- Home: summary strip, allocation donut (by holding / currency, small slices grouped), compact rows with value, P&L %, weight bar and stale / no-data / check chips; at most 4 phone screens (e2e height check).
+- Holding page and Analyze page: 4 parts (chart with entry/stop/target lines; score bars and analyst view; one levels table and the scale-out bar; collapsed details). Edit/Remove in a "more" menu.
+- Analysts: `GET /api/securities/{symbol}/analysts` (counts from the trend chain, targets from yfinance, `no_coverage` on failure) and `GET /api/securities/{symbol}/candles`. Analyst data is the analysts' own published distribution with an as-of date (BENIGN in the verdict contract), never the app's call; launch gate unchanged.
+- Reader fix: an unsigned P&L percent starting with 1 and >= 100 (an OCR misread of "+") no longer infers a cost (both twins, fixture `unsigned_pnl_misread`).
+- Checks: backend 2016 passed / 35 skipped, ruff/format/mypy clean; frontend 772 vitest, e2e 129 + real 1, build ok.
+- Known: the real-backend e2e server logs a `price_quote` unique-constraint race on concurrent quote writes (no failed request); worth a follow-up.

@@ -108,19 +108,11 @@ describe("edit and remove a holding by hand", () => {
     expect(screen.getByRole("dialog", { name: "להסיר את אפל?" })).toBeTruthy();
   });
 
-  it("main page (mock): every card has Edit and Remove; editing and removing change the list", async () => {
+  it("main page (mock): rows are links to the holding page; Edit and Remove live there, not in the list", async () => {
     wrap("en", <MainPage />);
-    const edits = await screen.findAllByRole("button", { name: /^Edit / });
-    expect(edits.length).toBeGreaterThan(5);
-    const before = (await api.holdings(1)).length;
-    fireEvent.click(await screen.findByRole("button", { name: "Edit Teva" }));
-    set("^Quantity", "611");
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect((await api.holdings(1)).find((x) => x.symbol === "TEVA.TA")?.quantity).toBe(611);
-    fireEvent.click(await screen.findByRole("button", { name: "Remove Bank Leumi" }));
-    fireEvent.click(screen.getByRole("button", { name: "Yes, remove" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect((await api.holdings(1)).length).toBe(before - 1);
+    const rows = await screen.findAllByTestId("holding-row");
+    expect(rows.length).toBeGreaterThan(5);
+    expect(screen.queryByRole("button", { name: /^Edit / })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Remove / })).toBeNull();
   });
 });

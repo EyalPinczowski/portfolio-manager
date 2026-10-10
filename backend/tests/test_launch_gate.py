@@ -40,6 +40,12 @@ BENIGN: dict[str, str] = {
     "RiskResponse.stance": "the CIO's answer to a Bear risk (rebutted/accepted/unresolved), not a call on the stock",
     "ProposedChange.type": "the user's own recorded change in quantity (a trade they made), not advice",
     "XrayOut.home_bias": "home-country concentration of the user's own portfolio, not a view",
+    "AnalystsOut.targets": "third-party analysts' published price targets (display only), not the app's call",
+    "AnalystCounts.strong_buy": "third-party analysts' published rating count (display only, with an as-of date), never the app's own call",
+    "AnalystCounts.buy": "third-party analysts' published rating count (display only, with an as-of date), never the app's own call",
+    "AnalystCounts.hold": "third-party analysts' published rating count (display only, with an as-of date), never the app's own call",
+    "AnalystCounts.sell": "third-party analysts' published rating count (display only, with an as-of date), never the app's own call",
+    "AnalystCounts.strong_sell": "third-party analysts' published rating count (display only, with an as-of date), never the app's own call",
 }
 
 S = Settings(_env_file=None)

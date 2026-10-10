@@ -111,14 +111,15 @@ function EditHoldingForm({ h, portfolioId, onClose, onSaved }: {
 }
 
 /** "Edit" and "Remove" for one holding, with no screenshot. Remove always asks first; nothing changes until the user confirms. */
-export function HoldingActions({ h, portfolioId, name, onRemoved }: {
-  h: Target; portfolioId: number; name: string; onRemoved?: () => void;
+export function HoldingActions({ h, portfolioId, name, onRemoved, menu = false }: {
+  h: Target; portfolioId: number; name: string; onRemoved?: () => void; /** Show a small "more" menu instead of two buttons. */ menu?: boolean;
 }) {
   const t = useTranslations("holdingEdit");
   const c = useTranslations("common");
   const [mode, setMode] = useState<"edit" | "remove" | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const remove = async () => {
     setBusy(true); setFailed(false);
@@ -133,10 +134,24 @@ export function HoldingActions({ h, portfolioId, name, onRemoved }: {
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className="btn-secondary" aria-label={t("editAria", { name })} onClick={() => setMode("edit")}>{t("edit")}</button>
-        <button type="button" className="btn-secondary" aria-label={t("removeAria", { name })} onClick={() => { setFailed(false); setMode("remove"); }}>{t("remove")}</button>
-      </div>
+      {menu ? (
+        <div className="relative" onKeyDown={(e) => { if (e.key === "Escape") setMenuOpen(false); }}>
+          <button type="button" className="btn-secondary min-h-11 min-w-11" aria-label={t("moreAria", { name })} aria-haspopup="true" aria-expanded={menuOpen} aria-controls={`holding-menu-${h.id}`} onClick={() => setMenuOpen((v) => !v)}>
+            <span aria-hidden="true">⋯</span>
+          </button>
+          {menuOpen && (
+            <div id={`holding-menu-${h.id}`} className="absolute end-0 z-20 mt-1 flex min-w-36 flex-col gap-1 rounded-xl border border-line bg-surface p-2 shadow-lg">
+              <button type="button" className="btn-secondary" aria-label={t("editAria", { name })} onClick={() => { setMenuOpen(false); setMode("edit"); }}>{t("edit")}</button>
+              <button type="button" className="btn-secondary" aria-label={t("removeAria", { name })} onClick={() => { setMenuOpen(false); setFailed(false); setMode("remove"); }}>{t("remove")}</button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-secondary" aria-label={t("editAria", { name })} onClick={() => setMode("edit")}>{t("edit")}</button>
+          <button type="button" className="btn-secondary" aria-label={t("removeAria", { name })} onClick={() => { setFailed(false); setMode("remove"); }}>{t("remove")}</button>
+        </div>
+      )}
       {mode === "edit" && (
         <Modal title={t("editTitle", { name })} onClose={() => setMode(null)}>
           <EditHoldingForm h={h} portfolioId={portfolioId} onClose={() => setMode(null)} />

@@ -42,7 +42,10 @@ const NEGATED = /\bnot\b|\bnever\b|\bno\b|neither|אינ|לא |ללא|אין /i;
 const FORBIDDEN = /\b(buy|sell|recommend\w*)\b|קנה|קנייה|קניה|מכור|מכירה|המלצ/i;
 /** No buy/sell/recommend wording outside of disclaimers ("this is not a recommendation"). */
 export async function noAdviceWording(page: Page) {
+  // The analysts' own rating categories (Strong buy ... Strong sell) are the analysts' words, shown as reported inside the analyst card.
+  await page.addStyleTag({ content: '[data-testid="analyst-view"] { display: none !important; }' });
   const text = await page.locator("body").innerText();
+  await page.evaluate(() => document.querySelectorAll("style").forEach((s) => { if (s.textContent?.includes('data-testid="analyst-view"') && s.textContent.includes("display: none")) s.remove(); }));
   const bad = text.split(/\n|(?<=[.!?])\s+/).filter((l) => FORBIDDEN.test(l) && !NEGATED.test(l));
   expect(bad, "buy/sell/recommend wording on screen").toEqual([]);
 }

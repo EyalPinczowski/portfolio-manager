@@ -157,6 +157,7 @@ symbol_search_limiter = CountLimiter()  # per user: remote symbol searches
 ask_limiter = CountLimiter()  # per user: ask-my-portfolio questions
 committee_limiter = CountLimiter()  # per user: committee runs per hour (up to 4 LLM calls each)
 committee_daily_limiter = CountLimiter()  # per user: committee runs per day
+security_data_limiter = CountLimiter()  # per user: analysts/candles reads (may call a provider)
 
 
 def clear_all_limiters() -> None:
@@ -173,6 +174,7 @@ def clear_all_limiters() -> None:
     ask_limiter.clear()
     committee_limiter.clear()
     committee_daily_limiter.clear()
+    security_data_limiter.clear()
 
 
 def too_many(retry_after: int, what: str = "Too many requests. Try again later.") -> HTTPException:

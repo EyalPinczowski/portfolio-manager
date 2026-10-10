@@ -43,6 +43,8 @@ export type SignalBreakdown = S["SignalBreakdownOut"];
 export type ScoreCardDetail = Narrow<S["ScoreCardDetail"], { signals: SignalBreakdown[] }>;
 export type ExitLevel = S["ExitLevel"];
 export type ExitLevelsResult = S["ExitLevelsResult"];
+export type AnalystsOut = S["AnalystsOut"];
+export type CandlesOut = S["CandlesOut"];
 export type ExitStatus = ExitLevelsResult["status"];
 export type ExitReasonCode = NonNullable<ExitLevelsResult["reason_code"]>;
 export type ScaleOutStep = S["ScaleOutStep"];
@@ -298,6 +300,10 @@ export const api = {
   /** `remote`: also ask the symbol-search provider for US/TASE listings that are not in our list yet (`source: "new"`). */
   searchSecurities: (q: string, remote = false) => get<SecurityHit[]>(`/securities/search?q=${encodeURIComponent(q)}${remote ? "&remote=1" : ""}`),
 
+  /** Analyst rating counts and price targets (display only). `status: "no_coverage"` when there is nothing. */
+  analysts: (symbol: string) => get<AnalystsOut>(`/securities/${encodeURIComponent(symbol)}/analysts`),
+  /** Daily OHLC bars in the listing currency (default 180 days), for the holding-page chart. */
+  candles: (symbol: string, days = 180) => get<CandlesOut>(`/securities/${encodeURIComponent(symbol)}/candles?days=${days}`),
   scorecard: (hid: number) => get<ScoreCardDetail>(`/holdings/${hid}/scorecard`),
   /** `horizon` overrides the holding's own as a what-if (not saved). No horizon at all -> status `needs_horizon`. */
   exitLevels: (hid: number, q: { horizon?: Horizon | null; risk?: RiskPresetName | null } = {}) => {

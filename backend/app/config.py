@@ -612,6 +612,11 @@ class Settings(BaseSettings):
     analyst_dispersion_max_cut: float = 0.5  # largest confidence cut from rating dispersion
     analyst_dispersion_ref: float = 1.2  # std of the 1-5 rating that gives the largest cut
     analyst_cache_ttl_seconds: float = 12 * 3600
+    security_data_rate_limit_per_hour: int = Field(
+        default=600, ge=1
+    )  # per user: analysts/candles routes
+    candles_default_days: int = Field(default=180, ge=20, le=1000)
+    candles_max_days: int = Field(default=730, ge=20, le=2000)
     earnings_info_enabled: bool = False  # adds an "Earnings in N days" line (no number changes)
     earnings_window_effect_enabled: bool = False  # confidence cut + gap-risk flag in the window
     earnings_window_days: int = 5  # the window: earnings within this many days

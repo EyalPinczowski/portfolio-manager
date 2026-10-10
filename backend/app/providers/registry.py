@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 
 from app.config import get_settings
+from app.providers.analyst_targets import AnalystTargetProvider, YFinanceTargetProvider
+from app.providers.analyst_trends import AnalystTrendProvider, default_analyst_chain
 from app.providers.base import (
     DividendProvider,
     FundProvider,
@@ -30,6 +32,8 @@ class Providers:
     funds: FundProvider | None = None
     dividends: DividendProvider | None = None
     symbol_search: SymbolSearchProvider | None = None
+    analyst_trends: AnalystTrendProvider | None = None
+    analyst_targets: AnalystTargetProvider | None = None
 
     def ocr(self) -> OcrProvider:
         if callable(self.ocr_factory):
@@ -140,3 +144,21 @@ def _default_symbol_search() -> SymbolSearchProvider:
 
 def get_symbol_search() -> SymbolSearchProvider:
     return (_override.symbol_search if _override else None) or _default_symbol_search()
+
+
+@lru_cache
+def _default_analyst_trends() -> AnalystTrendProvider:
+    return default_analyst_chain(get_settings())
+
+
+@lru_cache
+def _default_analyst_targets() -> AnalystTargetProvider:
+    return YFinanceTargetProvider(get_settings())
+
+
+def get_analyst_trends() -> AnalystTrendProvider:
+    return (_override.analyst_trends if _override else None) or _default_analyst_trends()
+
+
+def get_analyst_targets() -> AnalystTargetProvider:
+    return (_override.analyst_targets if _override else None) or _default_analyst_targets()

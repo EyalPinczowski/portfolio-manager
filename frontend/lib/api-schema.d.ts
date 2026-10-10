@@ -1145,6 +1145,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/securities/{symbol}/analysts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Analysts
+         * @description Analyst rating counts (latest month) and price targets when available; `no_coverage`
+         *     when neither exists or a provider fails. Never raises for missing data.
+         */
+        get: operations["analysts_api_securities__symbol__analysts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/securities/{symbol}/candles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Candles
+         * @description Daily OHLC bars (listing currency, agorot already converted) from the history provider,
+         *     which reads the stored `daily_bar` rows first. Display only; empty when no history.
+         */
+        get: operations["candles_api_securities__symbol__candles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1216,12 +1258,81 @@ export interface components {
             /** Triggered At */
             triggered_at?: string | null;
         };
+        /** AnalystCounts */
+        AnalystCounts: {
+            /**
+             * Strong Buy
+             * @default 0
+             */
+            strong_buy: number;
+            /**
+             * Buy
+             * @default 0
+             */
+            buy: number;
+            /**
+             * Hold
+             * @default 0
+             */
+            hold: number;
+            /**
+             * Sell
+             * @default 0
+             */
+            sell: number;
+            /**
+             * Strong Sell
+             * @default 0
+             */
+            strong_sell: number;
+        };
         /** AnalystTargetsIn */
         AnalystTargetsIn: {
             /** Mean */
             mean?: number | null;
             /** High */
             high?: number | null;
+        };
+        /** AnalystTargetsOut */
+        AnalystTargetsOut: {
+            /** Low */
+            low?: number | null;
+            /** Mean */
+            mean?: number | null;
+            /** High */
+            high?: number | null;
+            /** Currency */
+            currency?: string | null;
+        };
+        /** AnalystsOut */
+        AnalystsOut: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "no_coverage";
+            /** As Of */
+            as_of?: string | null;
+            /**
+             * @default {
+             *       "strong_buy": 0,
+             *       "buy": 0,
+             *       "hold": 0,
+             *       "sell": 0,
+             *       "strong_sell": 0
+             *     }
+             */
+            counts: components["schemas"]["AnalystCounts"];
+            /**
+             * Analysts Total
+             * @default 0
+             */
+            analysts_total: number;
+            targets?: components["schemas"]["AnalystTargetsOut"] | null;
+            /** Source */
+            source?: string | null;
         };
         /** AnalyzeOut */
         AnalyzeOut: {
@@ -1605,6 +1716,13 @@ export interface components {
             low: number;
             /** Close */
             close: number;
+        };
+        /** CandlesOut */
+        CandlesOut: {
+            /** Symbol */
+            symbol: string;
+            /** Candles */
+            candles: components["schemas"]["Candle"][];
         };
         /**
          * ChallengeRequiredOut
@@ -6577,6 +6695,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TermsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analysts_api_securities__symbol__analysts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalystsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    candles_api_securities__symbol__candles_get: {
+        parameters: {
+            query?: {
+                days?: number | null;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandlesOut"];
                 };
             };
             /** @description Validation Error */

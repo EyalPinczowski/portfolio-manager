@@ -9,9 +9,12 @@ import { isFitIncompleteSummary } from "@/lib/server-text";
 import { ServerText } from "./ServerText";
 import { CommitteeSection } from "./CommitteeSection";
 import { ExplanationView } from "./ExplanationView";
-import { HorizonPicker, Levels, NoLevels, WhyToggle } from "./ExitLevelsPanel";
+import { HorizonPicker, LevelsMain, NoLevels, WhyToggle, levelsMoreItems } from "./ExitLevelsPanel";
+import { AnalystView } from "./AnalystView";
+import { MoreSections } from "./MoreSections";
+import { ScoreBars } from "./ScoreBars";
 import { PnlText } from "./Pnl";
-import { PriceChart, type Candle, type PatternMark, type PriceLevel } from "./charts";
+import { LevelLegend, PriceChart, type Candle, type LevelKind, type PatternMark, type PriceLevel } from "./charts";
 import { gateProgress } from "@/lib/reasonText";
 import { useReasonText } from "@/lib/useReasonText";
 
@@ -170,7 +173,7 @@ function FitBody({ f, cur }: { f: PortfolioFit; cur: string }) {
 
       <section aria-label={t("levelsTitle")} className="space-y-2">
         <h3 className="text-heading">{t("levelsTitle")}</h3>
-        {f.levels && f.levels.status === "levels" ? <Levels r={f.levels} uid="fit" /> : f.levels ? <NoLevels r={f.levels} />
+        {f.levels && f.levels.status === "levels" ? <LevelsMain r={f.levels} entry={finite(f.entry) ? f.entry : null} /> : f.levels ? <NoLevels r={f.levels} />
           : <p className="rounded-xl bg-warn-bg p-3 text-warn-fg" role="status">{t("levelsNoneBody", { reason: f.levels_unavailable_reason ?? DASH })}</p>}
       </section>
 
@@ -274,6 +277,41 @@ function SignalReasons({ reasons }: { reasons: string[] }) {
   );
 }
 
+function SignalsTable({ d }: { d: AnalyzeOut }) {
+  const t = useTranslations("analyze");
+  const h = useTranslations("holding");
+  const locale = useLocale();
+  const ch = d.chart;
+  return (
+    <div className="relative overflow-x-auto">
+      <table className="w-full text-start text-sm">
+        <thead className="text-xs text-muted">
+          <tr>
+            <th scope="col" className="py-1 pe-2 text-start font-medium">{t("colSignal")}</th>
+            <th scope="col" className="px-2 text-start font-medium">{t("colScore")}</th>
+            <th scope="col" className="px-2 text-start font-medium">{t("colWeight")}</th>
+            <th scope="col" className="ps-2 text-start font-medium">{t("colConf")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ch.breakdown.map((s) => (
+            <tr key={s.name} className="border-t border-line align-top" data-testid={`signal-${s.name}`}>
+              <th scope="row" className="py-1 pe-2 text-start font-normal">
+                {h.has(`signal.${s.name}`) ? h(`signal.${s.name}`) : s.name}
+                {s.available ? <SignalReasons reasons={s.reasons} /> : <span className="block text-caption text-muted">{t("noData")}</span>}
+              </th>
+              <td className="px-2 tabular-nums" dir="ltr">{s.available ? `${s.score > 0 ? "+" : ""}${formatNumber(s.score, locale, 0)}` : DASH}</td>
+              <td className="px-2 tabular-nums" dir="ltr">{s.available ? formatWeight(s.weight, locale, 0) : DASH}</td>
+              <td className="ps-2 tabular-nums" dir="ltr">{s.available ? formatWeight(s.confidence * 100, locale, 0) : DASH}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Part 2: the score as diverging bars, the analysts' own ratings, and the per-signal table behind a Why?. */
 function Signals({ d }: { d: AnalyzeOut }) {
   const t = useTranslations("analyze");
   const h = useTranslations("holding");
@@ -283,42 +321,79 @@ function Signals({ d }: { d: AnalyzeOut }) {
   return (
     <section className="card space-y-3" aria-label={t("signalsTitle")}>
       <h2 className="text-heading">{t("signalsTitle")}</h2>
-      <p className="text-sm text-muted">{t("signalsNote")}</p>
       <p className="text-sm" data-testid="score-line">
         {c.score_available ? t("scoreLine", { score: `${c.score > 0 ? "+" : ""}${formatNumber(c.score, locale, 0)}`, conf: formatWeight(c.confidence * 100, locale, 0) }) : t("scoreNone")}
       </p>
-      <div className="relative overflow-x-auto">
-        <table className="w-full text-start text-sm">
-          <thead className="text-xs text-muted">
-            <tr>
-              <th scope="col" className="py-1 pe-2 text-start font-medium">{t("colSignal")}</th>
-              <th scope="col" className="px-2 text-start font-medium">{t("colScore")}</th>
-              <th scope="col" className="px-2 text-start font-medium">{t("colWeight")}</th>
-              <th scope="col" className="ps-2 text-start font-medium">{t("colConf")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ch.breakdown.map((s) => (
-              <tr key={s.name} className="border-t border-line align-top" data-testid={`signal-${s.name}`}>
-                <th scope="row" className="py-1 pe-2 text-start font-normal">
-                  {h.has(`signal.${s.name}`) ? h(`signal.${s.name}`) : s.name}
-                  {s.available ? <SignalReasons reasons={s.reasons} /> : <span className="block text-caption text-muted">{t("noData")}</span>}
-                </th>
-                <td className="px-2 tabular-nums" dir="ltr">{s.available ? `${s.score > 0 ? "+" : ""}${formatNumber(s.score, locale, 0)}` : DASH}</td>
-                <td className="px-2 tabular-nums" dir="ltr">{s.available ? formatWeight(s.weight, locale, 0) : DASH}</td>
-                <td className="ps-2 tabular-nums" dir="ltr">{s.available ? formatWeight(s.confidence * 100, locale, 0) : DASH}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ScoreBars
+        total={c.score_available ? c.score : null}
+        rows={ch.breakdown.map((s) => ({ name: s.name, label: h.has(`signal.${s.name}`) ? h(`signal.${s.name}`) : s.name, score: s.score, noData: !s.available || s.confidence === 0 }))}
+      />
+      <AnalystView symbol={d.scout.symbol} price={d.scout.price?.price ?? null} currency={d.scout.currency} />
+      <WhyToggle id="why-signals">
+        <p className="mb-2 text-sm text-muted">{t("signalsNote")}</p>
+        <SignalsTable d={d} />
+      </WhyToggle>
     </section>
   );
 }
 
 const BEARISH = /breakdown|death|double top/i;
 
-function ChartSection({ d }: { d: AnalyzeOut }) {
+/** Everything drawn on the chart: support/resistance, the plan's stop/targets, the price and the user's entry. */
+function useChartLines(d: AnalyzeOut): PriceLevel[] {
+  const ch = d.chart;
+  const f = d.portfolio_fit;
+  const levels = ch.levels ?? [];
+  const anns = ch.annotations ?? [];
+  const lv = f.levels && f.levels.status === "levels" ? f.levels : null;
+  const x = useTranslations("exit");
+  return useMemo<PriceLevel[]>(() => {
+    const out: PriceLevel[] = levels.map((l) => ({ price: l.price, kind: l.kind }));
+    for (const a of anns) {
+      if ((a.kind === "support" || a.kind === "resistance") && finite(a.price) && !out.some((o) => Math.abs(o.price - a.price!) < 1e-6)) out.push({ price: a.price, kind: a.kind });
+    }
+    if (lv) {
+      if (lv.stop) out.push({ price: lv.stop.price, kind: "stop" });
+      if (lv.trailing_stop) out.push({ price: lv.trailing_stop.price, kind: "stop", title: x("kind.trailing_stop") });
+      (lv.take_profits ?? []).forEach((tp, i) => out.push({ price: tp.price, kind: "target", title: `TP${i + 1}` }));
+      if (finite(lv.price)) out.push({ price: lv.price, kind: "price" });
+    }
+    if (finite(f.entry)) out.push({ price: f.entry, kind: "entry" });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [levels, anns, lv, f.entry]);
+}
+
+/** Part 1: candles with SMA/Bollinger and every level drawn on them, plus a one-line legend. */
+function ChartBlock({ d }: { d: AnalyzeOut }) {
+  const r = useTranslations("reason");
+  const h = useTranslations("holding");
+  const { text } = useReasonText();
+  const locale = useLocale();
+  const ch = d.chart;
+  const anns = useMemo(() => ch.annotations ?? [], [ch.annotations]);
+  const bars = (ch.candles ?? []) as Candle[];
+  const lines = useChartLines(d);
+  const patterns = anns.filter((a) => a.kind === "pattern");
+  const marks = useMemo<PatternMark[]>(
+    () => patterns.flatMap((a) => (a.as_of ? [{ time: a.as_of.slice(0, 10), text: text(a.label), bearish: BEARISH.test(a.label) }] : [])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [patterns.length, ch.data_as_of, locale],
+  );
+  const labels = useMemo(() => ({ support: r("legendSupport"), resistance: r("legendResistance"), aria: r("chartAria"), entry: h("chart.entry"), stop: h("chart.stop"), target: h("chart.target"), price: h("chart.price") }), [r, h]);
+  if (bars.length === 0) return null;
+  const kinds = [...new Set(lines.map((l) => l.kind))] as LevelKind[];
+  return (
+    <div className="space-y-1" data-testid="chart-block">
+      <PriceChart bars={bars} levels={lines} marks={marks} labels={labels} height={240} />
+      <LevelLegend kinds={kinds} labels={{ support: r("legendSupport"), resistance: r("legendResistance"), stop: h("chart.stop"), target: h("chart.target"), entry: h("chart.entry"), price: h("chart.price") }} />
+      <p className="text-caption text-muted">{r("chartNote", { n: bars.length })} {kinds.some((k) => k === "stop" || k === "target") && h("chart.note")}</p>
+    </div>
+  );
+}
+
+/** Collapsed chart details: support/resistance list, patterns, indicators and the chart's Why?. */
+function ChartDetails({ d }: { d: AnalyzeOut }) {
   const t = useTranslations("analyze");
   const r = useTranslations("reason");
   const { text, input } = useReasonText();
@@ -326,42 +401,12 @@ function ChartSection({ d }: { d: AnalyzeOut }) {
   const ch = d.chart;
   const cur = d.scout.currency;
   const inds = Object.entries(ch.indicators ?? {});
-  const levels = useMemo(() => ch.levels ?? [], [ch.levels]);
-  const anns = useMemo(() => ch.annotations ?? [], [ch.annotations]);
+  const levels = ch.levels ?? [];
+  const anns = ch.annotations ?? [];
   const bars = (ch.candles ?? []) as Candle[];
-  const lines = useMemo<PriceLevel[]>(() => {
-    const out: PriceLevel[] = levels.map((l) => ({ price: l.price, kind: l.kind }));
-    for (const a of anns) {
-      if ((a.kind === "support" || a.kind === "resistance") && finite(a.price) && !out.some((o) => Math.abs(o.price - a.price!) < 1e-6)) out.push({ price: a.price, kind: a.kind });
-    }
-    return out;
-  }, [levels, anns]);
   const patterns = anns.filter((a) => a.kind === "pattern");
-  const marks = useMemo<PatternMark[]>(
-    () => patterns.flatMap((a) => (a.as_of ? [{ time: a.as_of.slice(0, 10), text: text(a.label), bearish: BEARISH.test(a.label) }] : [])),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [patterns.length, ch.data_as_of, locale],
-  );
-  const labels = useMemo(() => ({ support: r("legendSupport"), resistance: r("legendResistance"), aria: r("chartAria") }), [r]);
-  const sw = (color: string, dashed = false) => <span aria-hidden="true" className="inline-block h-0 w-4 align-middle" style={{ borderTop: `2px ${dashed ? "dashed" : "solid"} ${color}` }} />;
   return (
-    <section className="card space-y-3" aria-label={t("chartTitle")}>
-      <h2 className="text-heading">{t("chartTitle")}</h2>
-      {bars.length > 0 && (
-        <div className="space-y-1">
-          <PriceChart bars={bars} levels={lines} marks={marks} labels={labels} />
-          <ul className="flex flex-wrap gap-x-3 gap-y-1 text-caption text-muted" aria-label={r("legendCandles")} data-testid="chart-legend">
-            <li>{sw("#4cd9a0")} {r("legendCandles")}</li>
-            <li>{sw("#60a5fa")} {r("legendSma20")}</li>
-            <li>{sw("#fbbf24")} {r("legendSma50")}</li>
-            <li>{sw("#98a2b3", true)} {r("legendBands")}</li>
-            <li>{sw("#4cd9a0", true)} {r("legendSupport")}</li>
-            <li>{sw("#ff8a80", true)} {r("legendResistance")}</li>
-            {marks.length > 0 && <li><span aria-hidden="true">▲</span> {r("legendPattern")}</li>}
-          </ul>
-          <p className="text-caption text-muted">{r("chartNote", { n: bars.length })}</p>
-        </div>
-      )}
+    <div className="space-y-3">
       {!ch.available && levels.length === 0 && anns.length === 0 && bars.length === 0 ? <p className="text-sm text-muted">{t("chartNone")}</p> : (
         <>
           {levels.length > 0 && (
@@ -383,18 +428,16 @@ function ChartSection({ d }: { d: AnalyzeOut }) {
           )}
         </>
       )}
-      <WhyToggle id="why-chart">
-        {inds.length > 0 && (
-          <div className="mb-3">
-            <h4 className="font-semibold">{r("indicatorsTitle")}</h4>
-            <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3" aria-label={t("indicators")}>
-              {inds.map(([k, v]) => <div key={k}><dt className="text-caption text-muted">{input(k)}</dt><dd className="tabular-nums" dir="ltr">{formatNumber(v, locale, 2)}</dd></div>)}
-            </dl>
-          </div>
-        )}
-        <ExplanationView e={ch.explanation} currency={cur} />
-      </WhyToggle>
-    </section>
+      {inds.length > 0 && (
+        <div>
+          <h4 className="font-semibold">{r("indicatorsTitle")}</h4>
+          <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3" aria-label={t("indicators")}>
+            {inds.map(([k, v]) => <div key={k}><dt className="text-caption text-muted">{input(k)}</dt><dd className="tabular-nums" dir="ltr">{formatNumber(v, locale, 2)}</dd></div>)}
+          </dl>
+        </div>
+      )}
+      <WhyToggle id="why-chart"><ExplanationView e={ch.explanation} currency={cur} /></WhyToggle>
+    </div>
   );
 }
 
@@ -404,13 +447,12 @@ function Missing({ d }: { d: AnalyzeOut }) {
   const rows = d.scout.not_available ?? [];
   if (rows.length === 0) return null;
   return (
-    <section className="card space-y-2" aria-label={t("missingTitle")} data-testid="not-available">
-      <h2 className="text-heading">{t("missingTitle")}</h2>
+    <div className="space-y-2" data-testid="not-available">
       <p className="text-sm text-muted">{t("missingNote")}</p>
       <ul className="space-y-1 text-sm">
         {rows.map((m) => <li key={m.name}><span className="font-medium">{h.has(`signal.${m.name}`) ? h(`signal.${m.name}`) : m.name}</span>: <bdi dir="auto" className="text-muted">{m.reason}</bdi></li>)}
       </ul>
-    </section>
+    </div>
   );
 }
 
@@ -431,8 +473,7 @@ function AskBox({ symbol }: { symbol: string }) {
     finally { setBusy(false); }
   };
   return (
-    <section className="card space-y-3" aria-label={t("askTitle")}>
-      <h2 className="text-heading">{t("askTitle")}</h2>
+    <div className="space-y-3" data-testid="ask-box">
       <p className="text-sm text-muted">{t("askNote")}</p>
       <form onSubmit={send} className="space-y-2">
         <label htmlFor="ask-q" className="label">{t("askLabel")}</label>
@@ -451,7 +492,7 @@ function AskBox({ symbol }: { symbol: string }) {
           {ans.grounded_in.length > 0 && <p className="text-caption text-muted" dir="auto">{t("askGrounded", { items: ans.grounded_in.join(", ") })}</p>}
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -477,7 +518,6 @@ function Header({ d }: { d: AnalyzeOut }) {
             : <p className="chip-warn" role="status">{t("priceStale", { time: formatTime(p.as_of, locale) })}</p>}
         </div>
       ) : <p className="chip-warn" role="status">{s.price_reason ?? t("noPrice")}</p>}
-      <WhyToggle id="why-scout"><ExplanationView e={s.explanation} currency={s.currency} /></WhyToggle>
     </div>
   );
 }
@@ -485,6 +525,9 @@ function Header({ d }: { d: AnalyzeOut }) {
 /** One analysis. The result and the typed inputs live only in memory: nothing is saved to storage. */
 export function AnalyzeResult({ symbol }: { symbol: string }) {
   const t = useTranslations("analyze");
+  const h = useTranslations("holding");
+  const x = useTranslations("exit");
+  const locale = useLocale();
   const c = useTranslations("common");
   const [query, setQuery] = useState<AnalyzeQuery>({});
   const { data, error, mutate, isLoading } = useAnalyze(symbol, query);
@@ -514,16 +557,27 @@ export function AnalyzeResult({ symbol }: { symbol: string }) {
     );
   }
   if (!d) return <p role="status" className="text-muted">{isLoading ? t("loading") : c("loading")}</p>;
+  const f = d.portfolio_fit;
+  const lv = f.levels && f.levels.status === "levels" ? f.levels : null;
+  const moreItems = [
+    { id: "chart", title: t("chartTitle"), body: <ChartDetails d={d} /> },
+    ...(lv ? levelsMoreItems(lv, "fit", { explain: h("more.explain"), reasons: x("levelReasons"), why: h("more.whyNumbers") }) : []),
+    ...((d.scout.not_available ?? []).length > 0 ? [{ id: "missing", title: t("missingTitle"), body: <Missing d={d} /> }] : []),
+    { id: "ask", title: t("askTitle"), body: <AskBox symbol={symbol} /> },
+    { id: "scout", title: t("moreScout"), body: <ExplanationView e={d.scout.explanation} currency={d.scout.currency} /> },
+  ];
   return (
     <div className="space-y-4" aria-busy={isLoading}>
-      <Header d={d} />
-      <FitSection d={d} portfolios={portfolios} query={query} setQuery={setQuery} />
+      <section className="card space-y-3" aria-label={locale === "he" ? d.scout.name_he : d.scout.name_en}>
+        <Header d={d} />
+        <ChartBlock d={d} />
+        <p className="text-sm font-medium" data-testid="top-summary">{t(`fit.${f.status}`)}</p>
+      </section>
       <Gate d={d} />
       <Signals d={d} />
-      <ChartSection d={d} />
-      <Missing d={d} />
+      <FitSection d={d} portfolios={portfolios} query={query} setQuery={setQuery} />
       <CommitteeSection symbol={symbol} />
-      <AskBox symbol={symbol} />
+      <MoreSections items={moreItems} label={t("moreTitle")} />
       <p className="text-xs text-muted">{d.disclaimer ?? t("disclaimer")}</p>
     </div>
   );

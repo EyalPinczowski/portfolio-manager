@@ -34,6 +34,12 @@ export const useScorecard = (hid: number) => useSWR(["scorecard", hid], () => ap
 /** `horizon` set = a what-if override; null = the holding's own (the server answers needs_horizon if it has none). */
 export const useExitLevels = (hid: number, horizon: Horizon | null, risk: RiskPresetName | null = null) =>
   useSWR(["exit-levels", hid, horizon, risk], () => api.exitLevels(hid, { horizon, risk }), cfg);
+/** Analysts' own rating distribution and price targets (public, cached on the server). */
+export const useAnalysts = (symbol: string | null) =>
+  useSWR(symbol ? ["analysts", symbol] : null, () => api.analysts(symbol as string), { revalidateOnFocus: false, shouldRetryOnError: false });
+/** Daily candles for the holding/analyze chart. */
+export const useCandles = (symbol: string | null, days = 180) =>
+  useSWR(symbol ? ["candles", symbol, days] : null, () => api.candles(symbol as string, days), { revalidateOnFocus: false, shouldRetryOnError: false });
 export const useExitReview = (pid: number | null, body: ExitReviewIn = {}) =>
   useSWR(pid === null ? null : ["exit-review", pid, body.horizon ?? null, body.risk ?? null], () => api.exitReview(pid as number, body), cfg);
 /** Analysis of any ticker. Results live only in the SWR memory cache (never saved to storage). Not polled: it is on demand. */

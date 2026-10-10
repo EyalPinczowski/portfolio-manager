@@ -97,6 +97,22 @@
     "ask": "Ask my portfolio",
     "askNote": "Ask a question about your holdings, answered from your own data."
   },
+  "overview": {
+    "summary": "Portfolio summary",
+    "totalValue": "Portfolio value",
+    "totalPnl": "Total P&L",
+    "today": "Today",
+    "allocation": "Allocation",
+    "byHolding": "By holding",
+    "byCurrency": "By currency",
+    "view": "Group allocation by",
+    "other": "Other",
+    "donutLabel": "Portfolio allocation {mode}: {list}",
+    "tableCaption": "Allocation table",
+    "colName": "Name",
+    "colShare": "Share",
+    "noPnl": "P&L unavailable"
+  },
   "holdings": {
     "title": "Your holdings",
     "empty": "No holdings yet. Import a screenshot from your broker to get started.",
@@ -194,7 +210,55 @@
     },
     "whyRiskRules": "Risk rules applied",
     "whyInvalidation": "What could make this wrong",
-    "whySources": "Sources"
+    "whySources": "Sources",
+    "chart": {
+      "aria": "Price chart with your levels",
+      "entry": "Entry",
+      "stop": "Stop",
+      "target": "Target",
+      "price": "Price",
+      "trailing": "Trailing stop",
+      "note": "Dashed lines are suggested planning levels, not orders."
+    },
+    "bars": {
+      "aria": "Score per signal, from -100 to +100",
+      "noData": "No data",
+      "total": "Total"
+    },
+    "scoreDetails": "Weights and confidence",
+    "analysts": {
+      "title": "Analysts' ratings",
+      "loading": "Loading analysts' ratings…",
+      "error": "Could not load analysts' ratings.",
+      "retry": "Try again",
+      "noCoverage": "No analyst coverage",
+      "noCoverageBody": "No analyst ratings were found for this security. This is missing data, not a neutral reading.",
+      "asOf": "As of {date}",
+      "total": "{n} analysts",
+      "aria": "Analysts' ratings: {parts}",
+      "cat": {
+        "strong_buy": "Strong buy",
+        "buy": "Buy",
+        "hold": "Hold",
+        "sell": "Sell",
+        "strong_sell": "Strong sell"
+      },
+      "ownNote": "The analysts' own ratings, as reported. Not the app's view.",
+      "source": "Source: {source}",
+      "targets": "Analyst price targets",
+      "targetLow": "Low",
+      "targetMean": "Average",
+      "targetHigh": "High",
+      "now": "Now",
+      "targetsAria": "Analyst price targets: low {low}, average {mean}, high {high}; current price {price}",
+      "meanVsPrice": "The average target is {pct} from the current price."
+    },
+    "more": {
+      "menu": "More actions for {name}",
+      "explain": "How the levels work",
+      "whyNumbers": "Why these numbers",
+      "preview": "Try another period"
+    }
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -617,6 +681,7 @@
     "remove": "Remove",
     "editAria": "Edit {name}",
     "removeAria": "Remove {name}",
+    "moreAria": "More actions for {name}",
     "editTitle": "Edit {name}",
     "intro": "Change what you own by hand. Nothing is saved until you press Save.",
     "costHint": "Clear the cost to remove it; the app then shows no profit or loss for this holding. Israeli stocks: enter shekels, not agorot.",
@@ -742,6 +807,18 @@
     "state": "Trailing stop memory: highest high {high}, stop {stop}",
     "units": "{n} units",
     "fundNoLevelsNote": "Funds have monthly returns only, so no numbers are shown here. The value on your holdings list is the one you entered.",
+    "ladderTitle": "Levels at a glance",
+    "colLevel": "Level",
+    "colPrice": "Price",
+    "colFrom": "From price",
+    "colPnl": "P&L",
+    "entryLevel": "Your entry",
+    "priceLevel": "Current price",
+    "tpN": "Take-profit {n}",
+    "sizeDetails": "Details",
+    "sizeHide": "Hide details",
+    "planShort": "Scale-out plan",
+    "levelReasons": "Where each level comes from",
     "sources": {
       "atr": "ATR distance",
       "structure": "chart support",
@@ -939,6 +1016,8 @@
     "indicatorsTitle": "Numbers behind the chart"
   },
   "analyze": {
+    "moreTitle": "More details",
+    "moreScout": "Where this analysis comes from",
     "title": "Analyze a stock",
     "intro": "Look up any ticker or company. You get neutral facts: signals, levels, and how it fits your portfolio and limits.",
     "searchLabel": "Ticker or company name",

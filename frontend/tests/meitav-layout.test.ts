@@ -95,15 +95,15 @@ describe("Meitav Trade layout, behaviours", () => {
 
   it("matches anchors for US tickers with dots and TLV numbers, and never for lowercase words", () => {
     expect(findAnchors("NYSE • BRK.B")[0]).toMatchObject({ exchange: "NYSE", ticker: "BRK.B" });
-    expect(findAnchors("TLV • 1159714")[0]).toMatchObject({ exchange: "TLV", ticker: "1159714" });
+    expect(findAnchors("TLV • 2468013")[0]).toMatchObject({ exchange: "TLV", ticker: "2468013" });
     expect(findAnchors("TLV • ABC")).toHaveLength(0);
     expect(findAnchors("NASDAQ • 1234567")).toHaveLength(0);
     expect(findAnchors("NASDAQ • Constellation")).toHaveLength(0);
   });
 
   it("never takes the 7-digit TASE number as a quantity or a price", () => {
-    const { rows } = parseScreenshotText(card(["TLV • 1159714 6,272", "מחקה דמה", "-0.31%", "₪30,670.08"]));
-    expect(rows[0]).toMatchObject({ tase_number: "1159714", symbol: null, price: 6272, value: 30670.08, quantity: 489, unit: "agorot", currency: "ILS" });
+    const { rows } = parseScreenshotText(card(["TLV • 2468013 5,184", "מחקה דמה", "-0.31%", "₪25,349.76"]));
+    expect(rows[0]).toMatchObject({ tase_number: "2468013", symbol: null, price: 5184, value: 25349.76, quantity: 489, unit: "agorot", currency: "ILS" });
     expect(rows[0].name).not.toMatch(/\d{5,}/);
   });
 
@@ -181,8 +181,8 @@ describe("Meitav Trade layout, behaviours", () => {
   });
 
   it("does not blur the 7-digit security number on TLV lines but still drops account digit runs", () => {
-    const out = scrubIdentifiers("TLV • 1159714 6,272\n1159714 • TLV\nחשבון 123456789\n12345678901 NYSE • ABC");
-    expect(out).toContain("TLV • 1159714");
+    const out = scrubIdentifiers("TLV • 2468013 5,184\n1159714 • TLV\nחשבון 123456789\n12345678901 NYSE • ABC");
+    expect(out).toContain("TLV • 2468013");
     expect(out).toContain("1159714 • TLV");
     expect(out).not.toContain("חשבון");
     expect(out).not.toContain("12345678901");

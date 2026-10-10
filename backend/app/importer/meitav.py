@@ -372,6 +372,7 @@ class _Pct:
     line: int
     pos: int
     arrow: bool
+    signed: bool = False  # an explicit +/- was printed (OCR can drop or misread a '+')
 
 
 @dataclass
@@ -431,14 +432,21 @@ def _take_percents(work: str, original: str, line: int) -> tuple[str, list[_Pct]
     for m in _PCT.finditer(work):
         v = _to_num(m.group(2))
         pcts.append(
-            _Pct(-v if m.group(1) == "-" else v, line, m.start(), arrow_near(m.start(), m.end()))
+            _Pct(
+                -v if m.group(1) == "-" else v,
+                line,
+                m.start(),
+                arrow_near(m.start(), m.end()),
+                m.group(1) != "",
+            )
         )
     w = _PCT.sub(lambda m: " " * len(m.group(0)), work)
     # Reversed (visual-order) form: "%-0.31" or "%0.31-", number glued to the percent sign.
     for m in _PCT_REV.finditer(w):
         v = _to_num(m.group(2))
         neg = m.group(1) == "-" or (m.group(1) == "" and m.group(3) == "-")
-        pcts.append(_Pct(-v if neg else v, line, m.start(), arrow_near(m.start(), m.end())))
+        signed = m.group(1) != "" or m.group(3) != ""
+        pcts.append(_Pct(-v if neg else v, line, m.start(), arrow_near(m.start(), m.end()), signed))
     w = _PCT_REV.sub(lambda m: " " * len(m.group(0)), w)
     return w, pcts
 
@@ -456,7 +464,7 @@ def _take_numbers(work: str, line: int) -> list[_Num]:
     return out
 
 
-def _pick_pnl(pcts: list[_Pct], value: _Amt | None, price_line: int | None) -> float | None:
+def _pick_pnl(pcts: list[_Pct], value: _Amt | None, price_line: int | None) -> _Pct | None:
     """Which percentage is the broker's total P&L %? None when it cannot be told apart from the
     day change."""
     if not pcts:
@@ -467,22 +475,22 @@ def _pick_pnl(pcts: list[_Pct], value: _Amt | None, price_line: int | None) -> f
             best = on_value[0]
             for p in on_value[1:]:
                 best = best if abs(best.pos - value.pos) <= abs(p.pos - value.pos) else p
-            return best.value
+            return best
     arrows = [p for p in pcts if p.arrow]
     if len(arrows) == 1:
-        return arrows[0].value
+        return arrows[0]
     if len(pcts) == 2:
         zeros = [p for p in pcts if p.value == 0]
         if len(zeros) == 1:
-            return next(p for p in pcts if p.value != 0).value
+            return next(p for p in pcts if p.value != 0)
         if value is not None and price_line is not None:
             a, b = pcts
             score_a = abs(a.line - value.line) - abs(a.line - price_line)
             score_b = abs(b.line - value.line) - abs(b.line - price_line)
             if score_a < score_b:
-                return a.value
+                return a
             if score_b < score_a:
-                return b.value
+                return b
     return None
 
 
@@ -575,7 +583,17 @@ def _parse_block(b: _Block, s: Settings) -> ParsedRow:
             (c for c in cands if _whole_quantity(value, c, agorot, s.import_infer_round_slack)),
             cands[0] if len(cands) == 1 else None,
         )
-    pnl = _pick_pnl(pcts, value, price.line if price else None)
+    picked = _pick_pnl(pcts, value, price.line if price else None)
+    pnl = picked.value if picked is not None else None
+    # An unsigned P&L is trusted except the classic misread of `+10.00%` as `110.00%` (the '+' read
+    # as a '1'): unsigned, integer part starting with 1 and value >= 100. Then the P&L is unknown.
+    if (
+        picked is not None
+        and not picked.signed
+        and picked.value >= 100
+        and str(int(picked.value)).startswith("1")
+    ):
+        pnl = None
 
     meta = _Meta()
     quantity: float | None = None

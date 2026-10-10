@@ -39,6 +39,21 @@ const wrap = (locale: "en" | "he", ui: ReactNode) =>
   );
 const an = (q: string) => mockRequest("GET", `/analyze/${q}`) as AnalyzeOut;
 const NO_VERDICT = /\b(buy|sell|hold|recommend(ed|ation)?)\b/i;
+/** Page text without the analysts' own rating categories (their names are the analysts', shown as reported, not the app's wording). */
+const bodyText = () => {
+  const c = document.body.cloneNode(true) as HTMLElement;
+  c.querySelectorAll("[data-testid=analyst-view]").forEach((e) => e.remove());
+  return c.textContent ?? "";
+};
+const openAsk = async (locale: "en" | "he" = "en") => {
+  const m = locale === "en" ? en : he;
+  fireEvent.click(await screen.findByRole("button", { name: m.analyze.askTitle }));
+};
+const openSignals = async (locale: "en" | "he" = "en") => {
+  const m = locale === "en" ? en : he;
+  const region = await screen.findByRole("region", { name: m.analyze.signalsTitle });
+  fireEvent.click(within(region).getByRole("button", { name: m.exit.why }));
+};
 
 beforeEach(() => { chartCalls.candles.length = 0; window.matchMedia ??= (() => ({ matches: false })) as unknown as typeof window.matchMedia; resetMockLists(); push.mockClear(); symbolParam = null; });
 afterEach(() => vi.restoreAllMocks());
@@ -63,7 +78,7 @@ describe("analyze home", () => {
     expect(watch.textContent).toContain(en.analyze.lastClose); // ARNA.TA: a last close, labelled
     expect(watch.textContent).toContain(en.analyze.stale);
     expect(watch.textContent).toContain(en.analyze.noQuote); // XOM: nothing cached yet
-    expect(document.body.textContent).not.toMatch(NO_VERDICT);
+    expect(bodyText()).not.toMatch(NO_VERDICT);
   });
 
   it("removes one recent search, then clears all", async () => {
@@ -126,7 +141,10 @@ describe("analyze result", () => {
     wrap("en", <AnalyzeResult symbol="AMD" />);
     const fit = await screen.findByTestId("fit-section");
     expect(fit).toHaveAttribute("data-status", "incomplete");
-    expect(screen.getAllByRole("region")[0]).toBe(fit); // the headline section is first
+    // chart/summary card first, then the score and analysts, then the fit section
+    const regions = screen.getAllByRole("region");
+    expect(regions.indexOf(screen.getByRole("region", { name: en.analyze.signalsTitle }))).toBeLessThan(regions.indexOf(fit));
+    expect(screen.getByTestId("top-summary")).toBeInTheDocument();
     expect(within(fit).getByRole("heading", { name: en.analyze.fitTitle })).toBeInTheDocument();
     expect(fit.textContent).toContain(en.analyze.needsTitle);
     for (const k of ["portfolio_id", "amount", "currency", "horizon"] as const) expect(fit.textContent).toContain(en.analyze.needs[k]);
@@ -135,7 +153,7 @@ describe("analyze result", () => {
     expect(within(form).getByLabelText(en.analyze.formAmount)).toHaveValue("");
     expect(screen.queryByTestId("max-size")).toBeNull();
     expect(screen.getByTestId("gate-notice").textContent).toContain(en.analyze.gateTitle);
-    expect(document.body.textContent).not.toMatch(NO_VERDICT);
+    expect(bodyText()).not.toMatch(NO_VERDICT);
   });
 
   it("rejects an empty form without calling the API again", async () => {
@@ -158,10 +176,12 @@ describe("analyze result", () => {
     expect(within(fit).getAllByText(en.analyze.withinCap)).toHaveLength(3);
     expect(within(fit).getByTestId("held")).toHaveTextContent(en.analyze.heldNew);
     expect(within(fit).getByTestId("level-stop")).toBeInTheDocument();
+    expect(within(fit).getByTestId("level-ladder")).toBeInTheDocument();
+    expect(within(fit).getByTestId("level-entry")).toBeInTheDocument(); // the entry price is on the ladder
     expect(within(fit).getAllByTestId("level-take_profit").length).toBeGreaterThan(0);
     expect(within(fit).getByText(en.analyze.suggested)).toBeInTheDocument();
     expect(within(fit).getByText(new RegExp(en.analyze.entry.replace("{price}", ".*")))).toBeInTheDocument();
-    expect(document.body.textContent).not.toMatch(NO_VERDICT);
+    expect(bodyText()).not.toMatch(NO_VERDICT);
   });
 
   it("fits smaller: names the cap and a smaller maximum", async () => {
@@ -200,18 +220,26 @@ describe("analyze result", () => {
     expect(price.textContent).toMatch(/Not a live price/);
     expect(screen.queryByTestId("level-stop")).toBeNull();
     expect(screen.getByText(en.exit.noLevelsTitle)).toBeInTheDocument();
+    expect(screen.queryByTestId("not-available")).toBeNull(); // collapsed
+    fireEvent.click(screen.getByRole("button", { name: en.analyze.missingTitle }));
     const na = screen.getByTestId("not-available");
     expect(na.textContent).toContain("No analyst coverage found.");
     expect(screen.getByTestId("score-line")).toHaveTextContent(en.analyze.scoreNone);
+    expect(screen.getByTestId("bar-trend").textContent).toContain(en.holding.bars.noData);
+    await openSignals();
     expect(screen.getByTestId("signal-trend").textContent).toContain(en.analyze.noData);
   });
 
   it("signal breakdown, chart levels and a Why? from the Explanation", async () => {
     wrap("en", <AnalyzeResult symbol="XOM" />);
-    await screen.findByTestId("signal-trend");
+    await screen.findByTestId("bar-trend");
+    await openSignals();
+    expect(screen.getByTestId("signal-trend")).toBeInTheDocument();
+    expect(screen.queryByTestId("chart-level-support")).toBeNull(); // collapsed
+    fireEvent.click(screen.getByRole("button", { name: en.analyze.chartTitle }));
     expect(screen.getByTestId("chart-level-support")).toBeInTheDocument();
     expect(screen.getByTestId("chart-level-resistance")).toBeInTheDocument();
-    const chart = screen.getByRole("region", { name: en.analyze.chartTitle });
+    const chart = screen.getByTestId("more-chart");
     fireEvent.click(within(chart).getByRole("button", { name: en.exit.why }));
     expect(within(chart).getByTestId("explanation")).toBeInTheDocument();
     const fit = screen.getByTestId("fit-section");
@@ -246,6 +274,7 @@ describe("analyze result", () => {
     const set = vi.spyOn(Storage.prototype, "setItem");
     wrap("en", <AnalyzeResult symbol="XOM" />);
     await screen.findByTestId("fit-section");
+    await openAsk();
     fireEvent.change(screen.getByLabelText(en.analyze.askNotes), { target: { value: "my private note" } });
     expect(set).not.toHaveBeenCalled();
   });
@@ -254,6 +283,7 @@ describe("analyze result", () => {
 describe("ask box", () => {
   it("answers from the data with a template label and what it is grounded in", async () => {
     wrap("en", <AnalyzeResult symbol="AMD" />);
+    await openAsk();
     fireEvent.change(await screen.findByLabelText(en.analyze.askLabel), { target: { value: "What is the trend?" } });
     fireEvent.click(screen.getByRole("button", { name: en.analyze.askSend }));
     const ans = await screen.findByTestId("ask-answer");
@@ -264,6 +294,7 @@ describe("ask box", () => {
 
   it("a question asking for a trade instruction is declined and answered with facts", async () => {
     wrap("en", <AnalyzeResult symbol="AMD" />);
+    await openAsk();
     fireEvent.change(await screen.findByLabelText(en.analyze.askLabel), { target: { value: "Should I buy it?" } });
     fireEvent.click(screen.getByRole("button", { name: en.analyze.askSend }));
     const ans = await screen.findByTestId("ask-answer");
@@ -272,6 +303,7 @@ describe("ask box", () => {
 
   it("empty question and an API error are handled", async () => {
     wrap("en", <AnalyzeResult symbol="AMD" />);
+    await openAsk();
     const send = await screen.findByRole("button", { name: en.analyze.askSend });
     fireEvent.click(send);
     expect(screen.getByText(en.analyze.askEmpty)).toBeInTheDocument();
@@ -292,9 +324,9 @@ describe("analyze result in Hebrew (RTL)", () => {
     expect(within(fit).getByTestId("fit-status")).toHaveTextContent(he.analyze.fit.does_not_fit);
     expect(within(fit).getByTestId("max-size").closest("[dir]")).not.toBeNull();
     expect(screen.getByTestId("gate-notice").textContent).toContain(he.analyze.gateTitle);
-    expect(screen.getByRole("region", { name: he.analyze.askTitle })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: he.analyze.askTitle })).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByRole("region", { name: he.analyze.signalsTitle })).toBeInTheDocument();
-    expect(document.body.textContent).not.toMatch(/קנה|מכור|מומלץ|המלצה/);
+    expect(bodyText()).not.toMatch(/קנה|מכור|מומלץ|המלצה/);
   });
 });
 
@@ -310,10 +342,10 @@ describe("entries to the analyze screen", () => {
 
   it("draws the candles, and shows the gate as one short line with details behind a toggle", async () => {
     wrap("en", <AnalyzeResult symbol="XOM" />);
-    await screen.findByTestId("signal-trend");
+    await screen.findByTestId("bar-trend");
     expect(screen.getByTestId("price-chart")).toHaveAttribute("dir", "ltr");
     expect((chartCalls.candles[0] as unknown[]).length).toBe(120);
-    expect(screen.getByTestId("chart-legend")).toBeInTheDocument();
+    expect(screen.getByTestId("level-legend")).toBeInTheDocument();
     expect(screen.queryByLabelText(en.analyze.indicators)).toBeNull(); // raw numbers only inside Why?
     const gate = screen.getByTestId("gate-notice");
     expect(screen.getByTestId("gate-progress").textContent).toBe("Backtest: not yet · Weeks 0/4 · Calls 0/50");
@@ -324,6 +356,8 @@ describe("entries to the analyze screen", () => {
 
   it("Hebrew: reasons, gate and chart annotations are Hebrew; at most 2 reasons per signal until more", async () => {
     wrap("he", <AnalyzeResult symbol="XOM" />);
+    await screen.findByTestId("bar-trend");
+    await openSignals("he");
     const trend = await screen.findByTestId("signal-trend");
     expect(trend.querySelectorAll("li").length).toBe(2);
     expect(trend.textContent).toContain("המחיר גבוה ב-3.2% מהממוצע של 50 הימים האחרונים.");
@@ -332,8 +366,8 @@ describe("entries to the analyze screen", () => {
     const gate = screen.getByTestId("gate-notice");
     fireEvent.click(within(gate).getByRole("button", { name: he.reason.gateDetails }));
     expect(gate.textContent).toContain("המסחר הדמיוני רץ 0.0 מתוך 4 שבועות");
-    const chart = screen.getByRole("region", { name: he.analyze.chartTitle });
-    expect(chart.textContent).toContain("צלב זהב");
+    fireEvent.click(screen.getByRole("button", { name: he.analyze.chartTitle }));
+    expect(screen.getByTestId("more-chart").textContent).toContain("צלב זהב");
     expect(screen.getByTestId("root").textContent).not.toMatch(/Paper trading|Price is|RSI is|touched/);
   });
 });

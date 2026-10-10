@@ -123,7 +123,7 @@ test("real backend: challenge, first portfolio, import, null-price paths", async
   await page.goto("/en/");
   await expect(page.getByText(m("holdings.title"), { exact: true })).toBeVisible();
   const card = (sym: string) => page.locator("article, li, section").filter({ hasText: sym }).last();
-  await expect(card("AAPL")).toContainText("231.10");
+  await expect(card("AAPL")).toContainText("2,311.00"); // 10 x 231.10: the row shows the position value
   await expect(card("NVDA")).toContainText(m("holdings.noData"));
   await expect(card("NVDA")).not.toContainText("$0.00");
   await expect(card("MSFT")).toBeVisible(); // the hand-added row was confirmed with the others

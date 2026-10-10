@@ -38,6 +38,9 @@
   --shadow-card: 0 1px 2px rgb(16 24 40 / 0.06);
   --tabbar-h: 3.75rem;
   --safe-b: env(safe-area-inset-bottom, 0px);
+  /* Chart categories (allocation donut); distinguishable in both themes. */
+  --chart-1: #2563eb; --chart-2: #047857; --chart-3: #b45309; --chart-4: #7e22ce;
+  --chart-5: #be185d; --chart-6: #0e7490; --chart-7: #a16207; --chart-other: #98a2b3;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -63,6 +66,8 @@
     --danger-hover: #f04438;
     --ring: #6ee7b7;
     --shadow-card: none;
+  --chart-1: #60a5fa; --chart-2: #34d399; --chart-3: #fbbf24; --chart-4: #c084fc;
+  --chart-5: #f472b6; --chart-6: #22d3ee; --chart-7: #fde047; --chart-other: #7d8aa0;
   }
 }
 /* Manual choice from Settings (data-theme is set by the app; absent = follow the phone). */
@@ -89,6 +94,8 @@
   --danger-hover: #f04438;
   --ring: #6ee7b7;
   --shadow-card: none;
+  --chart-1: #60a5fa; --chart-2: #34d399; --chart-3: #fbbf24; --chart-4: #c084fc;
+  --chart-5: #f472b6; --chart-6: #22d3ee; --chart-7: #fde047; --chart-other: #7d8aa0;
 }
 :root[data-theme="light"] { color-scheme: light; }
 

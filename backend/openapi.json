@@ -3010,6 +3010,115 @@
         }
       }
     },
+    "/api/securities/{symbol}/analysts": {
+      "get": {
+        "tags": [
+          "securities"
+        ],
+        "summary": "Analysts",
+        "description": "Analyst rating counts (latest month) and price targets when available; `no_coverage`\nwhen neither exists or a provider fails. Never raises for missing data.",
+        "operationId": "analysts_api_securities__symbol__analysts_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 24,
+              "pattern": "^[A-Za-z0-9.^=\\-]+$",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalystsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/securities/{symbol}/candles": {
+      "get": {
+        "tags": [
+          "securities"
+        ],
+        "summary": "Candles",
+        "description": "Daily OHLC bars (listing currency, agorot already converted) from the history provider,\nwhich reads the stored `daily_bar` rows first. Display only; empty when no history.",
+        "operationId": "candles_api_securities__symbol__candles_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 24,
+              "pattern": "^[A-Za-z0-9.^=\\-]+$",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 20
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandlesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -3165,6 +3274,37 @@
         ],
         "title": "AlertOut"
       },
+      "AnalystCounts": {
+        "properties": {
+          "strong_buy": {
+            "type": "integer",
+            "title": "Strong Buy",
+            "default": 0
+          },
+          "buy": {
+            "type": "integer",
+            "title": "Buy",
+            "default": 0
+          },
+          "hold": {
+            "type": "integer",
+            "title": "Hold",
+            "default": 0
+          },
+          "sell": {
+            "type": "integer",
+            "title": "Sell",
+            "default": 0
+          },
+          "strong_sell": {
+            "type": "integer",
+            "title": "Strong Sell",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "AnalystCounts"
+      },
       "AnalystTargetsIn": {
         "properties": {
           "mean": {
@@ -3197,6 +3337,126 @@
         "additionalProperties": false,
         "type": "object",
         "title": "AnalystTargetsIn"
+      },
+      "AnalystTargetsOut": {
+        "properties": {
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          }
+        },
+        "type": "object",
+        "title": "AnalystTargetsOut"
+      },
+      "AnalystsOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "no_coverage"
+            ],
+            "title": "Status"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/AnalystCounts",
+            "default": {
+              "strong_buy": 0,
+              "buy": 0,
+              "hold": 0,
+              "sell": 0,
+              "strong_sell": 0
+            }
+          },
+          "analysts_total": {
+            "type": "integer",
+            "title": "Analysts Total",
+            "default": 0
+          },
+          "targets": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalystTargetsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "status"
+        ],
+        "title": "AnalystsOut"
       },
       "AnalyzeOut": {
         "properties": {
@@ -4181,6 +4441,27 @@
           "close"
         ],
         "title": "Candle"
+      },
+      "CandlesOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "candles": {
+            "items": {
+              "$ref": "#/components/schemas/Candle"
+            },
+            "type": "array",
+            "title": "Candles"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "candles"
+        ],
+        "title": "CandlesOut"
       },
       "ChallengeRequiredOut": {
         "properties": {

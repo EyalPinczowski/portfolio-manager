@@ -240,7 +240,7 @@ const cleanName = (w: string): string => {
 const blank = (s: string, from: number, to: number): string => s.slice(0, from) + " ".repeat(to - from) + s.slice(to);
 
 interface Amt { value: number; raw: string; symbol: "$" | "₪"; line: number; pos: number }
-interface Pct { value: number; line: number; pos: number; arrow: boolean }
+interface Pct { value: number; line: number; pos: number; arrow: boolean; signed: boolean }
 interface Num { value: number; raw: string; line: number; start: number; end: number }
 interface LineInfo { work: string; text: boolean; nums: Num[] }
 
@@ -275,14 +275,14 @@ function takePercents(work: string, original: string, line: number): { work: str
   const arrowNear = (a: number, b: number) => ARROWS.test(original.slice(Math.max(0, a - 3), b + 3));
   for (const m of work.matchAll(new RegExp(`(?<![\\d.,])([-+]?)\\s?(${NUM})\\s*%`, "g"))) {
     const v = toNum(m[2]);
-    pcts.push({ value: m[1] === "-" ? -v : v, line, pos: m.index!, arrow: arrowNear(m.index!, m.index! + m[0].length) });
+    pcts.push({ value: m[1] === "-" ? -v : v, line, pos: m.index!, arrow: arrowNear(m.index!, m.index! + m[0].length), signed: m[1] !== "" });
   }
   let w = work.replace(new RegExp(`(?<![\\d.,])([-+]?)\\s?(${NUM})\\s*%`, "g"), (s) => " ".repeat(s.length));
   // Reversed (visual-order) form: "%-0.31" or "%0.31-", number glued to the percent sign.
   for (const m of w.matchAll(new RegExp(`%([-+]?)(${NUM})([-+]?)(?![\\d])`, "g"))) {
     const v = toNum(m[2]);
     const neg = m[1] === "-" || (m[1] === "" && m[3] === "-");
-    pcts.push({ value: neg ? -v : v, line, pos: m.index!, arrow: arrowNear(m.index!, m.index! + m[0].length) });
+    pcts.push({ value: neg ? -v : v, line, pos: m.index!, arrow: arrowNear(m.index!, m.index! + m[0].length), signed: m[1] !== "" || m[3] !== "" });
   }
   w = w.replace(new RegExp(`%([-+]?)(${NUM})([-+]?)(?![\\d])`, "g"), (s) => " ".repeat(s.length));
   return { work: w, pcts };
@@ -299,22 +299,22 @@ function takeNumbers(work: string, line: number): Num[] {
 }
 
 /** Which percentage is the broker's total P&L %? Null when it cannot be told apart from the day change. */
-function pickPnl(pcts: Pct[], value: Amt | null, priceLine: number | null): number | null {
+function pickPnl(pcts: Pct[], value: Amt | null, priceLine: number | null): Pct | null {
   if (pcts.length === 0) return null;
   if (value) {
     const onValue = pcts.filter((p) => p.line === value.line);
-    if (onValue.length > 0) return onValue.reduce((a, b) => (Math.abs(a.pos - value.pos) <= Math.abs(b.pos - value.pos) ? a : b)).value;
+    if (onValue.length > 0) return onValue.reduce((a, b) => (Math.abs(a.pos - value.pos) <= Math.abs(b.pos - value.pos) ? a : b));
   }
   const arrows = pcts.filter((p) => p.arrow);
-  if (arrows.length === 1) return arrows[0].value;
+  if (arrows.length === 1) return arrows[0];
   if (pcts.length === 2) {
     const zeros = pcts.filter((p) => p.value === 0);
-    if (zeros.length === 1) return pcts.find((p) => p.value !== 0)!.value;
+    if (zeros.length === 1) return pcts.find((p) => p.value !== 0)!;
     if (value && priceLine !== null) {
       const score = (p: Pct) => Math.abs(p.line - value.line) - Math.abs(p.line - priceLine);
       const [a, b] = pcts;
-      if (score(a) < score(b)) return a.value;
-      if (score(b) < score(a)) return b.value;
+      if (score(a) < score(b)) return a;
+      if (score(b) < score(a)) return b;
     }
   }
   return null;
@@ -363,7 +363,10 @@ function parseBlock(b: Block): { row: ImportRow; meta: RowMeta } {
     // No guessing: a price with no whole quantity is used only when it is the single candidate (a real fractional holding).
     price = cands.find((c) => wholeQuantity(value, c, agorot) !== null) ?? (cands.length === 1 ? cands[0] : null);
   }
-  const pnl = pickPnl(pcts, value, price ? price.line : null);
+  const picked = pickPnl(pcts, value, price ? price.line : null);
+  // An unsigned P&L is trusted except the classic misread of `+10.00%` as `110.00%` (the '+' read as a '1'):
+  // unsigned, integer part starting with 1 and value >= 100. Then the P&L is unknown.
+  const pnl = picked && !(!picked.signed && picked.value >= 100 && String(Math.trunc(picked.value)).startsWith("1")) ? picked.value : null;
 
   const meta: RowMeta = {};
   let quantity: number | null = null;

@@ -794,6 +794,39 @@
           }
         ]
       }
+    },
+    {
+      "id": "unsigned_pnl_misread",
+      "description": "Invented. OCR read a P&L of '+10.00%' as '110.00%' (the '+' became a '1'). Meitav always prints the sign on the total P&L %, so an unsigned non-zero P&L is treated as unknown: quantity and price are kept, cost stays empty and cost_inferred is not set.",
+      "images": {
+        "in_order": [
+          "11:41\n86%\nNASDAQ • NOSG\n110.00\nNo Sign Example Corp\n0%\n110.00% ↑ $1,100.00\nבית    תיק    שוק    עוד"
+        ],
+        "shuffled_columns": [
+          "11:41\n86%\nNASDAQ • NOSG\n↑ 110.00% 1,100.00$\n0%\nNo Sign Example Corp\n110.00\nבית    תיק    שוק    עוד"
+        ],
+        "hebrew_reversed": [
+          "11:41\n86%\nNOSG • NASDAQ\nNo Sign Example Corp\n110.00\n%0\n$1,100.00 ↑ %110.00\nבית    תיק    שוק    עוד"
+        ]
+      },
+      "expected": {
+        "layout": "meitav_trade",
+        "broker_total": null,
+        "rows": [
+          {
+            "name": "No Sign Example Corp",
+            "symbol": "NOSG",
+            "tase_number": null,
+            "quantity": 10,
+            "price": 110.0,
+            "value": 1100.0,
+            "cost": null,
+            "currency": "USD",
+            "unit": "USD",
+            "flags": []
+          }
+        ]
+      }
     }
   ]
 }

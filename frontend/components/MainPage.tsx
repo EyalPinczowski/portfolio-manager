@@ -7,12 +7,14 @@ import { useSetupGate } from "@/lib/setup";
 import { loadPortfolioChoice, savePortfolioChoice, useHoldings, usePortfolios, useSummary, type PortfolioRef } from "@/lib/hooks";
 import { ScreenshotNudge } from "./ScreenshotNudge";
 import { AddHoldingForm } from "./AddHoldingForm";
+import { AllocationDonut } from "./AllocationDonut";
 import { AppShell } from "./AppShell";
 import { CreatePortfolio } from "./CreatePortfolio";
 import { FirstRunGuide } from "./FirstRunGuide";
 import { HoldingsList } from "./HoldingsList";
 import { LiveHeader } from "./LiveHeader";
 import { PnlStrip } from "./PnlStrip";
+import { PortfolioSummary } from "./PortfolioSummary";
 import { PortfolioSwitcher } from "./PortfolioSwitcher";
 
 function Body() {
@@ -43,13 +45,17 @@ function Body() {
           onChange={(v) => { setChoice(v); savePortfolioChoice(v); }}
         />
       )}
+      {summary.data && <PortfolioSummary s={summary.data} holdings={holdings.data ?? []} />}
       {summary.data ? (
-        <LiveHeader s={summary.data} anyPriceStale={!!holdings.data?.some((h) => h.price_stale)} />
+        <LiveHeader compact s={summary.data} anyPriceStale={!!holdings.data?.some((h) => h.price_stale)} />
       ) : summary.error ? <p role="alert">{t("common.errorLoad")}</p> : <p role="status">{t("common.loading")}</p>}
       {summary.data && <PnlStrip s={summary.data} />}
       {summary.data && <ScreenshotNudge at={summary.data.last_screenshot_update_at ?? null} stale={summary.data.screenshot_update_stale} />}
       {holdings.data && holdings.data.length > 0 ? (
-        <HoldingsList holdings={holdings.data} />
+        <>
+          <AllocationDonut holdings={holdings.data} />
+          <HoldingsList holdings={holdings.data} />
+        </>
       ) : holdings.data ? (
         <div className="card space-y-2 text-center">
           <p>{t("holdings.empty")}</p>

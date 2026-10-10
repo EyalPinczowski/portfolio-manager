@@ -80,9 +80,44 @@ export function SinceStartChart({ data, label, names }: { data: SeriesPoint[]; l
 }
 
 export interface Candle { time: string; open: number; high: number; low: number; close: number }
-export interface PriceLevel { price: number; kind: "support" | "resistance" }
+export type LevelKind = "support" | "resistance" | "entry" | "stop" | "target" | "price";
+export interface PriceLevel { price: number; kind: LevelKind; /** Overrides the kind's label (e.g. "Trailing stop", "TP1"). */ title?: string }
 export interface PatternMark { time: string; text: string; bearish: boolean }
-export interface PriceChartLabels { support: string; resistance: string; aria: string }
+export interface PriceChartLabels { support: string; resistance: string; aria: string; entry?: string; stop?: string; target?: string; price?: string }
+
+const cssVar = (name: string, fallback: string): string => {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  } catch { return fallback; }
+};
+
+/** Level colours come from the CSS tokens (light and dark), with the palette as a fallback where there is no CSS (tests). */
+export function levelStyle(kind: LevelKind, p = palette()): { color: string; style: LineStyle; width: 1 | 2 } {
+  switch (kind) {
+    case "stop": return { color: cssVar("--loss", p.down), style: LineStyle.Dashed, width: 2 };
+    case "target": return { color: cssVar("--gain", p.up), style: LineStyle.Dashed, width: 2 };
+    case "entry": return { color: cssVar("--chart-1", p.sma20), style: LineStyle.Dotted, width: 2 };
+    case "price": return { color: cssVar("--fg", p.text), style: LineStyle.Solid, width: 1 };
+    case "support": return { color: p.up, style: LineStyle.Dotted, width: 1 };
+    default: return { color: p.down, style: LineStyle.Dotted, width: 1 };
+  }
+}
+
+/** One-line legend for the level kinds actually drawn. Swatches use the same tokens as the chart lines. */
+export function LevelLegend({ kinds, labels }: { kinds: LevelKind[]; labels: Partial<Record<LevelKind, string>> }) {
+  const css: Record<string, string> = { stop: "var(--loss)", target: "var(--gain)", entry: "var(--chart-1)", price: "var(--fg)", support: "var(--gain)", resistance: "var(--loss)" };
+  const dash: Record<string, string> = { stop: "dashed", target: "dashed", entry: "dotted", price: "solid", support: "dotted", resistance: "dotted" };
+  return (
+    <ul className="flex flex-wrap gap-x-3 gap-y-1 text-caption text-muted" data-testid="level-legend">
+      {kinds.map((k) => (
+        <li key={k}>
+          <span aria-hidden="true" className="inline-block h-0 w-4 align-middle" style={{ borderTop: `2px ${dash[k]} ${css[k]}` }} /> {labels[k] ?? k}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /** Simple moving average over closes; null until `n` bars exist. Display only. */
 export function smaSeries(closes: number[], n: number): (number | null)[] {
@@ -128,17 +163,26 @@ export function PriceChart({ bars, levels, marks, labels, height = 280 }: {
     line(bb.lower, p.bands, 1, LineStyle.Dashed);
     line(smaSeries(closes, 50), p.sma50, 1);
     line(smaSeries(closes, 20), p.sma20, 1);
+    const shown = levels.filter((l) => isNum(l.price));
+    const lo = Math.min(...shown.map((l) => l.price));
+    const hi = Math.max(...shown.map((l) => l.price));
     const candles = chart.addSeries(CandlestickSeries, {
+      // Keep every drawn level inside the visible price range.
+      ...(shown.length > 0 ? {
+        autoscaleInfoProvider: (orig: () => { priceRange: { minValue: number; maxValue: number } | null; margins?: { above: number; below: number } } | null) => {
+          const r = orig();
+          if (!r || !r.priceRange) return r;
+          return { ...r, priceRange: { minValue: Math.min(r.priceRange.minValue, lo), maxValue: Math.max(r.priceRange.maxValue, hi) } };
+        },
+      } : {}),
       upColor: p.up, downColor: p.down, borderUpColor: p.up, borderDownColor: p.down, wickUpColor: p.up, wickDownColor: p.down,
       priceLineVisible: false,
     });
     candles.setData(good.map((b) => ({ time: b.time as Time, open: b.open, high: b.high, low: b.low, close: b.close })));
-    for (const l of levels) {
-      if (!isNum(l.price)) continue;
-      candles.createPriceLine({
-        price: l.price, color: l.kind === "support" ? p.up : p.down, lineWidth: 1, lineStyle: LineStyle.Dotted,
-        axisLabelVisible: true, title: l.kind === "support" ? labels.support : labels.resistance,
-      });
+    for (const l of shown) {
+      const st = levelStyle(l.kind, p);
+      const text = l.title ?? (l.kind === "support" ? labels.support : l.kind === "resistance" ? labels.resistance : (labels[l.kind] ?? l.kind));
+      candles.createPriceLine({ price: l.price, color: st.color, lineWidth: st.width, lineStyle: st.style, axisLabelVisible: true, title: text });
     }
     const times = new Set(good.map((b) => b.time));
     const markers: SeriesMarker<Time>[] = marks

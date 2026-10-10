@@ -75,13 +75,15 @@ for (const locale of LOCALES) {
       await expect(page).toHaveURL(/symbol=NVDA/);
       await expect(page.getByText(/NVDA/).first()).toBeVisible();
 
-      // The "does it fit my portfolio" section comes before the signal breakdown.
+      // Chart first, then the score bars with the analysts' ratings, then the plan / portfolio fit.
       const fit = page.getByRole("heading", { name: m("analyze.fitTitle") }).first();
       const signals = page.getByRole("heading", { name: m("analyze.signalsTitle") }).first();
       await expect(fit).toBeVisible();
       await expect(signals).toBeVisible();
-      const [fy, sy] = [(await fit.boundingBox())!.y, (await signals.boundingBox())!.y];
-      expect(fy, "fit section must be above the signals").toBeLessThan(sy);
+      await expect(page.getByTestId("price-chart")).toBeVisible();
+      const [cy, sy, fy] = [(await page.getByTestId("price-chart").boundingBox())!.y, (await signals.boundingBox())!.y, (await fit.boundingBox())!.y];
+      expect(cy, "chart must be above the signals").toBeLessThan(sy);
+      expect(sy, "signals must be above the fit section").toBeLessThan(fy);
 
       // Watchlist star toggles.
       const add = page.getByRole("button", { name: m("analyze.addWatch", { symbol: "NVDA" }) });
@@ -286,29 +288,75 @@ for (const locale of LOCALES) {
       errs.expectNone();
     });
 
-    test("edit and remove a holding by hand (no screenshot)", async ({ page }) => {
+    test("edit and remove a holding by hand (no screenshot), from the holding page", async ({ page }) => {
       const errs = watchErrors(page);
       await open(page, locale, "/");
-      const edits = page.locator("button", { hasText: new RegExp(`^${m("holdingEdit.edit")}$`) });
-      await expect(edits.first()).toBeVisible();
-      const n = await edits.count();
-      // the card headline is the position value; below it "quantity x price"
-      await expect(page.getByTestId("position-value").first()).toContainText(/[₪$]/);
-      await expect(page.getByTestId("qty-price").first()).toContainText("×");
-      await edits.first().click();
+      const rows = page.getByTestId("holding-row");
+      await expect(rows.first()).toBeVisible();
+      const n = await rows.count();
+      await expect(rows.first()).toContainText(/[₪$]/);
+      await rows.first().click();
+      const openMenu = async () => page.getByRole("button", { name: new RegExp(m("holdingEdit.moreAria", { name: ".*" })) }).click();
+      await openMenu(); // Edit and Remove live in the "more" menu
+      const more = page.getByRole("button", { name: /^(More actions for|פעולות נוספות)/ }).first();
+      const edit = page.locator("button", { hasText: new RegExp(`^${m("holdingEdit.edit")}$`) }).first();
+      await expect(async () => {
+        if (!(await edit.isVisible())) await more.click();
+        await expect(edit).toBeVisible({ timeout: 1000 });
+      }).toPass();
+      await edit.click();
       const dlg = page.getByRole("dialog");
       await expect(dlg).toBeVisible();
       await expect(dlg.getByTestId("edit-computed-value")).toBeVisible();
       await dlg.getByLabel(m("addHolding.cost"), { exact: false }).fill("");
       await dlg.getByRole("button", { name: m("holdingEdit.save") }).click();
       await expect(dlg).toBeHidden();
-      await page.locator("button", { hasText: new RegExp(`^${m("holdingEdit.remove")}$`) }).first().click();
+      await openMenu();
+      const rm = page.locator("button", { hasText: new RegExp(`^${m("holdingEdit.remove")}$`) }).first();
+      await expect(async () => {
+        if (!(await rm.isVisible())) await more.click();
+        await expect(rm).toBeVisible({ timeout: 1000 });
+      }).toPass();
+      await rm.click();
       await expect(page.getByRole("dialog")).toBeVisible();
       await page.getByRole("button", { name: m("holdingEdit.removeConfirm") }).click();
       await expect(page.getByRole("dialog")).toBeHidden();
-      await expect(edits).toHaveCount(n - 1);
+      await expect(page.getByTestId("holding-row")).toHaveCount(n - 1);
       await checkScreen(page, locale);
       errs.expectNone();
+    });
+
+    test("home page fits in 4 phone screens", async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await open(page, locale, "/");
+      await expect(page.getByTestId("holding-row").first()).toBeVisible();
+      await expect(page.getByTestId("donut")).toBeVisible();
+      const h = await page.evaluate(() => document.documentElement.scrollHeight);
+      expect(h).toBeLessThanOrEqual(4 * 844);
+    });
+
+    test("holding page fits in 4 phone screens", async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await open(page, locale, "/");
+      await page.locator('a[href*="holding"]').first().click();
+      await expect(page).toHaveURL(/holding\/?\?id=/);
+      await expect(page.getByTestId("level-ladder")).toBeVisible();
+      await expect(page.getByTestId("score-bars")).toBeVisible();
+      await expect(page.getByTestId("analyst-view")).toBeVisible();
+      await expect(page.getByTestId("price-chart")).toBeVisible();
+      const h = await page.evaluate(() => document.documentElement.scrollHeight);
+      expect(h).toBeLessThanOrEqual(4 * 844);
+    });
+
+    test("analyze page fits in 4 phone screens", async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await open(page, locale, "/analyze/?symbol=NVDA");
+      await expect(page.getByTestId("price-chart")).toBeVisible();
+      await expect(page.getByTestId("score-bars")).toBeVisible();
+      await expect(page.getByTestId("analyst-view")).toBeVisible();
+      await expect(page.getByTestId("fit-section")).toBeVisible();
+      const h = await page.evaluate(() => document.documentElement.scrollHeight);
+      expect(h).toBeLessThanOrEqual(4 * 844);
     });
 
     test("welcome tour: appears on first entrance, can be skipped, and is reopened from settings", async ({ page }) => {

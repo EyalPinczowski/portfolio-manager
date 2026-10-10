@@ -35,7 +35,7 @@ describe("main page (mock mode)", () => {
   it("renders header, P&L strip, buttons, holdings and disclaimer", async () => {
     renderMain("en");
     await waitFor(() => expect(screen.getByText("Portfolio value")).toBeInTheDocument());
-    expect(screen.getAllByText("Since you started using the app (06/07/2026)").length).toBeGreaterThanOrEqual(2); // tile + chart
+    expect(screen.getAllByText("Since you started using the app (06/07/2026)").length).toBeGreaterThanOrEqual(1); // chart title
     expect(screen.getByText(/TASE: Open/)).toBeInTheDocument();
     expect(screen.getByText(/US: Closed/)).toBeInTheDocument();
     expect(screen.getByText("This week")).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe("main page (mock mode)", () => {
     expect(screen.getByText(/Prices as of/)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/NaN|undefined|\bnull\b|1970|Invalid/);
     // the holding without a cost price shows a dash and a hint, not 0
-    expect(screen.getAllByText(en.holdings.pnlHint).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(en.holdings.pnlUnavailable, { exact: false }).length).toBeGreaterThan(0);
   });
 
   it("links from the performance area to the post-mortem (en and he)", async () => {

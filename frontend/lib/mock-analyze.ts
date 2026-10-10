@@ -85,7 +85,7 @@ export function mockWatchDelete(symbol: string): undefined { watch = watch.filte
 const explain = (summary: string, extra: Partial<Explanation> = {}): Explanation => ({ version: 1, summary, as_of: AS_OF, ...extra });
 
 /** 120 deterministic daily candles ending on the AS_OF day (weekends skipped). */
-function mockCandles(price: number): NonNullable<ChartReport["candles"]> {
+export function mockCandles(price: number): NonNullable<ChartReport["candles"]> {
   const out: NonNullable<ChartReport["candles"]> = [];
   const d = new Date(AS_OF.slice(0, 10) + "T00:00:00Z");
   const days: string[] = [];
