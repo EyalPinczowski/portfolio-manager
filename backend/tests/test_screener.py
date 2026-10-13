@@ -10,6 +10,7 @@ from typing import Any
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import select
 
 from app.config import DISCLAIMER, Settings, get_settings
 from app.db import new_session
@@ -168,6 +169,21 @@ def test_ranked_candidates_carry_size_levels_and_a_why(world: World) -> None:
     assert [c["rank_score"] for c in cands] == sorted(
         (c["rank_score"] for c in cands), reverse=True
     )
+
+
+def test_unscored_universe_is_flagged_and_newest_time_is_the_real_score_time(
+    world: World,
+) -> None:
+    out = world.post().json()
+    assert out["unscored_count"] == len(UNIVERSE) and out["scores_newest_at"] is None
+    world.refresh()
+    out = world.post().json()
+    assert out["unscored_count"] == 0
+    with new_session() as db:
+        newest = max(r.computed_at for r in db.exec(select(SignalCache)).all())
+    assert out["scores_newest_at"] is not None
+    assert out["scores_newest_at"][:16] == newest.isoformat()[:16]
+    assert out["scores_newest_at"] != out["generated_at"]
 
 
 def test_nothing_is_fetched_while_the_request_runs(world: World) -> None:

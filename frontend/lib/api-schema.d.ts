@@ -1685,6 +1685,13 @@ export interface components {
             asset_types: string[];
             /** Universe Size */
             universe_size: number;
+            /** Scores Newest At */
+            scores_newest_at?: string | null;
+            /**
+             * Unscored Count
+             * @default 0
+             */
+            unscored_count: number;
             /** Candidates */
             candidates: components["schemas"]["Candidate"][];
             /** Skipped */

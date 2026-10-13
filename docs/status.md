@@ -260,3 +260,7 @@ Last updated: 2026-10-05. Branch: `ccr-8e00f184-rqshto`. Read this first after a
 - Reader fix: an unsigned P&L percent starting with 1 and >= 100 (an OCR misread of "+") no longer infers a cost (both twins, fixture `unsigned_pnl_misread`).
 - Checks: backend 2016 passed / 35 skipped, ruff/format/mypy clean; frontend 772 vitest, e2e 129 + real 1, build ok.
 - Known: the real-backend e2e server logs a `price_quote` unique-constraint race on concurrent quote writes (no failed request); worth a follow-up.
+
+## Update 18: universe scores (2026-10-13)
+- Suggest found nothing because the universe was never scored (the slim image turns the job off). Added `python -m app.cli universe-refresh [--max N]` (loops `refresh_universe` batches, counts only), `.github/workflows/universe-scores.yml` (weekday cron every 3 h + manual run, secret `DATABASE_URL`), and an honest Suggest page: `scores_newest_at` (real newest score time) and `unscored_count` on the buy-ideas answer, a "not scored yet" state, skipped reasons grouped with counts.
+- Needs the user once: add the `DATABASE_URL` repository secret, then run the workflow by hand (see `docs/deployment.md`, "Universe scores").

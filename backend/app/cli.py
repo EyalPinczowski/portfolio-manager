@@ -1,4 +1,4 @@
-"""CLI: `python -m app.cli migrate` / `create-invite` / `create-admin` / `fetch-history` / `backtest`."""
+"""CLI: `python -m app.cli migrate` / `create-invite` / `create-admin` / `fetch-history` / `backtest` / `universe-refresh`."""
 
 from __future__ import annotations
 
@@ -140,6 +140,24 @@ def boot() -> int:
     return 0
 
 
+def universe_refresh(max_symbols: int) -> int:
+    """Score the universe in batches (the job the slim image does not run). Counts only."""
+    from app.providers.registry import get_providers
+    from app.scoring.universe import refresh_universe_until_fresh
+
+    if max_symbols < 1:
+        print("error: --max must be at least 1", file=sys.stderr)
+        return 1
+    prepare_database(get_engine())
+    p = get_providers()
+    with new_session() as db:
+        attempted, left = refresh_universe_until_fresh(
+            db, p.history, p.quotes, get_settings(), max_symbols
+        )
+    print(f"universe-refresh: {attempted} scored, {left} still due")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -190,6 +208,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Record a PASS to the launch gate, only if every guard holds (see the report)",
     )
+    ur = sub.add_parser(
+        "universe-refresh",
+        help="Score the screener universe in batches until all are fresh (prints counts only)",
+    )
+    ur.add_argument("--max", type=int, default=80, help="Most symbols to score in this run")
     args = parser.parse_args(argv)
     if args.cmd == "migrate":
         run_migrations(get_engine())
@@ -254,6 +277,8 @@ def main(argv: list[str] | None = None) -> int:
         prepare_database(get_engine())
         with new_session() as db:
             return run_backtest(s, db=db, **common)
+    if args.cmd == "universe-refresh":
+        return universe_refresh(args.max)
     if args.cmd == "create-invite":
         print(create_invite(args.days))
         return 0

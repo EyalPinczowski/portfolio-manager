@@ -133,6 +133,10 @@ class CandidatesOut(BaseModel):
     markets: list[str]
     asset_types: list[str]
     universe_size: int  # symbols that matched the markets / asset types
+    scores_newest_at: datetime | None = (
+        None  # newest real score time among them (not the request time)
+    )
+    unscored_count: int = 0  # of those, how many have no usable cached score yet
     candidates: list[Candidate]
     skipped: list[SkippedItem]
     launch_gate_open: bool
@@ -293,6 +297,15 @@ def screen(
     ]
     built: list[Candidate] = []
     skipped: list[SkippedItem] = []
+    newest: datetime | None = None
+    unscored = 0
+    for sec in in_scope:
+        cache = db.get(SignalCache, sec.symbol)
+        if cache is None or not cache.payload.get("available"):
+            unscored += 1
+            continue
+        stamp = as_utc(cache.computed_at)
+        newest = stamp if newest is None or stamp > newest else newest
 
     for sec in in_scope:
         try:
@@ -360,6 +373,8 @@ def screen(
         markets=list(markets),
         asset_types=list(asset_types),
         universe_size=len(in_scope),
+        scores_newest_at=newest,
+        unscored_count=unscored,
         candidates=kept,
         skipped=skipped[: s.screener_max_skipped],
         launch_gate_open=gate_open,

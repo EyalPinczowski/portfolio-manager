@@ -150,6 +150,33 @@ describe("suggest new stocks: results", () => {
     expect(await screen.findByText(en.suggest.noPortfolio)).toBeInTheDocument();
   });
 
+  it("shows the real score time, not the request time, and groups skipped reasons with counts", async () => {
+    const base = ideas();
+    vi.spyOn(api, "buyIdeas").mockResolvedValue({ ...base, generated_at: "2026-10-13T10:35:00Z", scores_newest_at: "2026-10-12T08:05:00Z" });
+    wrap("en");
+    await fill("en");
+    fireEvent.click(submitBtn("en"));
+    await screen.findAllByTestId("candidate");
+    expect(screen.getByText(/from scores cached/).textContent).toContain("12/10");
+    expect(screen.queryByTestId("not-scored")).toBeNull();
+    const groups = screen.getAllByTestId("skipped-group");
+    expect(groups.length).toBeGreaterThan(0);
+    expect(groups[0].textContent).toMatch(/\(\d+\)/);
+  });
+
+  it.each(["en", "he"] as const)("says the list is not scored yet when most of the universe has no score (%s)", async (loc) => {
+    const base = ideas({ markets: ["US"], asset_types: ["stock"] });
+    const skipped = Array.from({ length: 6 }, (_, i) => ({ symbol: `S${i}`, name_en: `Name ${i}`, code: "no_score" as const, reason: "x" }));
+    vi.spyOn(api, "buyIdeas").mockResolvedValue({ ...base, candidates: [], skipped, universe_size: 6, unscored_count: 6, scores_newest_at: null });
+    wrap(loc);
+    await fill(loc);
+    fireEvent.click(submitBtn(loc));
+    expect(await screen.findByTestId("not-scored")).toHaveTextContent(M[loc].suggest.notScored);
+    expect(screen.queryByText(M[loc].suggest.empty)).toBeNull();
+    expect(screen.getAllByTestId("skipped-group")).toHaveLength(1);
+    expect(screen.getByTestId("skipped-group").textContent).toContain("(6)");
+  });
+
   it("uses no verdict wording in English", async () => {
     wrap("en");
     await fill("en");

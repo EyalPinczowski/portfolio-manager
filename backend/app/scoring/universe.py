@@ -127,6 +127,53 @@ def _quote_symbols(secs: list[Security], now: datetime, s: Settings) -> list[str
     ]
 
 
+def _due(db: Session, secs: list[Security], s: Settings) -> list[tuple[datetime, str]]:
+    """(computed_at, symbol) of the symbols whose score is missing or older than the TTL, stalest first."""
+    ttl_s = s.universe_score_ttl_minutes * 60.0
+    due: list[tuple[datetime, str]] = []
+    for sec in secs:
+        row = db.get(SignalCache, sec.symbol)
+        computed = row.computed_at if row is not None else _EPOCH
+        if row is not None and (utcnow() - computed).total_seconds() < ttl_s:
+            continue
+        due.append((computed, sec.symbol))
+    due.sort()
+    return due
+
+
+def count_due(db: Session, settings: Settings | None = None) -> int:
+    """How many universe symbols still need a fresh score."""
+    s = settings or get_settings()
+    return len(_due(db, universe_securities(db, s), s))
+
+
+def refresh_universe_until_fresh(
+    db: Session,
+    history: HistoryProvider,
+    quotes: QuoteProvider | None = None,
+    settings: Settings | None = None,
+    max_symbols: int = 80,
+) -> tuple[int, int]:
+    """Run `refresh_universe` batch after batch until nothing is due or `max_symbols` were tried.
+
+    Returns (symbols attempted, symbols still due). Stops early when a batch makes no progress.
+    Quotes go out with the first batch only.
+    """
+    s = settings or get_settings()
+    attempted = 0
+    left = count_due(db, s)
+    first = True
+    while left > 0 and attempted < max_symbols:
+        before = left
+        refresh_universe(db, history, quotes if first else None, s)
+        first = False
+        attempted += min(s.universe_refresh_batch_size, before, max_symbols - attempted)
+        left = count_due(db, s)
+        if left >= before:
+            break
+    return attempted, left
+
+
 def refresh_universe(
     db: Session,
     history: HistoryProvider,
@@ -147,15 +194,7 @@ def refresh_universe(
         for i in range(0, len(syms), s.universe_quote_chunk_size):
             refresh_symbols(db, syms[i : i + s.universe_quote_chunk_size], quotes)
 
-    ttl_s = s.universe_score_ttl_minutes * 60.0
-    due: list[tuple[datetime, str]] = []
-    for sec in secs:
-        row = db.get(SignalCache, sec.symbol)
-        computed = row.computed_at if row is not None else _EPOCH
-        if row is not None and (utcnow() - computed).total_seconds() < ttl_s:
-            continue
-        due.append((computed, sec.symbol))
-    due.sort()
+    due = _due(db, secs, s)
     n = 0
     batch = [sym for _, sym in due[: s.universe_refresh_batch_size]]
     prefetch = getattr(history, "prefetch_history", None)

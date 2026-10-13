@@ -133,6 +133,14 @@ Supabase keeps its own backups on paid plans only, so use Settings → Export re
 ## TASE directory (optional, Update 15)
 Set `TASE_API_KEY` (the API key from the TASE Data Hub "Securities - Basic" product, **not** the reference ID) on the API host. Empty = feature off, nothing else changes. Base URL `https://datawise.tase.co.il` (`TASE_BASE_URL`); limit 10 requests per 2 s. A daily job (`tase_directory`, 18:30 Asia/Jerusalem, after the TASE close) replaces the `tase_directory` table, and a first fill runs at start-up when a key exists and the table is empty. The importer and the symbol search use it to find a fund by TASE number or Hebrew name. It carries no prices. The key is read only from the environment and is never logged. Confirm the TASE terms and price before using the key.
 
+## Universe scores (Update 18)
+
+The slim image sets `SCHEDULER_UNIVERSE_ENABLED=false`, so nothing on Render scores the stocks that "Suggest new stocks" ranks. `.github/workflows/universe-scores.yml` does it: weekdays at 13:17, 16:17 and 19:17 UTC (jittered, can run late), plus a manual "Run workflow" button. It runs `python -m app.cli universe-refresh --max 80` (batches until every symbol is fresh or 80 were tried; prints counts only; 20-minute limit; runs never overlap).
+
+One-time setup: GitHub repo, Settings, Secrets and variables, Actions, New repository secret, name `DATABASE_URL`, value the same Supabase connection string Render uses. Then Actions, "Universe scores", Run workflow. Suggestions appear after it finishes (about 10 minutes). The job does not migrate (`AUTO_MIGRATE=false`; Render owns migrations) and needs no other secret.
+
+By hand (from `backend/`, with `DATABASE_URL` set): `python -m app.cli universe-refresh --max 80`.
+
 ## Decision checklist (when Phase 1 is ready to deploy)
 1. Measure the API's memory in a 512 MB container.
 2. Run the test suite against Postgres.

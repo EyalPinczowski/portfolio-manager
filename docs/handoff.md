@@ -66,3 +66,7 @@ Queue item 3 is done. Next is queue item 4 (Postgres run, Opus review, reminders
 - The settings UI should look like phone settings.
 - A `Verdict` can only be created through `LaunchGate.release()`.
 - App name Holdwise and its logo/colours (approved 2026-10-05 from a preview).
+
+## Update 18: universe scores (2026-10-13)
+- Suggest found nothing because the universe was never scored (the slim image turns the job off). Added `python -m app.cli universe-refresh [--max N]` (loops `refresh_universe` batches, counts only), `.github/workflows/universe-scores.yml` (weekday cron every 3 h + manual run, secret `DATABASE_URL`), and an honest Suggest page: `scores_newest_at` (real newest score time) and `unscored_count` on the buy-ideas answer, a "not scored yet" state, skipped reasons grouped with counts.
+- Needs the user once: add the `DATABASE_URL` repository secret, then run the workflow by hand (see `docs/deployment.md`, "Universe scores").

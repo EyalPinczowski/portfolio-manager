@@ -85,7 +85,7 @@ export function mockBuyIdeas(pid: number, b: Partial<BuyIdeasIn>, portfolioExist
   ];
   return {
     portfolio_id: pid, generated_at: AS_OF, amount: b.amount, currency: b.currency, amount_ils: r2(amountIls), horizon: String(b.horizon), risk_preset: String(b.risk),
-    markets, asset_types: types, universe_size: POOL.length + SKIPPED.length, candidates, skipped,
+    markets, asset_types: types, universe_size: POOL.length + SKIPPED.length, scores_newest_at: AS_OF, unscored_count: 0, candidates, skipped,
     launch_gate_open: false, launch_gate_reasons: ["No passing backtest for the active weights config", "Paper-trading gate: 2 of 4 weeks completed"],
     notice: "Scores are not yet validated by a backtest and paper trading. These are neutral candidates for you to research, not instructions to trade. Not financial advice.",
     disclaimer: "Not financial advice.",

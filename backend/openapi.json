@@ -4354,6 +4354,23 @@
             "type": "integer",
             "title": "Universe Size"
           },
+          "scores_newest_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scores Newest At"
+          },
+          "unscored_count": {
+            "type": "integer",
+            "title": "Unscored Count",
+            "default": 0
+          },
           "candidates": {
             "items": {
               "$ref": "#/components/schemas/Candidate"

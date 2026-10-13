@@ -155,16 +155,18 @@ function Candidate({ c }: { c: BuyCandidate }) {
 
 function Skipped({ items }: { items: SkippedItem[] }) {
   const t = useTranslations("suggest");
+  const groups = new Map<string, SkippedItem[]>();
+  for (const s of items) groups.set(s.code, [...(groups.get(s.code) ?? []), s]);
   return (
     <details className="card" data-testid="skipped">
       <summary className="min-h-11 cursor-pointer text-heading">{t("skippedTitle", { n: items.length })}</summary>
       <div className="mt-2 space-y-2">
         <p className="text-sm text-muted">{items.length === 0 ? t("skippedNone") : t("skippedNote")}</p>
         <ul className="divide-y divide-line">
-          {items.map((s) => (
-            <li key={s.symbol} className="space-y-0.5 py-2 text-sm">
-              <p className="font-medium"><span dir="ltr">{s.symbol}</span> · <bdi dir="auto" className="text-muted">{s.name_en}</bdi></p>
-              <p>{t.has(`skip.${s.code}`) ? t(`skip.${s.code}`) : s.reason}</p>
+          {[...groups.entries()].map(([code, list]) => (
+            <li key={code} className="space-y-0.5 py-2 text-sm" data-testid="skipped-group">
+              <p className="font-medium">{t.has(`skip.${code}`) ? t(`skip.${code}`) : list[0].reason} ({list.length})</p>
+              <p className="text-muted">{list.map((s, i) => <span key={s.symbol}>{i > 0 && ", "}<span dir="ltr">{s.symbol}</span> <bdi dir="auto">{s.name_en}</bdi></span>)}</p>
             </li>
           ))}
         </ul>
@@ -176,17 +178,20 @@ function Skipped({ items }: { items: SkippedItem[] }) {
 function Results({ r, onEdit }: { r: BuyIdeasOut; onEdit: () => void }) {
   const t = useTranslations("suggest");
   const locale = useLocale();
+  const unscored = r.universe_size > 0 && r.unscored_count * 2 > r.universe_size;
+  const amount = formatMoney(r.amount, r.currency, locale);
   return (
     <>
       <GateNotice r={r} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-heading">{t("resultsTitle", { n: r.candidates.length })}</h2>
-          <p className="text-caption text-muted">{t("resultsMeta", { universe: r.universe_size, time: `${formatDate(r.generated_at)} ${formatTime(r.generated_at, locale)}`, amount: formatMoney(r.amount, r.currency, locale) })}</p>
+          <p className="text-caption text-muted">{r.scores_newest_at ? t("resultsMeta", { universe: r.universe_size, time: `${formatDate(r.scores_newest_at)} ${formatTime(r.scores_newest_at, locale)}`, amount }) : t("resultsMetaNoScores", { universe: r.universe_size, amount })}</p>
         </div>
         <button type="button" className="btn-secondary" onClick={onEdit}>{t("edit")}</button>
       </div>
-      {r.candidates.length === 0 ? <p className="card" role="status">{t("empty")}</p> : <ul className="grid gap-3 md:grid-cols-2">{r.candidates.map((c) => <Candidate key={c.symbol} c={c} />)}</ul>}
+      {unscored && <p className="card" role="status" data-testid="not-scored">{t("notScored")}</p>}
+      {r.candidates.length === 0 ? (unscored ? null : <p className="card" role="status">{t("empty")}</p>) : <ul className="grid gap-3 md:grid-cols-2">{r.candidates.map((c) => <Candidate key={c.symbol} c={c} />)}</ul>}
       <Skipped items={r.skipped} />
       <p className="text-xs text-muted">{r.notice} {t("disclaimer")}</p>
     </>

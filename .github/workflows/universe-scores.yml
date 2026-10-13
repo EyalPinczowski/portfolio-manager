@@ -1,0 +1,44 @@
+name: Universe scores
+
+# Scores the screener universe so "Suggest new stocks" has something to rank. The slim server image
+# turns the in-process job off (512 MB), so this cron does the work against the same database.
+on:
+  schedule:
+    # weekdays, every 3 hours from 13:17 to 19:17 UTC (jittered minute; Actions cron can be late)
+    - cron: "17 13-21/3 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: universe-scores
+  cancel-in-progress: false
+
+env:
+  UV_FROZEN: "1"
+
+jobs:
+  score:
+    name: Score the universe
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      # TODO(pin-sha): pin this action to a full commit SHA, tag as trailing comment (not verified offline)
+      - uses: actions/checkout@v4
+      # TODO(pin-sha): pin this action to a full commit SHA, tag as trailing comment (not verified offline)
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv python install 3.12
+      - run: uv sync --extra postgres
+      - name: Score stale universe symbols (prints counts only)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Render owns migrations; this job only writes score rows. Needs no SECRET_KEY.
+          AUTO_MIGRATE: "false"
+        run: uv run python -m app.cli universe-refresh --max 80

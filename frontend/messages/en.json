@@ -1547,6 +1547,8 @@
     "gateReasons": "Still open:",
     "resultsTitle": "Candidates to research ({n})",
     "resultsMeta": "{universe} securities checked, from scores cached {time}. Amount {amount}.",
+    "resultsMetaNoScores": "{universe} securities checked, no scores yet. Amount {amount}.",
+    "notScored": "The list of stocks to suggest from has not been scored yet. It fills up within a few hours.",
     "empty": "No candidates fit these inputs and your limits. See the skipped list for why.",
     "rank": "#{n}",
     "score": "Score",
